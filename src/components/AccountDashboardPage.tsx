@@ -8,13 +8,15 @@ import {
   MapPin, 
   ChevronRight, 
   LogOut, 
-  Settings, 
   ShieldCheck, 
   ArrowLeft,
-  Search,
   ShoppingCart,
   Zap,
-  Headset
+  Headset,
+  Star,
+  Tag,
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 import { User as UserType } from '../types';
 
@@ -28,6 +30,12 @@ interface AccountDashboardPageProps {
   onGoUrgentOrder: () => void;
   onLogout: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
+  onGoShoppingLists: () => void;
+  onGoPromotions: () => void;
+  onGoIntelligence: () => void;
+  onGoB2BAccountAdmin?: () => void;
+  onGoOrderApprovals: () => void;
+  onGoFAQ: () => void;
 }
 
 export function AccountDashboardPage({ 
@@ -39,16 +47,59 @@ export function AccountDashboardPage({
   onGoReorder,
   onGoUrgentOrder,
   onLogout,
-  onGoAdvisorChat
+  onGoAdvisorChat,
+  onGoShoppingLists,
+  onGoPromotions,
+  onGoIntelligence,
+  onGoB2BAccountAdmin,
+  onGoOrderApprovals,
+  onGoFAQ
 }: AccountDashboardPageProps) {
   
+  const canAdmin = user.accountRole === 'master' || 
+                  user.permissions?.includes('gestionar_usuarios') || 
+                  user.permissions?.includes('gestionar_sucursales') || 
+                  user.permissions?.includes('configurar_aprobaciones');
+
+  const canApprove = user.accountRole === 'master' || 
+                    user.accountRole === 'aprobador' || 
+                    user.accountRole === 'administrador' || 
+                    user.permissions?.includes('aprobar_pedidos');
+
   const menuItems = [
+    { 
+      id: 'admin', 
+      title: 'Administración de cuenta B2B', 
+      desc: 'Gestiona usuarios, sucursales, permisos y reglas de aprobación de tu empresa.', 
+      icon: ShieldCheck, 
+      onClick: onGoB2BAccountAdmin,
+      highlight: true,
+      hidden: !canAdmin
+    },
+    { 
+      id: 'approvals', 
+      title: canApprove ? 'Aprobación de pedidos' : 'Mis pedidos en aprobación', 
+      desc: canApprove 
+        ? 'Revisa y aprueba pedidos creados por compradores de tu cuenta.' 
+        : 'Consulta el estado de pedidos enviados a aprobación.', 
+      icon: ShieldCheck, 
+      onClick: onGoOrderApprovals,
+      highlight: true
+    },
     { 
       id: 'payments', 
       title: 'Cartera y pagos', 
       desc: 'Consulta facturas, cupo de crédito y realiza pagos.', 
       icon: Wallet, 
       onClick: onGoPayments,
+      highlight: true
+    },
+    { 
+      id: 'intelligence', 
+      title: 'Inteligencia B2B', 
+      desc: 'Consulta consumo, recompra sugerida y oportunidades para tu negocio.', 
+      icon: BarChart3, 
+      onClick: onGoIntelligence,
       highlight: true
     },
     { 
@@ -61,9 +112,25 @@ export function AccountDashboardPage({
     { 
       id: 'reorder', 
       title: 'Reordenar pedido', 
-      desc: 'Repite tus pedidos frecuentes y listas favoritas en segundos.', 
+      desc: 'Repite tus pedidos frecuentes aprovechando tu historial.', 
       icon: ShoppingCart, 
       onClick: onGoReorder 
+    },
+    { 
+      id: 'shoppingLists', 
+      title: 'Listas de compra', 
+      desc: 'Organiza productos frecuentes y agrega listas al carrito en segundos.', 
+      icon: Star, 
+      onClick: onGoShoppingLists,
+      highlight: false
+    },
+    { 
+      id: 'promotions', 
+      title: 'Promociones B2B', 
+      desc: 'Consulta descuentos, combos y condiciones comerciales para tu negocio.', 
+      icon: Tag, 
+      onClick: onGoPromotions,
+      highlight: true
     },
     { 
       id: 'urgent', 
@@ -79,6 +146,14 @@ export function AccountDashboardPage({
       desc: 'Chatea con tu asesor asignado para dudas o requerimientos.', 
       icon: Headset, 
       onClick: () => onGoAdvisorChat()
+    },
+    { 
+      id: 'faq', 
+      title: 'Centro de Ayuda / FAQ', 
+      desc: 'Preguntas frecuentes sobre precios, pedidos, entregas y cuenta.', 
+      icon: Headset, 
+      onClick: onGoFAQ,
+      highlight: true
     },
     { 
       id: 'addresses', 
@@ -212,9 +287,45 @@ export function AccountDashboardPage({
               </div>
             </div>
 
+            {/* Recommendations Section */}
+            <div className="mt-12 mb-8 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-texto">Recomendaciones para hoy</h3>
+                <p className="text-sm font-medium text-gris">Basado en tu comportamiento de compra y tendencias de mercado.</p>
+              </div>
+              <button 
+                onClick={onGoIntelligence}
+                className="text-xs font-black text-rojo uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                Ver inteligencia completa <ChevronRight size={14} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+              {[
+                { title: 'Recompra sugerida', desc: 'Sugerimos reponer Whisky antes del 13 de Mayo.', icon: TrendingUp },
+                { title: 'Promoción activa', desc: 'Combo coctelería con 7% de ahorro este mes.', icon: Tag },
+                { title: 'Alerta cartera', desc: 'Paga tus facturas para mantener tu cupo.', icon: ShieldCheck }
+              ].map((rec, i) => (
+                <div key={i} className="p-5 bg-white border border-borde rounded-2xl shadow-sm flex flex-col">
+                  <div className="p-2 bg-rojo-suave text-rojo rounded-lg w-fit mb-4">
+                    <rec.icon size={20} />
+                  </div>
+                  <h4 className="text-sm font-black text-texto">{rec.title}</h4>
+                  <p className="text-[12px] font-medium text-gris mt-1 leading-tight flex-1">{rec.desc}</p>
+                  <button 
+                    onClick={onGoIntelligence}
+                    className="mt-4 text-[10px] font-black text-rojo uppercase tracking-widest hover:underline text-left cursor-pointer"
+                  >
+                    Ver detalle
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {/* Menu Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {menuItems.map((item) => (
+              {menuItems.filter(item => !item.hidden).map((item) => (
                 <button
                   key={item.id}
                   onClick={item.onClick}

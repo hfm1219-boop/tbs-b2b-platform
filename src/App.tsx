@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Phone, 
   Headset, 
@@ -28,11 +28,51 @@ import {
   ArrowLeft,
   LogOut,
   Wallet,
-  MessageSquare
+  MessageSquare,
+  Star,
+  Tag,
+  BarChart3,
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CartItem, ViewMode, Product, User, ActivePage, TBSNotification } from './types';
-import { PRODUCTS, NOTIFICATIONS } from './data';
+import { 
+  CartItem, 
+  ViewMode, 
+  Product, 
+  User, 
+  ActivePage, 
+  TBSNotification, 
+  ShoppingList, 
+  B2BPromotion,
+  B2BCompanyAccount,
+  B2BUserActivity,
+  PermissionKey,
+  PendingApprovalOrder
+} from './types';
+import { 
+  PRODUCTS, 
+  NOTIFICATIONS, 
+  SHOPPING_LISTS, 
+  B2B_PROMOTIONS,
+  CUSTOMER_INTELLIGENCE_SUMMARY,
+  MONTHLY_PURCHASE_METRICS,
+  CATEGORY_CONSUMPTION,
+  TOP_PURCHASED_PRODUCTS,
+  CUSTOMER_INSIGHTS,
+  PROVIDER_PRODUCTS,
+  PROVIDER_SALES_METRICS,
+  PROVIDER_CHANNEL_METRICS,
+  PROVIDER_CITY_METRICS,
+  PROVIDER_CAMPAIGNS,
+  PROVIDER_SETTLEMENTS,
+  PROVIDER_INSIGHTS,
+  B2B_COMPANY_ACCOUNT,
+  B2B_PERMISSIONS,
+  PENDING_APPROVAL_ORDERS,
+  FAQ_ITEMS
+} from './data';
+import { FAQPage } from './components/FAQPage';
 import { CategoryPage } from './components/CategoryPage';
 import { AboutPage } from './components/AboutPage';
 import { ClientsPage } from './components/ClientsPage';
@@ -47,6 +87,12 @@ import { ReorderPage } from './components/ReorderPage';
 import { UrgentOrderPage } from './components/UrgentOrderPage';
 import { CartDrawer } from './components/CartDrawer';
 import { CheckoutPage } from './components/CheckoutPage';
+import { ShoppingListsPage } from './components/ShoppingListsPage';
+import { PromotionsPage } from './components/PromotionsPage';
+import { IntelligencePage } from './components/IntelligencePage';
+import { ProviderDashboardPage } from './components/ProviderDashboardPage';
+import { B2BAccountAdminPage } from './components/B2BAccountAdminPage';
+import OrderApprovalsPage from './components/OrderApprovalsPage';
 
 import { AccountDashboardPage } from './components/AccountDashboardPage';
 import AdvisorChatPage from './components/AdvisorChatPage';
@@ -73,15 +119,95 @@ export default function App() {
   
   const [notifications, setNotifications] = useState<TBSNotification[]>(NOTIFICATIONS);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>(SHOPPING_LISTS);
+  const [promotions] = useState<B2BPromotion[]>(B2B_PROMOTIONS);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [companyAccount, setCompanyAccount] = useState<B2BCompanyAccount>(B2B_COMPANY_ACCOUNT);
+  const [approvalOrders, setApprovalOrders] = useState<PendingApprovalOrder[]>(PENDING_APPROVAL_ORDERS);
+  const [permissionErrorModal, setPermissionErrorModal] = useState<{ open: boolean; permission?: string } | null>(null);
   
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const isCliente = !!currentUser;
 
+  const handleUpdateApprovalOrder = (orderId: string, updates: Partial<PendingApprovalOrder>) => {
+    setApprovalOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+  };
+
+  const handleCreatePendingApprovalOrder = (order: PendingApprovalOrder) => {
+    setApprovalOrders(prev => [order, ...prev]);
+    // Create activity
+    handleCreateActivity({
+      userId: currentUser?.name || 'Sistema',
+      userName: currentUser?.name || 'Sistema',
+      action: 'Creación de pedido pendiente',
+      detail: `Pedido ${order.orderNumber} enviado a aprobación por monto de ${order.total.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })}`,
+      date: "Hoy",
+      module: 'pedidos'
+    });
+    // Create notification for approvers
+    handleCreateNotification({
+      type: 'pedido',
+      title: 'Nuevo pedido pendiente de aprobación',
+      message: `El pedido ${order.orderNumber} por ${order.total.toLocaleString('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 })} requiere tu revisión.`,
+      priority: 'alta',
+      actionLabel: 'Ver pedido',
+      actionTarget: 'orderApprovals',
+      context: { entityType: 'pedido', value: order.id }
+    });
+  };
+
+  const handleGoOrderApprovals = () => {
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      return;
+    }
+    setIsCheckoutOpen(false);
+    window.scrollTo(0, 0);
+    setActivePage('orderApprovals');
+  };
+
+  const handleGoFAQ = () => {
+    setIsNotificationsOpen(false);
+    setActiveMenu(null);
+    setIsCheckoutOpen(false);
+    window.scrollTo(0, 0);
+    setActivePage('faq');
+  };
+
+  const handleGoAccessRequest = (role: 'client' | 'provider' = 'client') => {
+    setRequestAccessRole(role);
+    setActiveMenu(null);
+    setLoginModalOpen(false);
+    window.scrollTo(0, 0);
+    setActivePage('request-access');
+  };
+
   const simulatedHumberto: User = {
+    id: "user-001",
     name: "Humberto",
     email: "humberto@example.com",
     businessName: "Restaurante Demo",
     role: "cliente_b2b",
+    accountRole: "master",
+    permissions: [
+      "ver_catalogo",
+      "crear_pedidos",
+      "aprobar_pedidos",
+      "ver_pedidos",
+      "ver_cartera",
+      "pagar_facturas",
+      "ver_pagos",
+      "pedido_urgente",
+      "reordenar",
+      "gestionar_listas",
+      "ver_promociones",
+      "ver_inteligencia",
+      "hablar_asesor",
+      "gestionar_usuarios",
+      "gestionar_sucursales",
+      "configurar_aprobaciones"
+    ],
     city: "Cartagena",
     address: "Centro Histórico, Calle del Arsenal #10-20",
     customerType: "Restaurante",
@@ -101,11 +227,39 @@ export default function App() {
   ];
 
   const filteredProducts = useMemo(() => {
-    if (!selectedCategory) return PRODUCTS;
-    return PRODUCTS.filter(p => p.category === selectedCategory);
-  }, [selectedCategory]);
+    let filtered = PRODUCTS;
+    if (selectedCategory) {
+      filtered = filtered.filter(p => p.category === selectedCategory);
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        p.category.toLowerCase().includes(q) ||
+        p.specs.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+    return filtered;
+  }, [selectedCategory, searchQuery]);
+
+  const handleSearchTrigger = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSearchQuery(searchInput);
+    setActivePage('catalog');
+    // If searching globally, we might want to clear category, 
+    // but often users search within a category if they are already there.
+    // For now, let's keep it global and clear category if not on catalog page.
+    if (activePage !== 'catalog') {
+      setSelectedCategory(null);
+    }
+  };
 
   const handleAddToCart = (product: Product, quantity: number = 1) => {
+    if (!hasPermission('crear_pedidos')) {
+      handlePermissionRestricted('crear_pedidos');
+      return;
+    }
     setCartItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
 
@@ -124,6 +278,10 @@ export default function App() {
   };
 
   const handleIncrementCartItem = (productId: number) => {
+    if (!hasPermission('crear_pedidos')) {
+      handlePermissionRestricted('crear_pedidos');
+      return;
+    }
     setCartItems((prev) =>
       prev.map((item) =>
         item.product.id === productId
@@ -134,6 +292,10 @@ export default function App() {
   };
 
   const handleDecrementCartItem = (productId: number) => {
+    if (!hasPermission('crear_pedidos')) {
+      handlePermissionRestricted('crear_pedidos');
+      return;
+    }
     setCartItems((prev) =>
       prev
         .map((item) =>
@@ -154,6 +316,10 @@ export default function App() {
   };
 
   const handleOpenCheckout = () => {
+    if (!hasPermission('crear_pedidos')) {
+      handlePermissionRestricted('crear_pedidos');
+      return;
+    }
     if (!currentUser) {
       setLoginModalOpen(true);
       return;
@@ -192,6 +358,10 @@ export default function App() {
       setLoginModalOpen(true);
       return;
     }
+    if (!hasPermission('ver_cartera')) {
+      handlePermissionRestricted('ver_cartera');
+      return;
+    }
     setHighlightedInvoiceId(invoiceId || null);
     setActivePage('payments');
   };
@@ -199,6 +369,10 @@ export default function App() {
   const handleGoOrdersTracking = (orderId?: string) => {
     if (!currentUser) {
       setLoginModalOpen(true);
+      return;
+    }
+    if (!hasPermission('ver_pedidos')) {
+      handlePermissionRestricted('ver_pedidos');
       return;
     }
     setHighlightedOrderId(orderId || null);
@@ -210,6 +384,10 @@ export default function App() {
       setLoginModalOpen(true);
       return;
     }
+    if (!hasPermission('reordenar')) {
+      handlePermissionRestricted('reordenar');
+      return;
+    }
     setActivePage('reorder');
   };
 
@@ -218,7 +396,148 @@ export default function App() {
       setLoginModalOpen(true);
       return;
     }
+    if (!hasPermission('pedido_urgente')) {
+      handlePermissionRestricted('pedido_urgente');
+      return;
+    }
     setActivePage('urgentOrder');
+  };
+
+  const handleGoShoppingLists = () => {
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      return;
+    }
+    if (!hasPermission('gestionar_listas')) {
+      handlePermissionRestricted('gestionar_listas');
+      return;
+    }
+    setActivePage('shoppingLists');
+  };
+
+  const handleGoPromotions = () => {
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      return;
+    }
+    if (!hasPermission('ver_promociones')) {
+      handlePermissionRestricted('ver_promociones');
+      return;
+    }
+    setActivePage('promotions');
+  };
+
+  const handleGoIntelligence = () => {
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      return;
+    }
+    if (!hasPermission('ver_inteligencia')) {
+      handlePermissionRestricted('ver_inteligencia');
+      return;
+    }
+    setActivePage('intelligence');
+  };
+
+  const handleCreateNotification = (notif: Partial<TBSNotification>) => {
+    const newNotif: TBSNotification = {
+      id: `notif-${Date.now()}`,
+      type: notif.type || 'sistema',
+      title: notif.title || 'Notificación',
+      message: notif.message || '',
+      createdAt: "Recién",
+      read: false,
+      priority: notif.priority || 'baja',
+      actionLabel: notif.actionLabel,
+      actionTarget: notif.actionTarget,
+      context: notif.context
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+  };
+
+  const handleCreateShoppingList = (list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt' | 'products'>) => {
+    const newList: ShoppingList = {
+      ...list,
+      id: `list-${Date.now()}`,
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+      products: []
+    };
+    setShoppingLists(prev => [newList, ...prev]);
+    handleCreateNotification({
+      type: 'sistema',
+      title: 'Lista creada',
+      message: `Tu lista "${list.name}" fue creada correctamente.`,
+      actionTarget: 'shoppingLists'
+    });
+  };
+
+  const handleUpdateShoppingList = (id: string, updates: Partial<ShoppingList>) => {
+    setShoppingLists(prev => prev.map(list => 
+      list.id === id 
+        ? { ...list, ...updates, updatedAt: new Date().toISOString().split('T')[0] } 
+        : list
+    ));
+  };
+
+  const handleDeleteShoppingList = (id: string) => {
+    setShoppingLists(prev => prev.filter(list => list.id !== id));
+  };
+
+  const handleAddProductToShoppingList = (listId: string, product: Product, quantity: number) => {
+    setShoppingLists(prev => prev.map(list => {
+      if (list.id !== listId) return list;
+      
+      const existing = list.products.find(p => p.productId === product.id);
+      if (existing) {
+        return {
+          ...list,
+          updatedAt: new Date().toISOString().split('T')[0],
+          products: list.products.map(p => p.productId === product.id 
+            ? { ...p, suggestedQuantity: p.suggestedQuantity + quantity } 
+            : p)
+        };
+      }
+
+      const newProductItem: any = {
+        id: `slp-${Date.now()}`,
+        productId: product.id,
+        name: product.name,
+        category: product.category,
+        specs: product.specs,
+        image: product.image,
+        price: Number(product.price.replace(/[^0-9]/g, '')),
+        suggestedQuantity: quantity,
+        available: true,
+        stockLabel: "Disponible",
+        addedAt: new Date().toISOString().split('T')[0]
+      };
+
+      return {
+        ...list,
+        updatedAt: new Date().toISOString().split('T')[0],
+        products: [...list.products, newProductItem]
+      };
+    }));
+  };
+
+  const handleRemoveProductFromShoppingList = (listId: string, productId: string) => {
+    setShoppingLists(prev => prev.map(list => 
+      list.id === listId 
+        ? { ...list, products: list.products.filter(p => p.id !== productId) } 
+        : list
+    ));
+  };
+
+  const handleUpdateProductQuantity = (listId: string, productId: string, quantity: number) => {
+    setShoppingLists(prev => prev.map(list => 
+      list.id === listId 
+        ? { 
+            ...list, 
+            products: list.products.map(p => p.id === productId ? { ...p, suggestedQuantity: quantity } : p) 
+          } 
+        : list
+    ));
   };
 
   const handleGoAccount = () => {
@@ -226,7 +545,11 @@ export default function App() {
       setLoginModalOpen(true);
       return;
     }
-    setActivePage('account');
+    if (currentUser.role === 'marca' || currentUser.role === 'proveedor') {
+      setActivePage('providerDashboard');
+    } else {
+      setActivePage('account');
+    }
   };
 
   const handleGoAdvisorChat = (topic?: any, context?: any, conversationId?: string | null) => {
@@ -301,6 +624,7 @@ export default function App() {
     const contextId = notif.context?.value;
 
     if (notif.actionTarget === 'ordersTracking') handleGoOrdersTracking(contextId);
+    else if (notif.actionTarget === 'orderApprovals') handleGoOrderApprovals();
     else if (notif.actionTarget === 'payments') handleGoPayments(contextId);
     else if (notif.actionTarget === 'advisorChat') {
       if (notif.context?.entityType === 'chat' && notif.context.value) {
@@ -311,9 +635,54 @@ export default function App() {
     }
     else if (notif.actionTarget === 'urgentOrder') handleGoUrgentOrder();
     else if (notif.actionTarget === 'reorder') handleGoReorder();
-    else if (notif.actionTarget === 'catalog') goToCatalog('Whisky');
+    else if (notif.actionTarget === 'catalog') goToCatalog(null); // Fixed from 'Whisky'
     else if (notif.actionTarget === 'account') setActivePage('account');
+    else if (notif.actionTarget === 'intelligence') handleGoIntelligence();
+    else if (notif.actionTarget === 'shoppingLists') handleGoShoppingLists();
+    else if (notif.actionTarget === 'promotions') handleGoPromotions();
     else setActivePage('notifications');
+  };
+
+  const hasPermission = (permissionKey: PermissionKey) => {
+    if (!currentUser) return false;
+    if (currentUser.role === 'admin') return true;
+    if (currentUser.accountRole === 'master') return true;
+    return currentUser.permissions?.includes(permissionKey) || false;
+  };
+
+  const handlePermissionRestricted = (key?: string) => {
+    setPermissionErrorModal({ open: true, permission: key });
+  };
+
+  const handleGoB2BAccountAdmin = () => {
+    if (!currentUser) {
+      setLoginModalOpen(true);
+      return;
+    }
+    const canAdmin = hasPermission('gestionar_usuarios') || 
+                    hasPermission('gestionar_sucursales') || 
+                    hasPermission('configurar_aprobaciones');
+    
+    if (!canAdmin) {
+      handlePermissionRestricted();
+      return;
+    }
+    setActivePage('b2bAccountAdmin');
+  };
+
+  const handleUpdateCompanyAccount = (updatedAccount: B2BCompanyAccount) => {
+    setCompanyAccount(updatedAccount);
+  };
+
+  const handleCreateActivity = (activity: Omit<B2BUserActivity, 'id'>) => {
+    const newActivity: B2BUserActivity = {
+      ...activity,
+      id: `act-${Date.now()}`
+    };
+    setCompanyAccount(prev => ({
+      ...prev,
+      activities: [newActivity, ...prev.activities]
+    }));
   };
 
   const handleLogout = () => {
@@ -382,12 +751,16 @@ export default function App() {
 
   const resetToHome = () => {
     setSelectedCategory(null);
+    setSearchQuery('');
+    setSearchInput('');
     setActivePage('home');
     setActiveMenu(null);
   };
 
   const goToCatalog = (category: string | null = null) => {
     setSelectedCategory(category);
+    setSearchQuery('');
+    setSearchInput('');
     setActivePage('catalog');
     setActiveMenu(null);
   };
@@ -417,8 +790,11 @@ export default function App() {
       <CheckoutPage
         items={cartItems}
         currentUser={currentUser}
+        companyAccount={companyAccount}
         onBack={handleBackFromCheckout}
         onFinish={handleFinishCheckout}
+        onCreatePendingApprovalOrder={handleCreatePendingApprovalOrder}
+        onGoOrderApprovals={handleGoOrderApprovals}
       />
     );
   }
@@ -429,30 +805,113 @@ export default function App() {
       <div className="sticky top-0 z-50 border-bottom border-borde bg-white/94 backdrop-blur-md" onClick={(e) => e.stopPropagation()}>
         <div className="max-w-[1480px] mx-auto px-8 py-3 flex items-center justify-between">
           <div className="text-sm font-bold text-texto-sec">Modo Demo TBS</div>
-          <div className="flex gap-1 p-1 border border-[#DDE1E7] bg-[#F8FAFC] rounded-full">
+          <div className="flex gap-1 p-1 border border-[#DDE1E7] bg-[#F8FAFC] rounded-full overflow-x-auto max-w-[calc(100vw-400px)] scrollbar-hide">
             <button 
               onClick={() => setCurrentUser(null)}
-              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all ${!currentUser ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
+              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all whitespace-nowrap ${!currentUser ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
             >
               Sin Sesión
             </button>
             <button 
               onClick={() => {
-                setCurrentUser({
-                  name: "Humberto",
-                  email: "humberto@example.com",
-                  businessName: "Restaurante Demo",
-                  role: "cliente_b2b",
-                  city: "Cartagena",
-                  customerType: "Restaurante",
-                  creditLimit: 5000000,
-                  availableCredit: 3250000
-                });
+                const master = companyAccount.users.find(u => u.role === 'master');
+                if (master) {
+                  setCurrentUser({
+                    id: master.id,
+                    name: master.name,
+                    email: master.email,
+                    businessName: companyAccount.businessName,
+                    role: "cliente_b2b",
+                    city: "Cartagena",
+                    address: "Centro Histórico, Calle del Arsenal #10-20",
+                    customerType: "Restaurante",
+                    creditLimit: master.purchaseLimit,
+                    availableCredit: 32500000,
+                    accountRole: master.role,
+                    companyAccountId: companyAccount.id,
+                    permissions: master.permissions,
+                    assignedCityIds: master.assignedCityIds,
+                    assignedBranchIds: master.assignedBranchIds,
+                    assignedPointOfSaleIds: master.assignedPointOfSaleIds
+                  });
+                }
                 resetToHome();
               }}
-              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all ${currentUser ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
+              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all whitespace-nowrap ${currentUser?.accountRole === 'master' ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
             >
-              Loguear B2B (Humberto)
+              Master B2B (Humberto)
+            </button>
+            <button 
+              onClick={() => {
+                const comprador = companyAccount.users.find(u => u.role === 'comprador');
+                if (comprador) {
+                  setCurrentUser({
+                    name: comprador.name,
+                    email: comprador.email,
+                    businessName: companyAccount.businessName,
+                    role: "cliente_b2b",
+                    city: "Cartagena",
+                    address: "Centro Histórico, Calle del Arsenal #10-20",
+                    customerType: "Restaurante",
+                    creditLimit: comprador.purchaseLimit,
+                    availableCredit: 2500000,
+                    accountRole: comprador.role,
+                    companyAccountId: companyAccount.id,
+                    permissions: comprador.permissions,
+                    assignedCityIds: comprador.assignedCityIds,
+                    assignedBranchIds: comprador.assignedBranchIds,
+                    assignedPointOfSaleIds: comprador.assignedPointOfSaleIds,
+                    requiresApprovalAbove: comprador.requiresApprovalAbove
+                  });
+                }
+                resetToHome();
+              }}
+              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all whitespace-nowrap ${currentUser?.accountRole === 'comprador' ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
+            >
+              Comprador B2B (María)
+            </button>
+            <button 
+              onClick={() => {
+                const finanzas = companyAccount.users.find(u => u.role === 'finanzas');
+                if (finanzas) {
+                  setCurrentUser({
+                    name: finanzas.name,
+                    email: finanzas.email,
+                    businessName: companyAccount.businessName,
+                    role: "cliente_b2b",
+                    city: "Cartagena",
+                    address: "Centro Histórico, Calle del Arsenal #10-20",
+                    customerType: "Restaurante",
+                    accountRole: finanzas.role,
+                    companyAccountId: companyAccount.id,
+                    permissions: finanzas.permissions,
+                    assignedCityIds: finanzas.assignedCityIds,
+                    assignedBranchIds: finanzas.assignedBranchIds,
+                    assignedPointOfSaleIds: finanzas.assignedPointOfSaleIds
+                  });
+                }
+                resetToHome();
+              }}
+              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all whitespace-nowrap ${currentUser?.accountRole === 'finanzas' ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
+            >
+              Finanzas B2B (Carlos)
+            </button>
+            <button 
+              onClick={() => {
+                setCurrentUser({
+                  name: "Valentina",
+                  email: "valentina@example.com",
+                  businessName: "Marca Premium Demo",
+                  role: "marca",
+                  city: "Cartagena",
+                  address: "Manga, Calle 26 #22-10",
+                  providerType: "importadora"
+                });
+                setActivePage('providerDashboard');
+              }}
+              className={`px-5 py-2 rounded-full font-extrabold text-sm transition-all whitespace-nowrap ${currentUser?.role === 'marca' ? 'bg-rojo text-white tbs-shadow' : 'text-texto-sec hover:bg-gray-100'}`}
+            >
+              Marca (Valentina)
             </button>
           </div>
         </div>
@@ -492,48 +951,80 @@ export default function App() {
             <div>Entrega en<br /><strong className="text-texto">Cartagena</strong></div>
           </div>
 
-          <div className="relative flex-1 min-w-[280px]">
+          <form 
+            onSubmit={handleSearchTrigger}
+            className="relative flex-1 min-w-[280px]"
+          >
             <input 
               type="text" 
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Buscar productos, marcas, categorías..." 
               className="w-full h-12 border border-[#DDE1E7] rounded-md px-5 pr-12 text-sm outline-none focus:border-rojo transition-colors"
             />
-            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8A8F98]" size={22} />
-          </div>
+            <button 
+              type="submit"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8A8F98] hover:text-rojo transition-colors cursor-pointer outline-none bg-transparent border-none p-0"
+            >
+              <Search size={22} />
+            </button>
+          </form>
 
           <div className="flex items-center gap-[22px] text-sm font-bold">
             {!currentUser ? (
               <>
                 <button onClick={() => setLoginModalOpen(true)} className="hover:text-rojo cursor-pointer transition-colors">Iniciar sesión / Entrar</button>
-                <div 
-                  className="relative inline-flex cursor-pointer transition-transform hover:scale-110"
-                  onClick={() => setIsCartOpen(true)}
-                >
-                  <ShoppingCart size={25} strokeWidth={1.8} />
-                  <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">{cartCount}</span>
+                <div className="flex items-center gap-[22px]">
+                  <button 
+                    onClick={handleGoFAQ}
+                    className="relative inline-flex cursor-pointer transition-transform hover:scale-110 text-gris hover:text-rojo"
+                    title="Centro de ayuda"
+                  >
+                    <HelpCircle size={25} strokeWidth={1.8} />
+                  </button>
+                  <div 
+                    className="relative inline-flex cursor-pointer transition-transform hover:scale-110"
+                    onClick={() => setIsCartOpen(true)}
+                  >
+                    <ShoppingCart size={25} strokeWidth={1.8} />
+                    <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">{cartCount}</span>
+                  </div>
                 </div>
               </>
             ) : (
               <>
-                <div className="hidden lg:flex flex-col items-end leading-tight text-gris-oscuro">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-rojo">Crédito Disponible</span>
-                  <strong className="text-texto text-sm font-black">$3'250.000</strong>
+                {(currentUser.role === 'cliente_b2b') && (
+                  <div className="hidden lg:flex flex-col items-end leading-tight text-gris-oscuro">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-rojo">Crédito Disponible</span>
+                    <strong className="text-texto text-sm font-black">$3'250.000</strong>
+                  </div>
+                )}
+                <div className="flex items-center gap-[22px]">
+                  <button 
+                    onClick={handleGoFAQ}
+                    className="relative inline-flex cursor-pointer transition-transform hover:scale-110 text-gris hover:text-rojo"
+                    title="Centro de ayuda"
+                  >
+                    <HelpCircle size={24} strokeWidth={1.8} />
+                  </button>
+                  <div className="relative inline-flex cursor-pointer transition-transform hover:scale-110" onClick={handleToggleNotifications}>
+                    <Bell size={24} strokeWidth={1.8} />
+                    {notifications.filter(n => !n.read).length > 0 && (
+                      <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">
+                        {notifications.filter(n => !n.read).length}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="relative inline-flex cursor-pointer transition-transform hover:scale-110" onClick={handleToggleNotifications}>
-                  <Bell size={24} strokeWidth={1.8} />
-                  {notifications.filter(n => !n.read).length > 0 && (
-                    <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">
-                      {notifications.filter(n => !n.read).length}
-                    </span>
-                  )}
-                </div>
-                <div 
-                  className="relative inline-flex cursor-pointer transition-transform hover:scale-110"
-                  onClick={() => setIsCartOpen(true)}
-                >
-                  <ShoppingCart size={25} strokeWidth={1.8} />
-                  <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">{cartCount}</span>
-                </div>
+                {(currentUser.role === 'cliente_b2b') && (
+                  <div 
+                    className="relative inline-flex cursor-pointer transition-transform hover:scale-110"
+                    onClick={() => setIsCartOpen(true)}
+                  >
+                    <ShoppingCart size={25} strokeWidth={1.8} />
+                    <span className="absolute -top-[9px] -right-[9px] flex items-center justify-center min-w-[19px] h-[19px] px-1.5 bg-[#D90000] text-white rounded-full text-[10px] font-extrabold">{cartCount}</span>
+                  </div>
+                )}
                 <div className="relative group/user">
                   <div className="flex items-center gap-[12px] leading-tight text-sm font-medium cursor-pointer"
                     onClick={(e) => {
@@ -545,9 +1036,11 @@ export default function App() {
                       <UserIcon size={22} strokeWidth={2.5} />
                     </div>
                     <div className="hidden sm:block">
-                      <div className="text-[10px] font-black uppercase tracking-[0.15em] text-gris mb-0.5">Mi Cuenta</div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.15em] text-gris mb-0.5">
+                        {currentUser.role === 'marca' || currentUser.role === 'proveedor' ? 'Panel de Marca' : 'Mi Cuenta'}
+                      </div>
                       <div className="flex items-center gap-1.5">
-                        <strong className="font-black text-texto text-sm tracking-tight">Humberto</strong>
+                        <strong className="font-black text-texto text-sm tracking-tight">{currentUser.name}</strong>
                         <ChevronDown size={14} className={`transition-transform text-rojo ${activeMenu === 'user' ? 'rotate-180' : ''}`} />
                       </div>
                     </div>
@@ -565,9 +1058,13 @@ export default function App() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="px-4 py-3 mb-2 bg-gray-50 rounded-lg">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1">Negocio Registrado</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1">
+                              {currentUser.role === 'marca' || currentUser.role === 'proveedor' ? 'Marca / Proveedor' : 'Negocio Registrado'}
+                            </div>
                             <div className="text-sm font-black text-texto truncate">{currentUser.businessName}</div>
-                            <div className="text-[11px] font-bold text-gris mt-1 uppercase tracking-tight">{currentUser.city} · {currentUser.customerType}</div>
+                            <div className="text-[11px] font-bold text-gris mt-1 uppercase tracking-tight">
+                              {currentUser.city} · {currentUser.providerType || currentUser.customerType}
+                            </div>
                           </div>
 
                           <div className="space-y-1">
@@ -579,49 +1076,173 @@ export default function App() {
                               className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
                             >
                               <UserIcon size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Mi Perfil / Dashboard</span>
+                              <span className="text-sm font-bold text-texto">
+                                {currentUser.role === 'marca' || currentUser.role === 'proveedor' ? 'Dashboard de Marca' : 'Mi Perfil'}
+                              </span>
                             </button>
-                            <button 
-                              onClick={() => {
-                                handleGoPayments();
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                            >
-                              <Wallet size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Estado de Cartera</span>
-                            </button>
-                            <button 
-                              onClick={() => {
-                                handleGoOrdersTracking();
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                            >
-                              <Package size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Seguimiento de Pedidos</span>
-                            </button>
-                            <button 
-                              onClick={() => {
-                                handleGoUrgentOrder();
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                            >
-                              <Zap size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Pedido urgente</span>
-                            </button>
-                            <button 
-                              onClick={() => {
-                                handleGoAdvisorChat();
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                            >
-                              <MessageSquare size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Mi asesor</span>
-                            </button>
+
+                            {/* B2B Customer specific menu */}
+                            {currentUser.role === 'cliente_b2b' && (
+                              <>
+                                <button 
+                                  onClick={() => {
+                                    handleGoOrderApprovals();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <ShieldCheck size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">
+                                    {hasPermission('aprobar_pedidos') ? 'Aprobación de pedidos' : 'Mis pedidos en aprobación'}
+                                  </span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoIntelligence();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <BarChart3 size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Inteligencia B2B</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoPayments();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <Wallet size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Estado de Cartera</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoOrdersTracking();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <Package size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Seguimiento de Pedidos</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoUrgentOrder();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <Zap size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Pedido urgente</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoAdvisorChat();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <MessageSquare size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Mi asesor</span>
+                                </button>
+                                <div className="h-px bg-gray-100 my-1" />
+                                <button 
+                                  onClick={() => {
+                                    handleGoFAQ();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <HelpCircle size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Centro de ayuda</span>
+                                </button>
+                              </>
+                            )}
+
+                            {/* Providers specific menu */}
+                            {(currentUser.role === 'marca' || currentUser.role === 'proveedor') && (
+                              <>
+                                <button 
+                                  onClick={() => {
+                                    setActivePage('providerProducts');
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <Package size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Mi Portafolio</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setActivePage('providerCampaigns');
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <Tag size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Mis Campañas</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setActivePage('providerSettlements');
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <FileText size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Liquidaciones</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoAdvisorChat('activacion');
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <MessageSquare size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Ejecutivo TBS</span>
+                                </button>
+                              </>
+                            )}
+                            {currentUser.role === 'cliente_b2b' && (
+                              <>
+                                <button 
+                                  onClick={() => {
+                                    handleGoShoppingLists();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                                >
+                                  <Star size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Listas de compra</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    handleGoPromotions();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 flex items-center gap-3 transition-colors"
+                                >
+                                  <Tag size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Promociones B2B</span>
+                                </button>
+                              </>
+                            )}
                             <div className="h-px bg-gray-100 my-2" />
+                            <button 
+                              onClick={() => {
+                                handleGoB2BAccountAdmin();
+                                setActiveMenu(null);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-texto hover:bg-rojo/5 hover:text-rojo rounded-lg transition-all group/item"
+                            >
+                              <div className="p-1.5 bg-gray-50 rounded-md group-hover/item:bg-rojo/10 transition-colors">
+                                <Briefcase size={16} />
+                              </div>
+                              Administrar Cuenta B2B
+                            </button>
+
                             <button 
                               onClick={() => {
                                 handleLogout();
@@ -707,7 +1328,7 @@ export default function App() {
               </AnimatePresence>
             </div>
 
-            {!isCliente ? (
+            {isCliente ? null : (
               <>
                 <div className="relative">
                    <button 
@@ -916,6 +1537,13 @@ export default function App() {
                   >
                     Servicios TBS <ChevronDown size={14} onMouseEnter={() => toggleMenu('services')} className={`transition-transform ${activeMenu === 'services' ? 'rotate-180' : ''}`} />
                   </button>
+
+                  <button 
+                    onClick={handleGoFAQ} 
+                    className={`flex items-center gap-1.5 text-[13px] font-black text-[#303844] hover:text-rojo whitespace-nowrap py-2 cursor-pointer outline-none uppercase tracking-wider ${activePage === 'faq' ? 'text-rojo' : ''}`}
+                  >
+                    Ayuda
+                  </button>
  
                   <AnimatePresence>
                     {activeMenu === 'services' && (
@@ -996,41 +1624,67 @@ export default function App() {
                   </AnimatePresence>
                 </div>
               </>
-            ) : (
-              <>
-                <button onClick={handleGoReorder} className={`text-sm font-extrabold whitespace-nowrap cursor-pointer transition-colors ${activePage === 'reorder' ? 'text-rojo font-black' : 'text-[#303844] hover:text-rojo'}`}>Reordenar</button>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-6">
+            {isCliente && (currentUser?.role === 'cliente_b2b') && (
+              <div className="flex items-center gap-6">
+                <button onClick={handleGoReorder} className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'reorder' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}>Reordenar</button>
+                <button 
+                  onClick={handleGoIntelligence} 
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'intelligence' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                >
+                  Inteligencia
+                </button>
+                <button 
+                  onClick={handleGoPromotions} 
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'promotions' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                >
+                  Promos
+                </button>
                 <button 
                   onClick={handleGoPayments} 
-                  className={`text-sm font-extrabold whitespace-nowrap cursor-pointer transition-colors ${activePage === 'payments' ? 'text-rojo font-black' : 'text-[#303844] hover:text-rojo'}`}
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'payments' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                 >
-                  Cartera y pagos
+                  Cartera
                 </button>
                 <button 
                   onClick={handleGoOrdersTracking} 
-                  className={`text-sm font-extrabold whitespace-nowrap cursor-pointer transition-colors ${activePage === 'ordersTracking' ? 'text-rojo font-black' : 'text-[#303844] hover:text-rojo'}`}
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'ordersTracking' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                 >
                   Seguimiento
                 </button>
                 <button 
                   onClick={handleGoUrgentOrder} 
-                  className={`text-sm font-extrabold whitespace-nowrap cursor-pointer transition-colors ${activePage === 'urgentOrder' ? 'text-rojo font-black' : 'text-[#303844] hover:text-rojo'}`}
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'urgentOrder' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                 >
                   Pedido urgente
                 </button>
                 <button 
                   onClick={() => handleGoAdvisorChat()} 
-                  className={`text-sm font-extrabold whitespace-nowrap cursor-pointer transition-colors ${activePage === 'advisorChat' ? 'text-rojo font-black' : 'text-[#303844] hover:text-rojo'}`}
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'advisorChat' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                 >
                   Mi asesor
                 </button>
-                <button onClick={() => setActivePage('providers')} className="text-sm font-extrabold text-[#303844] hover:text-rojo whitespace-nowrap cursor-pointer">Proveedores y marcas</button>
-                <button onClick={() => setActivePage('services')} className="flex items-center gap-1.5 text-sm font-extrabold text-[#303844] hover:text-rojo whitespace-nowrap cursor-pointer">Servicios TBS <ChevronDown size={14} /></button>
-              </>
+                <button 
+                  onClick={handleGoFAQ} 
+                  className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'faq' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                >
+                  Ayuda
+                </button>
+              </div>
+            )}
+            
+            {!isCliente && (
+              <button 
+                onClick={() => openAuth('request')} 
+                className="px-7 py-3 bg-rojo text-white rounded-md text-[11px] font-black uppercase tracking-widest hover:bg-rojo-oscuro transition-all shadow-lg shadow-rojo/20 cursor-pointer outline-none"
+              >
+                Solicitar acceso
+              </button>
             )}
           </div>
-          {!isCliente && (
-            <button onClick={() => openAuth('request')} className="px-7 py-3.5 bg-rojo text-white rounded-md text-[13px] font-black hover:bg-rojo-oscuro transition-all uppercase tracking-wider shadow-lg shadow-rojo/20 cursor-pointer">Solicitar acceso</button>
-          )}
         </div>
       </nav>
 
@@ -1050,9 +1704,17 @@ export default function App() {
               onBack={resetToHome} 
               onAddToCart={handleAddToCart}
               isCliente={isCliente}
+              currentUser={currentUser}
               onCategorySelect={setSelectedCategory}
               onRequestAccess={() => openAuth('request')}
               onLogin={() => setLoginModalOpen(true)}
+              shoppingLists={shoppingLists}
+              onAddToList={handleAddProductToShoppingList}
+              onCreateList={(name, desc) => handleCreateShoppingList({ name, description: desc, type: 'personalizada' })}
+              onGoPromotions={handleGoPromotions}
+              promotions={promotions}
+              searchQuery={searchQuery}
+              onClearSearch={() => { setSearchQuery(''); setSearchInput(''); }}
             />
           </motion.div>
         ) : activePage === 'about' ? (
@@ -1133,6 +1795,12 @@ export default function App() {
                 onGoUrgentOrder={handleGoUrgentOrder}
                 onLogout={handleLogout}
                 onGoAdvisorChat={handleGoAdvisorChat}
+                onGoShoppingLists={handleGoShoppingLists}
+                onGoPromotions={handleGoPromotions}
+                onGoIntelligence={handleGoIntelligence}
+                onGoB2BAccountAdmin={handleGoB2BAccountAdmin}
+                onGoOrderApprovals={handleGoOrderApprovals}
+                onGoFAQ={handleGoFAQ}
               />
             )}
           </motion.div>
@@ -1146,6 +1814,7 @@ export default function App() {
           >
             <AccessRequestPage 
               onBack={resetToHome}
+              onGoFAQ={handleGoFAQ}
               initialRole={requestAccessRole}
             />
           </motion.div>
@@ -1204,6 +1873,7 @@ export default function App() {
               onAddToCart={handleAddToCart}
               onOpenCart={() => setIsCartOpen(true)}
               onGoAdvisorChat={handleGoAdvisorChat}
+              onGoShoppingLists={handleGoShoppingLists}
             />
           </motion.div>
         ) : activePage === 'urgentOrder' ? (
@@ -1251,6 +1921,77 @@ export default function App() {
               onCreateNotification={(n) => setNotifications(prev => [n, ...prev])}
             />
           </motion.div>
+        ) : activePage === 'shoppingLists' ? (
+          <motion.div
+            key="shoppingLists"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ShoppingListsPage 
+              currentUser={currentUser}
+              shoppingLists={shoppingLists}
+              onBackToAccount={() => setActivePage('account')}
+              onGoCatalog={() => goToCatalog('Whisky')}
+              onAddToCart={handleAddToCart}
+              onOpenCart={() => setIsCartOpen(true)}
+              onCreateList={handleCreateShoppingList}
+              onUpdateList={handleUpdateShoppingList}
+              onDeleteList={handleDeleteShoppingList}
+              onRemoveProductFromList={handleRemoveProductFromShoppingList}
+              onUpdateProductQuantity={handleUpdateProductQuantity}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onCreateNotification={handleCreateNotification}
+            />
+          </motion.div>
+        ) : activePage === 'promotions' ? (
+          <motion.div
+            key="promotions"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <PromotionsPage 
+              currentUser={currentUser}
+              promotions={promotions}
+              onBackToAccount={() => setActivePage('account')}
+              onGoCatalog={() => goToCatalog('Whisky')}
+              onAddToCart={handleAddToCart}
+              onOpenCart={() => setIsCartOpen(true)}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onCreateNotification={handleCreateNotification}
+            />
+          </motion.div>
+        ) : activePage === 'intelligence' ? (
+          <motion.div
+            key="intelligence"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <IntelligencePage 
+              currentUser={currentUser}
+              summary={CUSTOMER_INTELLIGENCE_SUMMARY}
+              monthlyMetrics={MONTHLY_PURCHASE_METRICS}
+              categoryConsumption={CATEGORY_CONSUMPTION}
+              topProducts={TOP_PURCHASED_PRODUCTS}
+              insights={CUSTOMER_INSIGHTS}
+              onBackToAccount={() => setActivePage('account')}
+              onGoReorder={handleGoReorder}
+              onGoPayments={handleGoPayments}
+              onGoPromotions={handleGoPromotions}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onGoUrgentOrder={handleGoUrgentOrder}
+              onGoShoppingLists={handleGoShoppingLists}
+              onGoCatalog={goToCatalog}
+              onAddToCart={handleAddToCart}
+              onOpenCart={() => setIsCartOpen(true)}
+              onCreateNotification={handleCreateNotification}
+            />
+          </motion.div>
         ) : activePage === 'notifications' ? (
           <motion.div
             key="notifications"
@@ -1269,6 +2010,103 @@ export default function App() {
               onDeleteNotification={handleDeleteNotification}
               onDeleteReadNotifications={handleDeleteReadNotifications}
               onGoToNotification={handleGoToNotification}
+            />
+          </motion.div>
+        ) : activePage === 'b2bAccountAdmin' ? (
+          <motion.div
+            key="b2bAccountAdmin"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <B2BAccountAdminPage 
+              currentUser={currentUser!}
+              companyAccount={companyAccount}
+              permissions={B2B_PERMISSIONS}
+              onBackToAccount={() => setActivePage('account')}
+              onGoHome={resetToHome}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onUpdateCompanyAccount={handleUpdateCompanyAccount}
+              onCreateNotification={handleCreateNotification}
+              onCreateActivity={handleCreateActivity}
+            />
+          </motion.div>
+        ) : (activePage === 'orderApprovals' && currentUser) ? (
+          <motion.div
+            key="orderApprovals"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <OrderApprovalsPage 
+              currentUser={currentUser}
+              approvalOrders={approvalOrders}
+              companyAccount={companyAccount}
+              onBackToAccount={() => setActivePage('account')}
+              onGoOrdersTracking={() => setActivePage('ordersTracking')}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onUpdateApprovalOrders={(updated) => setApprovalOrders(updated)}
+              onCreateNotification={handleCreateNotification}
+              onCreateActivity={handleCreateActivity}
+            />
+          </motion.div>
+        ) : activePage === 'faq' ? (
+          <motion.div
+            key="faq"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <FAQPage
+              currentUser={currentUser}
+              faqItems={FAQ_ITEMS}
+              onGoHome={resetToHome}
+              onGoAccessRequest={handleGoAccessRequest}
+              onGoLogin={() => setLoginModalOpen(true)}
+              onGoCatalog={() => goToCatalog(null)}
+              onGoAccount={handleGoAccount}
+              onGoPayments={handleGoPayments}
+              onGoOrdersTracking={handleGoOrdersTracking}
+              onGoUrgentOrder={handleGoUrgentOrder}
+              onGoReorder={handleGoReorder}
+              onGoShoppingLists={handleGoShoppingLists}
+              onGoPromotions={handleGoPromotions}
+              onGoIntelligence={handleGoIntelligence}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onGoProviderDashboard={() => setActivePage('providerDashboard')}
+              onGoB2BAccountAdmin={handleGoB2BAccountAdmin}
+              onGoOrderApprovals={handleGoOrderApprovals}
+            />
+          </motion.div>
+        ) : activePage === 'providerDashboard' ? (
+          <motion.div
+            key="providerDashboard"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ProviderDashboardPage 
+              currentUser={currentUser}
+              products={PROVIDER_PRODUCTS}
+              salesMetrics={PROVIDER_SALES_METRICS}
+              channelMetrics={PROVIDER_CHANNEL_METRICS}
+              cityMetrics={PROVIDER_CITY_METRICS}
+              campaigns={PROVIDER_CAMPAIGNS}
+              settlements={PROVIDER_SETTLEMENTS}
+              insights={PROVIDER_INSIGHTS}
+              onGoHome={resetToHome}
+              onLogout={handleLogout}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onGoProviderProducts={() => setActivePage('providerProducts')}
+              onGoProviderCampaigns={() => setActivePage('providerCampaigns')}
+              onGoProviderSettlements={() => setActivePage('providerSettlements')}
+              onGoProviderReports={() => setActivePage('providerReports')}
+              onCreateNotification={handleCreateNotification}
+              onGoFAQ={handleGoFAQ}
             />
           </motion.div>
         ) : (
@@ -1375,51 +2213,104 @@ export default function App() {
                 exit={{ opacity: 0, x: 20 }}
                 className="w-full lg:w-[250px] flex-shrink-0 border border-[#E8EAEE] rounded-2xl bg-white p-5 panel-shadow self-start mt-3"
               >
-                <div className="flex flex-col mb-4">
-                  <h3 className="text-base font-black whitespace-nowrap leading-tight">Tu operación hoy</h3>
-                  <button onClick={handleGoReorder} className="w-fit text-[10px] font-black text-rojo hover:underline uppercase tracking-wider cursor-pointer mt-1">Reordenar →</button>
-                </div>
-
-            {[
-              { icon: Truck, val: '2', label: 'Pedidos en tránsito', link: 'Ver seguimiento →', onClick: handleGoOrdersTracking },
-              { icon: FileText, val: '4', label: 'Facturas pendientes', link: 'Ver cartera →', onClick: handleGoPayments },
-              { icon: CreditCard, val: '$ 3.250.000', label: 'Cupo disponible', link: 'Ver detalles →', onClick: handleGoPayments }
-            ].map((ind, i) => (
-              <div key={i} className="border border-[#E8EAEE] rounded-lg p-3.5 mb-3 transition-colors hover:border-rojo/30">
-                <div className="flex gap-3 items-start">
-                  <ind.icon size={20} className="text-gris" />
-                  <div>
-                    <div className="text-2xl font-black text-texto leading-none">{ind.val}</div>
-                    <div className="mt-1 text-[12px] font-bold text-texto-sec">{ind.label}</div>
-                    <button 
-                      onClick={ind.onClick}
-                      className="inline-block mt-1 text-rojo text-[12px] font-black hover:underline bg-transparent border-none p-0 cursor-pointer"
-                    >
-                      {ind.link}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-                <div className="flex items-center gap-3 mt-[18px] pt-4 border-t border-[#EEF0F3]">
-                  <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#E7B19C] to-[#89513A] overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop" alt="Laura Gómez" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="text-[13px] leading-snug flex-1">
-                    <div className="text-gris">Asesor asignado</div>
-                    <strong className="font-bold block">Laura Gómez</strong>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gris">317 123 4567</span>
-                      <button 
-                        onClick={() => handleGoAdvisorChat()}
-                        className="text-rojo font-black text-[10px] uppercase hover:underline cursor-pointer"
-                      >
-                        Chat →
-                      </button>
+                {currentUser?.role === 'marca' || currentUser?.role === 'proveedor' ? (
+                  <>
+                    <div className="flex flex-col mb-4">
+                      <h3 className="text-base font-black whitespace-nowrap leading-tight">Tu desempeño hoy</h3>
+                      <button onClick={() => setActivePage('providerDashboard')} className="w-fit text-[10px] font-black text-rojo hover:underline uppercase tracking-wider cursor-pointer mt-1">Ver dashboard →</button>
                     </div>
-                  </div>
-                </div>
+
+                    {[
+                      { icon: BarChart3, val: '$ 29.8M', label: 'Ventas del mes', link: 'Ver reportes →', onClick: () => setActivePage('providerDashboard') },
+                      { icon: Package, val: '24', label: 'Productos activos', link: 'Gestionar stock →', onClick: () => setActivePage('providerDashboard') },
+                      { icon: Tag, val: '2', label: 'Campañas activas', link: 'Ver activaciones →', onClick: () => setActivePage('providerDashboard') }
+                    ].map((ind, i) => (
+                      <div key={i} className="border border-[#E8EAEE] rounded-lg p-3.5 mb-3 transition-colors hover:border-rojo/30">
+                        <div className="flex gap-3 items-start">
+                          <ind.icon size={20} className="text-gris" />
+                          <div>
+                            <div className="text-2xl font-black text-texto leading-none">{ind.val}</div>
+                            <div className="mt-1 text-[12px] font-bold text-texto-sec">{ind.label}</div>
+                            <button 
+                              onClick={ind.onClick}
+                              className="inline-block mt-1 text-rojo text-[12px] font-black hover:underline bg-transparent border-none p-0 cursor-pointer"
+                            >
+                              {ind.link}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-3 mt-[18px] pt-4 border-t border-[#EEF0F3]">
+                      <div className="w-[42px] h-[42px] rounded-full bg-gray-100 overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=100&auto=format&fit=crop" alt="Andrés Martínez" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="text-[13px] leading-snug flex-1">
+                        <div className="text-gris uppercase text-[10px] font-black tracking-widest">Ejecutivo TBS</div>
+                        <strong className="font-bold block tracking-tight">Andrés Martínez</strong>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gris">320 987 6543</span>
+                          <button 
+                            onClick={() => handleGoAdvisorChat('activacion')}
+                            className="text-rojo font-black text-[10px] uppercase hover:underline cursor-pointer"
+                          >
+                            Chat →
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-col mb-4">
+                      <h3 className="text-base font-black whitespace-nowrap leading-tight">Tu operación hoy</h3>
+                      <button onClick={handleGoReorder} className="w-fit text-[10px] font-black text-rojo hover:underline uppercase tracking-wider cursor-pointer mt-1">Reordenar →</button>
+                    </div>
+
+                    {[
+                      { icon: Truck, val: '2', label: 'Pedidos en tránsito', link: 'Ver seguimiento →', onClick: handleGoOrdersTracking },
+                      { icon: FileText, val: '4', label: 'Facturas pendientes', link: 'Ver cartera →', onClick: handleGoPayments },
+                      { icon: CreditCard, val: '$ 3.250.000', label: 'Cupo disponible', link: 'Ver detalles →', onClick: handleGoPayments },
+                      { icon: ShieldCheck, val: approvalOrders.filter(o => o.status === 'pendiente').length.toString(), label: 'Para aprobación', link: 'Gestionar →', onClick: handleGoOrderApprovals }
+                    ].map((ind, i) => (
+                      <div key={i} className="border border-[#E8EAEE] rounded-lg p-3.5 mb-3 transition-colors hover:border-rojo/30">
+                        <div className="flex gap-3 items-start">
+                          <ind.icon size={20} className="text-gris" />
+                          <div>
+                            <div className="text-2xl font-black text-texto leading-none">{ind.val}</div>
+                            <div className="mt-1 text-[12px] font-bold text-texto-sec">{ind.label}</div>
+                            <button 
+                              onClick={ind.onClick}
+                              className="inline-block mt-1 text-rojo text-[12px] font-black hover:underline bg-transparent border-none p-0 cursor-pointer"
+                            >
+                              {ind.link}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-3 mt-[18px] pt-4 border-t border-[#EEF0F3]">
+                      <div className="w-[42px] h-[42px] rounded-full bg-gradient-to-br from-[#E7B19C] to-[#89513A] overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop" alt="Laura Gómez" className="w-full h-full object-cover" />
+                      </div>
+                      <div className="text-[13px] leading-snug flex-1">
+                        <div className="text-gris">Asesor asignado</div>
+                        <strong className="font-bold block">Laura Gómez</strong>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gris">317 123 4567</span>
+                          <button 
+                            onClick={() => handleGoAdvisorChat()}
+                            className="text-rojo font-black text-[10px] uppercase hover:underline cursor-pointer"
+                          >
+                            Chat →
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </motion.aside>
             )}
           </AnimatePresence>
@@ -1434,7 +2325,7 @@ export default function App() {
             {!isCliente ? 'Todo lo que necesitas para conocer nuestra plataforma.' : 'Todo lo que necesitas para operar tu negocio en un solo lugar.'}
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-5 mt-6">
             {!isCliente ? (
               <>
                 <QuickAccessCard icon={ShoppingCart} title="Catálogo B2B" desc="Explora productos por categoría y marca." onClick={() => goToCatalog(null)} />
@@ -1449,9 +2340,10 @@ export default function App() {
                 <QuickAccessCard onClick={() => goToCatalog(null)} icon={ShoppingCart} title="Catálogo B2B" desc="Explora productos y disponibilidad." />
                 <QuickAccessCard onClick={handleGoReorder} icon={ClipboardList} title="Reordenar" desc="Repite tus pedidos anteriores en segundos." />
                 <QuickAccessCard onClick={handleGoPayments} icon={CreditCard} title="Cartera y pagos" desc="Consulta facturas, vencimientos y cupo." />
+                <QuickAccessCard onClick={handleGoOrderApprovals} icon={ShieldCheck} title="Aprobaciones" desc="Gestión de pedidos pendientes de firma." />
                 <QuickAccessCard onClick={handleGoOrdersTracking} icon={Truck} title="Seguimiento" desc="Rastrea tus pedidos en tiempo real." />
-                <QuickAccessCard onClick={handleGoUrgentOrder} icon={Zap} title="Pedido urgente" desc="Abastecimiento para operación inmediata." />
-                <QuickAccessCard onClick={() => handleGoAdvisorChat()} icon={UserIcon} title="Mi asesor" desc="Soporte comercial especializado." />
+                <QuickAccessCard onClick={handleGoUrgentOrder} icon={Zap} title="Pedido urgente" desc="Abastecimiento inmediato." />
+                <QuickAccessCard onClick={() => handleGoAdvisorChat()} icon={UserIcon} title="Mi asesor" desc="Soporte especializado." />
               </>
             )}
           </div>
@@ -1526,9 +2418,91 @@ export default function App() {
       <LoginModal 
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
-        onLogin={setCurrentUser}
-        onRequestAccess={() => openAuth('request')}
+        onLogin={(user) => {
+          // Special handling for B2B Demo Login
+          if (user.role === 'cliente_b2b') {
+            const masterUser = companyAccount.users.find(u => u.email === user.email);
+            if (masterUser) {
+              setCurrentUser({
+                ...user,
+                accountRole: masterUser.role,
+                companyAccountId: companyAccount.id,
+                permissions: masterUser.permissions,
+                assignedCityIds: masterUser.assignedCityIds,
+                assignedBranchIds: masterUser.assignedBranchIds,
+                assignedPointOfSaleIds: masterUser.assignedPointOfSaleIds,
+                purchaseLimit: masterUser.purchaseLimit,
+                requiresApprovalAbove: masterUser.requiresApprovalAbove
+              });
+            } else {
+              setCurrentUser(user);
+            }
+          } else {
+            setCurrentUser(user);
+          }
+          if (user.role === 'proveedor' || user.role === 'marca') {
+            setActivePage('providerDashboard');
+          } else {
+            resetToHome();
+          }
+        }}
+        onRequestAccess={() => {
+          setRequestAccessRole('client');
+          setActivePage('request-access');
+        }}
+        companyAccount={companyAccount}
+        onGoFAQ={handleGoFAQ}
       />
+
+      {/* Permission Restricted Modal */}
+      <AnimatePresence>
+        {permissionErrorModal?.open && (
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPermissionErrorModal(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-3xl p-10 text-center shadow-2xl z-10"
+            >
+              <div className="w-20 h-20 bg-rojo/10 text-rojo rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-texto mb-2">Permiso requerido</h3>
+              <p className="text-gris font-medium leading-relaxed mb-8">
+                No tienes permisos suficientes para realizar esta acción o acceder a este módulo. 
+                Contacta al administrador de tu cuenta para solicitar autorización.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => {
+                    setPermissionErrorModal(null);
+                    setActivePage('account');
+                  }}
+                  className="w-full bg-rojo text-white py-4 rounded-xl font-black shadow-lg hover:bg-rojo-oscuro transition-all"
+                >
+                  Ir a mi cuenta
+                </button>
+                <button 
+                  onClick={() => {
+                    setPermissionErrorModal(null);
+                    handleGoAdvisorChat('soporte', { label: 'Permisos', type: 'solicitud_urgente', key: permissionErrorModal.permission });
+                  }}
+                  className="w-full py-4 text-rojo font-black hover:bg-rojo-suave rounded-xl transition-all"
+                >
+                  Hablar con asesor TBS
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AuthModal 
         isOpen={authModal.open} 
@@ -1563,6 +2537,7 @@ export default function App() {
         onRemove={handleRemoveCartItem}
         onClear={handleClearCart}
         onGoToCatalog={() => { goToCatalog(null); setIsCartOpen(false); }}
+        onGoPromotions={handleGoPromotions}
       />
     </div>
   );

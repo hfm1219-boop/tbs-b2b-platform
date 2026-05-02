@@ -38,7 +38,7 @@ interface AdvisorChatPageProps {
   onCreateNotification?: (notification: any) => void;
 }
 
-const ADVISOR_DATA: Advisor = {
+const ADVISOR_DATA_CLIENTE: Advisor = {
   id: "advisor-001",
   name: "Laura Gómez",
   role: "Asesora comercial TBS",
@@ -47,6 +47,17 @@ const ADVISOR_DATA: Advisor = {
   availability: "Lunes a viernes, 8:00 a.m. - 6:00 p.m.",
   status: "en_linea",
   avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop"
+};
+
+const ADVISOR_DATA_PROVIDER: Advisor = {
+  id: "advisor-002",
+  name: "Andrés Martínez",
+  role: "Ejecutivo de Cuenta Sr. TBS",
+  phone: "320 987 6543",
+  email: "andres.martinez@tbs.com",
+  availability: "Lunes a viernes, 8:00 a.m. - 5:30 p.m.",
+  status: "en_linea",
+  avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop"
 };
 
 const INITIAL_CONVERSATIONS: Conversation[] = [
@@ -118,7 +129,7 @@ const INITIAL_CONVERSATIONS: Conversation[] = [
   }
 ];
 
-const TOPIC_LABELS: Record<ConversationTopic, string> = {
+const TOPIC_LABELS_CLIENTE: Record<ConversationTopic, string> = {
   pedido: 'Pedido',
   cartera: 'Cartera y Pagos',
   producto: 'Productos / Stock',
@@ -128,7 +139,17 @@ const TOPIC_LABELS: Record<ConversationTopic, string> = {
   otro: 'Otro'
 };
 
-const CONTEXT_OPTIONS = [
+const TOPIC_LABELS_PROVIDER: Record<ConversationTopic, string> = {
+  pedido: 'Activaciones de Marca',
+  cartera: 'Liquidaciones y Pagos',
+  producto: 'Gestión de Catálogo',
+  pedido_urgente: 'Trade Marketing',
+  activacion: 'Lanzamientos',
+  soporte: 'Soporte de Plataforma',
+  otro: 'Otro'
+};
+
+const CONTEXT_OPTIONS_CLIENTE = [
   { label: 'Pedido TBS-10245', type: 'pedido' as const },
   { label: 'Pedido TBS-10198', type: 'pedido' as const },
   { label: 'Factura FV-88321', type: 'factura' as const },
@@ -136,6 +157,15 @@ const CONTEXT_OPTIONS = [
   { label: 'Whisky Premium 750 ml', type: 'producto' as const },
   { label: 'Ron Añejo 750 ml', type: 'producto' as const },
   { label: 'Solicitud urgente URG-1020', type: 'solicitud_urgente' as const }
+];
+
+const CONTEXT_OPTIONS_PROVIDER = [
+  { label: 'Liquidación LIQ-2026-05', type: 'factura' as const },
+  { label: 'Liquidación LIQ-2026-04', type: 'factura' as const },
+  { label: 'Campaña Lanzamiento Premium', type: 'solicitud_urgente' as const },
+  { label: 'Whisky Premium 750 ml (Catálogo)', type: 'producto' as const },
+  { label: 'Reporte de Ventas Mayo', type: 'pedido' as const },
+  { label: 'Activación Trade Marketing Q2', type: 'solicitud_urgente' as const }
 ];
 
 export default function AdvisorChatPage({ 
@@ -152,6 +182,11 @@ export default function AdvisorChatPage({
   onClearInitialStates,
   onCreateNotification
 }: AdvisorChatPageProps) {
+  const isProvider = currentUser?.role === 'marca' || currentUser?.role === 'proveedor';
+  const advisorData = isProvider ? ADVISOR_DATA_PROVIDER : ADVISOR_DATA_CLIENTE;
+  const topicLabels = isProvider ? TOPIC_LABELS_PROVIDER : TOPIC_LABELS_CLIENTE;
+  const contextOptions = isProvider ? CONTEXT_OPTIONS_PROVIDER : CONTEXT_OPTIONS_CLIENTE;
+  
   const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
   const [activeConvId, setActiveConvId] = useState<string | null>(INITIAL_CONVERSATIONS[0].id);
   const [isNewConvModalOpen, setIsNewConvModalOpen] = useState(false);
@@ -188,25 +223,21 @@ export default function AdvisorChatPage({
       setNewConvTopic(initialTopic);
       
       // Pre-fill subject based on topic or context
-      if (initialContext) {
+      if (initialContext && initialContext.label) {
         setNewConvSubject(`Consulta sobre ${initialContext.label}`);
-        setNewConvMessage(`Hola Laura, tengo una duda respecto a ${initialContext.label.toLowerCase()}...`);
+        setNewConvMessage(`Hola ${advisorData.name.split(' ')[0]}, tengo una duda respecto a ${initialContext.label.toLowerCase()}...`);
         
-        const ctxIdx = CONTEXT_OPTIONS.findIndex(o => o.label === initialContext.label);
+        const ctxIdx = contextOptions.findIndex(o => o.label === initialContext.label);
         if (ctxIdx !== -1) {
           setNewConvContext(ctxIdx);
-        } else {
-          // If context is dynamic (not in list), we handle it specially during creation
-          // For now, let's keep it simple and just use the subject
         }
       } else {
-        const topicLabel = initialTopic ? (TOPIC_LABELS[initialTopic] || 'General') : 'General';
-        const topicValue = initialTopic && TOPIC_LABELS[initialTopic] ? initialTopic : 'otro';
+        const topicLabel = initialTopic ? (topicLabels[initialTopic] || 'General') : 'General';
+        const topicValue = initialTopic && topicLabels[initialTopic] ? initialTopic : 'otro';
         
-        setIsNewConvModalOpen(true);
         setNewConvTopic(topicValue as ConversationTopic);
         setNewConvSubject(`Nueva consulta: ${topicLabel}`);
-        setNewConvMessage(`Hola Laura, escribo para consultar sobre ${topicLabel.toLowerCase()}...`);
+        setNewConvMessage(`Hola ${advisorData.name.split(' ')[0]}, escribo para consultar sobre ${topicLabel.toLowerCase()}...`);
       }
       
       // Clear initial states in parent once consumed
@@ -287,7 +318,7 @@ export default function AdvisorChatPage({
 
     // Add context if selected or if dynamic initialContext exists
     if (newConvContext !== null) {
-      const ctx = CONTEXT_OPTIONS[newConvContext];
+      const ctx = contextOptions[newConvContext];
       messages.push({
         id: `msg-ctx-${Date.now()}`,
         sender: 'sistema',
@@ -347,7 +378,7 @@ export default function AdvisorChatPage({
     }, 2000);
   };
 
-  const handleAddContextToChat = (ctx: typeof CONTEXT_OPTIONS[0]) => {
+  const handleAddContextToChat = (ctx: typeof CONTEXT_OPTIONS_CLIENTE[0]) => {
     if (!activeConvId) return;
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
@@ -377,7 +408,7 @@ export default function AdvisorChatPage({
 
   const filteredConversations = conversations.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.topic.toLowerCase().includes(searchQuery.toLowerCase())
+    topicLabels[c.topic].toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -394,10 +425,12 @@ export default function AdvisorChatPage({
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-texto">Mi asesor</h1>
+                <h1 className="text-xl font-black text-texto">
+                  {currentUser?.role === 'marca' || currentUser?.role === 'proveedor' ? 'Mi ejecutivo TBS' : 'Mi asesor'}
+                </h1>
                 <span className="px-2 py-0.5 bg-rojo/10 text-rojo text-[10px] font-black rounded uppercase tracking-wider">Chat interno TBS</span>
               </div>
-              <p className="text-xs text-gris font-medium">Comunícate con tu asesor TBS desde la plataforma, sin salir de la página.</p>
+              <p className="text-xs text-gris font-medium">Comunícate con tu {currentUser?.role === 'marca' || currentUser?.role === 'proveedor' ? 'ejecutivo' : 'asesor'} TBS desde la plataforma, sin salir de la página.</p>
             </div>
           </div>
           
@@ -418,22 +451,22 @@ export default function AdvisorChatPage({
               <div className="flex flex-col items-center text-center">
                 <div className="relative mb-4">
                   <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-50 flex items-center justify-center bg-gray-100">
-                    {ADVISOR_DATA.avatar ? (
-                      <img src={ADVISOR_DATA.avatar} alt={ADVISOR_DATA.name} className="w-full h-full object-cover" />
+                    {advisorData.avatar ? (
+                      <img src={advisorData.avatar} alt={advisorData.name} className="w-full h-full object-cover" />
                     ) : (
                       <UserIcon size={40} className="text-gris/30" />
                     )}
                   </div>
                   <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-4 border-white ${
-                    ADVISOR_DATA.status === 'en_linea' ? 'bg-green-500' : ADVISOR_DATA.status === 'ocupado' ? 'bg-orange-500' : 'bg-gray-400'
+                    advisorData.status === 'en_linea' ? 'bg-green-500' : advisorData.status === 'ocupado' ? 'bg-orange-500' : 'bg-gray-400'
                   }`} />
                 </div>
                 
-                <h3 className="text-lg font-black text-texto">{ADVISOR_DATA.name}</h3>
-                <p className="text-sm font-bold text-rojo mb-4">{ADVISOR_DATA.role}</p>
+                <h3 className="text-lg font-black text-texto">{advisorData.name}</h3>
+                <p className="text-sm font-bold text-rojo mb-4">{advisorData.role}</p>
                 
                 <div className="w-full flex items-center justify-center gap-2 mb-6">
-                  {ADVISOR_DATA.status === 'en_linea' ? (
+                  {advisorData.status === 'en_linea' ? (
                     <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black rounded-full uppercase tracking-wider">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                       En línea
@@ -452,7 +485,7 @@ export default function AdvisorChatPage({
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase text-gris tracking-widest leading-tight">Horario</p>
-                      <p className="text-xs font-bold text-texto">{ADVISOR_DATA.availability}</p>
+                      <p className="text-xs font-bold text-texto">{advisorData.availability}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -461,7 +494,7 @@ export default function AdvisorChatPage({
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase text-gris tracking-widest leading-tight">Teléfono</p>
-                      <p className="text-xs font-bold text-texto">{ADVISOR_DATA.phone}</p>
+                      <p className="text-xs font-bold text-texto">{advisorData.phone}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -470,18 +503,18 @@ export default function AdvisorChatPage({
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase text-gris tracking-widest leading-tight">Email</p>
-                      <p className="text-xs font-bold text-texto truncate">{ADVISOR_DATA.email}</p>
+                      <p className="text-xs font-bold text-texto truncate">{advisorData.email}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="w-full mt-8">
                   <a 
-                    href={`tel:${ADVISOR_DATA.phone.replace(/\s+/g, '')}`}
+                    href={`tel:${advisorData.phone.replace(/\s+/g, '')}`}
                     className="w-full h-12 rounded-xl border-2 border-rojo text-rojo font-black text-sm flex items-center justify-center gap-2 hover:bg-rojo/5 transition-colors"
                   >
                     <Phone size={18} />
-                    Llamar al asesor
+                    Llamar al ejecutivo
                   </a>
                 </div>
               </div>
@@ -547,7 +580,7 @@ export default function AdvisorChatPage({
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1 text-[10px] font-black uppercase tracking-wider">
-                      <span className="text-rojo">{TOPIC_LABELS[conv.topic]}</span>
+                      <span className="text-rojo">{topicLabels[conv.topic]}</span>
                       <span className="text-gris opacity-60">
                         {new Date(conv.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()}
                       </span>
@@ -580,9 +613,9 @@ export default function AdvisorChatPage({
                       <div>
                         <h4 className="text-sm font-black text-texto truncate max-w-[200px]">{activeConversation.title}</h4>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase text-gris opacity-60">{TOPIC_LABELS[activeConversation.topic]}</span>
+                          <span className="text-[10px] font-black uppercase text-gris opacity-60">{topicLabels[activeConversation.topic]}</span>
                           <span className="w-1 h-1 rounded-full bg-gris/30" />
-                          <span className="text-[10px] font-black text-rojo uppercase tracking-wider">{ADVISOR_DATA.name}</span>
+                          <span className="text-[10px] font-black text-rojo uppercase tracking-wider">{advisorData.name}</span>
                         </div>
                       </div>
                     </div>
@@ -676,7 +709,7 @@ export default function AdvisorChatPage({
                                 Agregar contexto
                               </h5>
                               <div className="max-h-60 overflow-y-auto mt-2">
-                                {CONTEXT_OPTIONS.map((ctx, idx) => (
+                                {contextOptions.map((ctx, idx) => (
                                   <button 
                                     key={idx}
                                     onClick={() => handleAddContextToChat(ctx)}
@@ -773,7 +806,7 @@ export default function AdvisorChatPage({
                   <div className="space-y-2">
                     <label className="text-[9px] font-black uppercase tracking-widest text-gris">Tema de consulta</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(TOPIC_LABELS).map(([val, label]) => (
+                      {Object.entries(topicLabels).map(([val, label]) => (
                         <button 
                           key={val}
                           onClick={() => setNewConvTopic(val as ConversationTopic)}
@@ -819,7 +852,7 @@ export default function AdvisorChatPage({
                         className="w-full h-11 bg-gray-50 border border-transparent focus:border-rojo/20 focus:bg-white rounded-xl px-4 text-xs font-bold text-texto outline-none cursor-pointer appearance-none"
                       >
                         <option value="">Sin contexto específico</option>
-                        {CONTEXT_OPTIONS.map((ctx, idx) => (
+                        {contextOptions.map((ctx, idx) => (
                           <option key={idx} value={idx}>{ctx.label}</option>
                         ))}
                       </select>

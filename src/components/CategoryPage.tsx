@@ -1,18 +1,27 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Info, Plus, ShoppingCart, Package, Filter, ChevronRight, Check } from 'lucide-react';
-import { Product } from '../types';
+import { ArrowLeft, Info, Plus, ShoppingCart, Package, Filter, ChevronRight, Check, Star, Tag, X, Search } from 'lucide-react';
+import { Product, ShoppingList, B2BPromotion, User } from '../types';
 import { ProductModal } from './ProductModal';
+import { SaveToListModal } from './SaveToListModal';
 
 interface CategoryPageProps {
   category: string | null;
   products: Product[];
   onBack: () => void;
   isCliente: boolean;
+  currentUser?: User | null;
   onAddToCart: (product: Product, quantity?: number) => void;
   onCategorySelect: (category: string | null) => void;
   onRequestAccess: () => void;
   onLogin: () => void;
+  shoppingLists?: ShoppingList[];
+  onAddToList?: (listId: string, product: Product, quantity: number) => void;
+  onCreateList?: (name: string, description: string) => void;
+  onGoPromotions?: () => void;
+  promotions?: B2BPromotion[];
+  searchQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export function CategoryPage({ 
@@ -20,12 +29,21 @@ export function CategoryPage({
   products, 
   onBack, 
   isCliente, 
+  currentUser,
   onAddToCart, 
   onCategorySelect,
   onRequestAccess,
-  onLogin
+  onLogin,
+  shoppingLists = [],
+  onAddToList,
+  onCreateList,
+  onGoPromotions,
+  promotions = [],
+  searchQuery = '',
+  onClearSearch
 }: CategoryPageProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [saveToListProduct, setSaveToListProduct] = useState<Product | null>(null);
   
   // Filter states
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
@@ -84,6 +102,8 @@ export function CategoryPage({
     setCurrentPage(1);
   }, [selectedOrigin, selectedSubcat]);
 
+  const canBuy = isCliente && (currentUser?.role === 'cliente_b2b' || !currentUser);
+
   return (
     <div className="max-w-[1480px] mx-auto px-8 py-10">
       <button 
@@ -97,6 +117,21 @@ export function CategoryPage({
         <div>
           <div className="text-rojo text-[11px] font-black uppercase tracking-[0.2em] mb-2">Catálogo B2B</div>
           <h2 className="text-4xl lg:text-[48px] font-black tracking-tighter leading-tight">{category || 'Todos los productos'}</h2>
+          {searchQuery && (
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#303844] text-white rounded-lg">
+                <Search size={14} className="text-rojo" strokeWidth={3} />
+                <span className="text-[10px] font-black uppercase tracking-widest">{searchQuery}</span>
+              </div>
+              <button 
+                onClick={onClearSearch}
+                className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-rojo/10 text-gris hover:text-rojo rounded-lg transition-colors cursor-pointer outline-none"
+                title="Limpiar búsqueda"
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
           <p className="mt-2 text-gris font-medium uppercase tracking-widest text-[11px]">Mostrando {filteredList.length} productos disponibles en Cartagena.</p>
         </div>
         {!isCliente && (
@@ -108,6 +143,32 @@ export function CategoryPage({
           </div>
         )}
       </div>
+      
+      {onGoPromotions && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 bg-gradient-to-r from-rojo to-black rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group"
+        >
+          <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-10 pointer-events-none">
+            <Tag size={200} className="text-white -rotate-12 translate-x-1/4 translate-y-1/4" />
+          </div>
+          <div className="relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Exclusivo B2B
+            </div>
+            <h3 className="text-2xl font-black text-white">Promociones y activaciones activas</h3>
+            <p className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">Aprovecha combos y descuentos por volumen disponibles hoy</p>
+          </div>
+          <button 
+            onClick={onGoPromotions}
+            className="relative z-10 px-8 py-3.5 bg-white text-rojo rounded-xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl cursor-pointer"
+          >
+            Ver promociones TBS
+          </button>
+        </motion.div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
@@ -204,14 +265,25 @@ export function CategoryPage({
           {paginatedList.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {paginatedList.map((product) => (
-                  <motion.article 
-                    key={product.id}
-                    whileHover={{ y: -5 }}
-                    onClick={() => setSelectedProduct(product)}
-                    className="bg-white border border-borde rounded-xl overflow-hidden tarjeta-hover flex flex-col h-full cursor-pointer relative group"
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-gray-50">
+                {paginatedList.map((product) => {
+                  const productPromo = promotions.find(p => p.products.some(pp => pp.productId === product.id));
+                  
+                  return (
+                    <motion.article 
+                      key={product.id}
+                      whileHover={{ y: -5 }}
+                      onClick={() => setSelectedProduct(product)}
+                      className="bg-white border border-borde rounded-xl overflow-hidden tarjeta-hover flex flex-col h-full cursor-pointer relative group"
+                    >
+                      {productPromo && (
+                        <div className="absolute top-3 left-3 z-10">
+                          <div className="bg-[#303844] text-white text-[9px] font-black px-2 py-1 rounded-md flex items-center gap-1.5 shadow-xl">
+                            <Tag size={10} className="text-rojo" /> 
+                            <span className="uppercase tracking-widest">Oferta</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="relative aspect-square overflow-hidden bg-gray-50">
                       <img 
                         src={product.image} 
                         alt={product.name} 
@@ -239,16 +311,28 @@ export function CategoryPage({
                           <div className="text-[11px] text-gris font-bold mb-0.5">Precio {isCliente ? 'B2B' : 'público'}</div>
                           {isCliente ? (
                             <div className="text-xl font-black text-texto">{product.price}</div>
-                          ) : (
+                        ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
+                          <div className="text-xl font-black text-texto">{product.price}</div>
+                        ) : (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); onRequestAccess(); }}
+                            className="text-sm font-black text-rojo hover:underline cursor-pointer"
+                          >
+                            Solicitar acceso
+                          </button>
+                        )}
+                      </div>
+                      {canBuy && (
+                        <div className="flex gap-2">
+                          {onAddToList && (
                             <button 
-                              onClick={(e) => { e.stopPropagation(); onRequestAccess(); }}
-                              className="text-sm font-black text-rojo hover:underline cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); setSaveToListProduct(product); }}
+                              className="w-10 h-10 border border-borde text-gris rounded-lg flex items-center justify-center hover:text-rojo hover:border-rojo transition-all cursor-pointer outline-none"
+                              title="Guardar en lista"
                             >
-                              Solicitar acceso
+                              <Star size={18} />
                             </button>
                           )}
-                        </div>
-                        {isCliente && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); onAddToCart(product, 1); }}
                             className="w-10 h-10 bg-rojo text-white rounded-lg flex items-center justify-center hover:bg-rojo-oscuro tbs-shadow transition-colors cursor-pointer group outline-none"
@@ -256,11 +340,13 @@ export function CategoryPage({
                           >
                             <Plus size={20} strokeWidth={2.5} className="group-active:scale-90 transition-transform" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                    </div>
                     </div>
                   </motion.article>
-                ))}
+                );
+              })}
               </div>
 
               {/* Pagination UI */}
@@ -318,6 +404,26 @@ export function CategoryPage({
             product={selectedProduct} 
             onClose={() => setSelectedProduct(null)} 
             onAddToCart={onAddToCart}
+            isCliente={isCliente}
+            currentUser={currentUser}
+            shoppingLists={shoppingLists}
+            onAddToList={onAddToList}
+            onCreateList={onCreateList}
+            promotions={promotions}
+            onGoPromotions={onGoPromotions}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {saveToListProduct && onAddToList && onCreateList && (
+          <SaveToListModal 
+            product={saveToListProduct}
+            isOpen={!!saveToListProduct}
+            onClose={() => setSaveToListProduct(null)}
+            shoppingLists={shoppingLists}
+            onAddToList={onAddToList}
+            onCreateList={onCreateList}
           />
         )}
       </AnimatePresence>

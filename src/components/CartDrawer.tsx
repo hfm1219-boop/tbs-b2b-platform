@@ -1,4 +1,4 @@
-import { X, Plus, Minus, Trash2, ShoppingCart, CreditCard, UserPlus } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingCart, CreditCard, UserPlus, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, User } from '../types';
 
@@ -14,6 +14,7 @@ interface CartDrawerProps {
   onCheckout: () => void;
   onRequestAccess: () => void;
   onGoToCatalog: () => void;
+  onGoPromotions?: () => void;
 }
 
 function parsePrice(price: string) {
@@ -40,9 +41,11 @@ export function CartDrawer({
   onCheckout,
   onRequestAccess,
   onGoToCatalog,
+  onGoPromotions,
 }: CartDrawerProps) {
   const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
-  const isCliente = !!currentUser;
+  const isCliente = currentUser?.role === 'cliente_b2b';
+  const isProvider = currentUser?.role === 'marca' || currentUser?.role === 'proveedor';
 
   const subtotal = items.reduce((sum, item) => {
     return sum + parsePrice(item.product.price) * item.quantity;
@@ -185,7 +188,28 @@ export function CartDrawer({
                   ))}
                 </div>
 
-                <div className="border-t border-[#F1F3F5] p-6 bg-[#FCFCFC]">
+                <div className="border-t border-[#F1F3F5] p-6 bg-[#FCFCFC] space-y-4">
+                  {isCliente && onGoPromotions && (
+                    <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <Tag size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-black text-blue-900">¿Quieres ahorrar más?</p>
+                          <p className="text-[10px] font-bold text-blue-700 mt-1 leading-tight">Revisa las promociones B2B vigentes para tu negocio antes de cerrar el pedido.</p>
+                          <button 
+                            onClick={() => {
+                              onClose();
+                              onGoPromotions();
+                            }}
+                            className="mt-2 text-xs font-black text-blue-700 underline hover:text-blue-900 cursor-pointer"
+                          >
+                            Ver promociones
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-sm font-bold text-texto-sec">
                     <span>Productos</span>
                     <span>{totalUnits} unidades</span>
@@ -200,7 +224,11 @@ export function CartDrawer({
                     </span>
                   </div>
 
-                  {!isCliente && (
+                  {isProvider ? (
+                    <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 p-4 text-sm font-semibold text-gris text-center leading-relaxed">
+                      Este perfil está configurado para gestión de marca. Para realizar compras B2B, por favor utiliza un perfil de cliente.
+                    </div>
+                  ) : !isCliente && (
                     <div className="mt-4 rounded-lg bg-rojo/5 border border-rojo/10 p-4 text-sm font-semibold text-texto-sec leading-relaxed">
                       Para ver precios B2B, disponibilidad real, crédito y condiciones comerciales,
                       solicita acceso o inicia sesión.
@@ -211,16 +239,26 @@ export function CartDrawer({
                     onClick={() => {
                       if (isCliente) {
                         onCheckout();
+                      } else if (isProvider) {
+                        onClose();
                       } else {
                         onRequestAccess();
                       }
                     }}
-                    className="mt-5 w-full h-14 bg-rojo text-white rounded-xl font-black flex items-center justify-center gap-3 hover:bg-rojo-oscuro transition-colors cursor-pointer"
+                    disabled={isProvider}
+                    className={`mt-5 w-full h-14 rounded-xl font-black flex items-center justify-center gap-3 transition-colors cursor-pointer ${
+                      isProvider ? 'bg-gray-200 text-gris cursor-not-allowed' : 'bg-rojo text-white hover:bg-rojo-oscuro'
+                    }`}
                   >
                     {isCliente ? (
                       <>
                         <CreditCard size={20} />
                         Continuar pedido
+                      </>
+                    ) : isProvider ? (
+                      <>
+                        <X size={20} />
+                        Compra no disponible
                       </>
                     ) : (
                       <>

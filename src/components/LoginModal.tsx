@@ -8,29 +8,47 @@ interface LoginModalProps {
   onClose: () => void;
   onLogin: (user: User) => void;
   onRequestAccess: () => void;
+  onGoFAQ: () => void;
+  companyAccount?: any;
 }
 
-export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ, companyAccount }: LoginModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [loginRole, setLoginRole] = useState<'cliente_b2b' | 'marca'>('cliente_b2b');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email.trim() && password.trim()) {
-      // Simulated Login
-      const simulatedUser: User = {
-        name: "Humberto",
-        email: email,
-        businessName: "Restaurante Demo",
-        role: "cliente_b2b",
-        city: "Cartagena",
-        address: "Centro Histórico, Calle del Arsenal #10-20",
-        customerType: "Restaurante",
-        creditLimit: 5000000,
-        availableCredit: 3250000
-      };
-      onLogin(simulatedUser);
+      // Simulated Login based on selected role
+      if (loginRole === 'cliente_b2b') {
+        const simulatedUser: User = {
+          id: "user-001",
+          name: "Humberto",
+          email: email,
+          businessName: "Restaurante Demo",
+          role: "cliente_b2b",
+          city: "Cartagena",
+          address: "Centro Histórico, Calle del Arsenal #10-20",
+          customerType: "Restaurante",
+          creditLimit: 5000000,
+          availableCredit: 3250000
+        };
+        onLogin(simulatedUser);
+      } else {
+        const simulatedUser: User = {
+          id: "user-valentina",
+          name: "Valentina",
+          email: email,
+          businessName: "Marca Premium Demo",
+          role: "marca",
+          city: "Cartagena",
+          address: "Manga, Calle 26 #22-10",
+          providerType: "importadora"
+        };
+        onLogin(simulatedUser);
+      }
       onClose();
     }
   };
@@ -113,8 +131,107 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess }: LoginM
                   Iniciar sesión en TBS
                 </h2>
                 <p className="text-gris font-medium text-lg max-w-md leading-relaxed">
-                  Accede a tu catálogo B2B, precios personalizados, cartera, pedidos y seguimiento.
+                  Accede a tu cuenta según tu perfil corporativo.
                 </p>
+              </div>
+
+              {/* Role Switcher for Demo */}
+              <div className="flex p-1 bg-gray-100 rounded-2xl mb-8">
+                <button
+                  type="button"
+                  onClick={() => setLoginRole('cliente_b2b')}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginRole === 'cliente_b2b' ? 'bg-white text-rojo shadow-sm' : 'text-gris hover:text-texto'}`}
+                >
+                  Entrar como cliente B2B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginRole('marca')}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginRole === 'marca' ? 'bg-white text-rojo shadow-sm' : 'text-gris hover:text-texto'}`}
+                >
+                  Entrar como marca / proveedor
+                </button>
+              </div>
+
+              {/* Demo Login Options */}
+              <div className="mb-10 space-y-3 p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gris mb-4 text-center">Acceso rápido Demo B2B</p>
+                {loginRole === 'cliente_b2b' ? (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => onLogin({
+                        id: "user-001",
+                        name: "Humberto",
+                        email: "humberto@demo.com",
+                        businessName: "Grupo Restaurante Demo",
+                        role: "cliente_b2b",
+                        city: "Cartagena",
+                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        customerType: "Restaurante",
+                        accountRole: 'master'
+                      })}
+                      className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-rojo hover:text-rojo transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-rojo/10 text-rojo flex items-center justify-center text-xs font-black">H</div>
+                      Entrar como Master (Humberto)
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => onLogin({
+                        id: "user-002",
+                        name: "María Compras",
+                        email: "maria.compras@demo.com",
+                        businessName: "Grupo Restaurante Demo",
+                        role: "cliente_b2b",
+                        city: "Cartagena",
+                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        customerType: "Restaurante",
+                        accountRole: 'comprador'
+                      })}
+                      className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-rojo hover:text-rojo transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-xs font-black">M</div>
+                      Entrar como Comprador (María)
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => onLogin({
+                        id: "user-003",
+                        name: "Carlos Finanzas",
+                        email: "carlos.finanzas@demo.com",
+                        businessName: "Grupo Restaurante Demo",
+                        role: "cliente_b2b",
+                        city: "Cartagena",
+                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        customerType: "Restaurante",
+                        accountRole: 'finanzas'
+                      })}
+                      className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-rojo hover:text-rojo transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center text-xs font-black">C</div>
+                      Entrar como Finanzas (Carlos)
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={() => onLogin({
+                      id: "user-valentina",
+                      name: "Valentina",
+                      email: "valentina@example.com",
+                      businessName: "Marca Premium Demo",
+                      role: "marca",
+                      city: "Cartagena",
+                      address: "Manga, Calle 26 #22-10",
+                      providerType: "importadora"
+                    })}
+                    className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-indigo-500 hover:text-indigo-500 transition-all flex items-center justify-center gap-3 group"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-xs font-black">V</div>
+                    Entrar como Marca (Valentina)
+                  </button>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -137,7 +254,16 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess }: LoginM
                   <div className="space-y-2">
                     <div className="flex justify-between items-center px-1">
                       <label className="text-[11px] font-black uppercase tracking-widest text-gris-oscuro ml-1 border-l-2 border-rojo">Contraseña</label>
-                      <button type="button" className="text-[10px] font-black uppercase text-rojo hover:underline cursor-pointer">Olvidé mi contraseña</button>
+                      <div className="flex items-center gap-4">
+                        <button 
+                          type="button" 
+                          onClick={() => { onGoFAQ(); onClose(); }}
+                          className="text-[10px] font-black uppercase text-gris hover:text-rojo cursor-pointer"
+                        >
+                          ¿Necesitas ayuda?
+                        </button>
+                        <button type="button" className="text-[10px] font-black uppercase text-rojo hover:underline cursor-pointer">Olvidé mi contraseña</button>
+                      </div>
                     </div>
                     <div className="relative group">
                       <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-gris/40 group-focus-within:text-rojo transition-colors" size={20} />

@@ -11,14 +11,28 @@ import {
   ShoppingCart,
   Truck,
   WalletCards,
+  Tag,
+  AlertCircle,
+  ShieldCheck
 } from 'lucide-react';
-import { CartItem, User } from '../types';
+import { 
+  CartItem, 
+  User, 
+  PendingApprovalOrder, 
+  B2BCompanyAccount, 
+  ApprovalStatus, 
+  ApprovalReason,
+  ApprovalOrderLine
+} from '../types';
 
 interface CheckoutPageProps {
   items: CartItem[];
   currentUser: User | null;
+  companyAccount: B2BCompanyAccount;
   onBack: () => void;
   onFinish: () => void;
+  onCreatePendingApprovalOrder: (order: PendingApprovalOrder) => void;
+  onGoOrderApprovals: () => void;
 }
 
 function parsePrice(price: string) {
@@ -33,9 +47,19 @@ function formatCOP(value: number) {
   });
 }
 
-export function CheckoutPage({ items, currentUser, onBack, onFinish }: CheckoutPageProps) {
+export function CheckoutPage({ 
+  items, 
+  currentUser, 
+  companyAccount,
+  onBack, 
+  onFinish,
+  onCreatePendingApprovalOrder,
+  onGoOrderApprovals
+}: CheckoutPageProps) {
   const [confirmed, setConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsApproval, setNeedsApproval] = useState(false);
+  const [approvalReason, setApprovalReason] = useState<{key: ApprovalReason, label: string} | null>(null);
 
   const [form, setForm] = useState({
     contactName: currentUser?.name || 'Humberto',
@@ -99,34 +123,88 @@ export function CheckoutPage({ items, currentUser, onBack, onFinish }: CheckoutP
     if (!isValid) return;
     
     setIsSubmitting(true);
-    try {
-      // Integration with the backend API I created earlier
-      const response = await fetch('/api/order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderDetails: {
-            items: items.map(item => ({
-              id: item.product.id,
-              name: item.product.name,
-              quantity: item.quantity,
-              price: item.product.price
-            })),
-            totalUnits,
-            estimatedTotal: totalEstimado,
-            form: form
-          },
-          userEmail: currentUser?.email || "h.fm1219@gmail.com" // Recommended to keep consistent with previous setup
-        }),
-      });
-      
-      if (response.ok) {
-        setConfirmed(true);
-      } else {
-        alert("Hubo un problema al procesar el pedido.");
+
+    // Logic for B2B Approvals and Limits
+    let reqApproval = false;
+    let reason: {key: ApprovalReason, label: string} | null = null;
+
+    // 1. User individual limits
+    if (currentUser?.requiresApprovalAbove && currentUser.requiresApprovalAbove > 0 && totalEstimado > currentUser.requiresApprovalAbove) {
+      reqApproval = true;
+      reason = { key: 'supera_limite_usuario', label: 'Supera límite autorizado por pedido' };
+    } else if (currentUser?.purchaseLimit && currentUser.purchaseLimit > 0 && totalEstimado > currentUser.purchaseLimit) {
+      reqApproval = true;
+      reason = { key: 'supera_limite_usuario', label: 'Supera límite de compra mensual' };
+    }
+
+    // 2. Company level approval rules
+    if (!reqApproval && companyAccount?.approvalRules) {
+      const activeRules = companyAccount.approvalRules.filter(r => r.active);
+      for (const rule of activeRules) {
+        // Check if rule applies to user role
+        const roleMatch = !rule.appliesToRole || rule.appliesToRole === currentUser?.accountRole;
+        // Check amount
+        if (roleMatch && totalEstimado >= rule.minAmount) {
+          reqApproval = true;
+          reason = { key: 'manual', label: rule.name };
+          break;
+        }
       }
+    }
+
+    // 3. Urgent orders setting
+    if (!reqApproval && form.deliveryWindow.includes('urgente') && companyAccount?.settings?.notifyUrgentOrders) {
+      reqApproval = true;
+      reason = { key: 'pedido_urgente', label: 'Pedido urgente requiere revisión' };
+    }
+
+    try {
+      // Mock API call
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      if (reqApproval) {
+        const newApprovalOrder: PendingApprovalOrder = {
+          id: `appr-${Date.now()}`,
+          orderNumber: `TBS-AP-${Math.floor(1000 + Math.random() * 9000)}`,
+          createdAt: "Hoy, " + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+          createdByUserId: (currentUser as any)?.id || 'user-001',
+          createdByUserName: currentUser?.name || 'Usuario',
+          cityId: companyAccount.cities.find(c => c.name === form.city)?.id || 'city-CTG',
+          cityName: form.city,
+          branchId: companyAccount.branches[0]?.id || 'branch-001',
+          branchName: companyAccount.branches[0]?.name || 'Sucursal Principal',
+          status: 'pendiente',
+          reason: reason?.key || 'manual',
+          reasonLabel: reason?.label || 'Revisión manual requerida',
+          total: totalEstimado,
+          userPurchaseLimit: currentUser?.purchaseLimit,
+          approvalThreshold: currentUser?.requiresApprovalAbove,
+          paymentMethod: form.paymentMethod,
+          deliveryWindow: form.deliveryWindow,
+          deliveryAddress: form.address,
+          notes: form.notes,
+          lines: items.map(item => ({
+            id: `line-${item.product.id}-${Date.now()}`,
+            productId: item.product.id,
+            name: item.product.name,
+            category: item.product.category,
+            specs: item.product.specs,
+            image: item.product.image,
+            quantity: item.quantity,
+            unitPrice: parsePrice(item.product.price),
+            subtotal: parsePrice(item.product.price) * item.quantity
+          })),
+          approverUserIds: companyAccount.users.filter(u => u.role === 'master' || u.role === 'aprobador').map(u => u.id),
+          decisions: []
+        };
+        
+        onCreatePendingApprovalOrder(newApprovalOrder);
+      }
+
+      setNeedsApproval(reqApproval);
+      setApprovalReason(reason);
+      setConfirmed(true);
+      
     } catch (error) {
       console.error("Order error:", error);
       alert("Error de conexión.");
@@ -165,47 +243,71 @@ export function CheckoutPage({ items, currentUser, onBack, onFinish }: CheckoutP
   if (confirmed) {
     return (
       <main className="min-h-screen bg-[#FCFCFC] flex items-center justify-center px-6">
-        <div className="max-w-2xl w-full bg-white rounded-2xl border border-[#F1F3F5] p-10 text-center shadow-sm">
-          <div className="w-24 h-24 mx-auto rounded-full bg-green-50 flex items-center justify-center text-green-600">
-            <CheckCircle2 size={52} />
+        <div className="max-w-2xl w-full bg-white rounded-[40px] border border-[#F1F3F5] p-12 text-center tbs-shadow">
+          <div className={`w-28 h-28 mx-auto rounded-full flex items-center justify-center shadow-xl mb-8 ${needsApproval ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'}`}>
+            {needsApproval ? <Clock size={56} /> : <CheckCircle2 size={56} />}
           </div>
 
-          <div className="mt-5 text-[11px] font-black uppercase tracking-[0.18em] text-rojo">
-            Pedido recibido
+          <div className={`text-xs font-black uppercase tracking-[0.2em] mb-4 ${needsApproval ? 'text-orange-500' : 'text-rojo'}`}>
+            {needsApproval ? 'Estatus: En aprobación' : 'Estatus: Pedido recibido'}
           </div>
 
-          <h1 className="mt-3 text-3xl font-black text-texto">
-            Tu pedido fue enviado para validación.
+          <h1 className="text-3xl md:text-4xl font-black text-texto tracking-tighter leading-none mb-6">
+            {needsApproval 
+              ? 'Tu pedido fue enviado a aprobación'
+              : '¡Pedido enviado correctamente!'
+            }
           </h1>
 
-          <p className="mt-4 text-base font-semibold text-gris leading-relaxed">
-            El equipo TBS revisará disponibilidad, condiciones comerciales, cupo y ventana logística.
-            Recibirás confirmación por el canal registrado.
+          <p className="text-lg font-medium text-gris leading-relaxed mb-10">
+            {needsApproval 
+              ? 'Tu pedido supera el límite autorizado o una regla de aprobación de tu cuenta. Un aprobador revisará el pedido antes de continuar con la validación comercial y logística.'
+              : 'Hemos recibido tu solicitud. El equipo TBS revisará disponibilidad, condiciones comerciales, cupo y ventana logística para confirmar tu entrega.'
+            }
           </p>
 
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-            <div className="rounded-xl border border-[#F1F3F5] p-4">
-              <div className="text-xs font-black text-gris uppercase">Unidades</div>
-              <div className="mt-1 text-xl font-black text-texto">{totalUnits}</div>
-            </div>
-
-            <div className="rounded-xl border border-[#F1F3F5] p-4">
-              <div className="text-xs font-black text-gris uppercase">Total estimado</div>
-              <div className="mt-1 text-xl font-black text-texto">{formatCOP(totalEstimado)}</div>
-            </div>
-
-            <div className="rounded-xl border border-[#F1F3F5] p-4">
-              <div className="text-xs font-black text-gris uppercase">Pago</div>
-              <div className="mt-1 text-xl font-black text-texto">{form.paymentMethod}</div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+             <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 flex flex-col items-center">
+                <span className="text-[10px] font-black text-gris uppercase tracking-widest mb-1">Total del pedido</span>
+                <span className="text-2xl font-black text-texto tracking-tight">{formatCOP(totalEstimado)}</span>
+             </div>
+             {needsApproval && (
+               <div className="p-6 bg-rojo-suave/50 rounded-3xl border border-rojo/10 flex flex-col items-center">
+                  <span className="text-[10px] font-black text-rojo uppercase tracking-widest mb-1">Motivo de revisión</span>
+                  <span className="text-sm font-black text-texto text-center leading-tight">{approvalReason?.label || 'Regla de aprobación activa'}</span>
+               </div>
+             )}
+             {!needsApproval && (
+               <div className="p-6 bg-green-50 rounded-3xl border border-green-100 flex flex-col items-center">
+                  <span className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">Fecha estimada</span>
+                  <span className="text-lg font-black text-texto">Mañana</span>
+               </div>
+             )}
           </div>
 
-          <button
-            onClick={onFinish}
-            className="mt-8 bg-rojo text-white rounded-lg px-8 py-4 font-black hover:bg-rojo-oscuro transition-colors cursor-pointer"
-          >
-            Volver al inicio
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {needsApproval ? (
+              <button
+                onClick={onGoOrderApprovals}
+                className="px-8 py-5 bg-rojo text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-rojo-oscuro hover:scale-105 transition-all shadow-xl shadow-rojo/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShieldCheck size={20} /> Ver mis pedidos en aprobación
+              </button>
+            ) : (
+              <button
+                onClick={onFinish}
+                className="px-8 py-5 bg-rojo text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-rojo-oscuro hover:scale-105 transition-all shadow-xl shadow-rojo/20 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                Ir a mis pedidos
+              </button>
+            )}
+            <button
+              onClick={onFinish}
+              className="px-8 py-5 bg-white text-texto border-2 border-borde rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              Volver al inicio
+            </button>
+          </div>
         </div>
       </main>
     );
@@ -532,14 +634,26 @@ export function CheckoutPage({ items, currentUser, onBack, onFinish }: CheckoutP
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl bg-rojo/5 border border-rojo/10 p-4">
-              <div className="text-sm font-black text-texto">
-                Validación comercial
+            <div className="mt-5 space-y-3">
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-3">
+                <Tag size={18} className="text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-black text-blue-900">Promociones B2B</p>
+                  <p className="text-[10px] font-bold text-blue-700 mt-1 leading-tight">
+                    Los descuentos por volumen y combos se validarán comercialmente ante inventario real.
+                  </p>
+                </div>
               </div>
-              <p className="mt-1 text-xs font-semibold text-texto-sec leading-relaxed">
-                El total puede variar según disponibilidad, descuentos, impuestos,
-                acuerdos comerciales y condiciones finales del cliente.
-              </p>
+
+              <div className="rounded-xl bg-rojo/5 border border-rojo/10 p-4">
+                <div className="text-sm font-black text-texto flex items-center gap-2">
+                  <AlertCircle size={16} /> Validación comercial
+                </div>
+                <p className="mt-1 text-xs font-semibold text-texto-sec leading-relaxed">
+                  El total puede variar según disponibilidad, descuentos aplicados en promociones, impuestos,
+                  acuerdos comerciales y condiciones finales del cliente.
+                </p>
+              </div>
             </div>
 
             <button

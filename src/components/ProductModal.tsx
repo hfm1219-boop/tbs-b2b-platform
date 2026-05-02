@@ -1,16 +1,39 @@
-import { motion } from 'motion/react';
-import { X, Minus, Plus, ShoppingCart } from 'lucide-react';
-import { Product } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Minus, Plus, ShoppingCart, Star, Tag } from 'lucide-react';
+import { Product, ShoppingList, B2BPromotion, User } from '../types';
 import { useState } from 'react';
+import { SaveToListModal } from './SaveToListModal';
 
 interface ProductModalProps {
   product: Product;
   onClose: () => void;
   onAddToCart: (product: Product, quantity: number) => void;
+  isCliente: boolean;
+  currentUser?: User | null;
+  shoppingLists?: ShoppingList[];
+  onAddToList?: (listId: string, product: Product, quantity: number) => void;
+  onCreateList?: (name: string, description: string) => void;
+  promotions?: B2BPromotion[];
+  onGoPromotions?: () => void;
 }
 
-export function ProductModal({ product, onClose, onAddToCart }: ProductModalProps) {
+export function ProductModal({ 
+  product, 
+  onClose, 
+  onAddToCart,
+  isCliente,
+  currentUser,
+  shoppingLists = [],
+  onAddToList,
+  onCreateList,
+  promotions = [],
+  onGoPromotions
+}: ProductModalProps) {
   const [quantity, setQuantity] = useState(1);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const productPromo = promotions.find(p => p.products.some(pp => pp.productId === product.id));
+
+  const canBuy = isCliente && (currentUser?.role === 'cliente_b2b' || !currentUser);
 
   const handleDecrease = () => {
     if (quantity > 1) setQuantity(prev => prev - 1);
@@ -64,6 +87,34 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
             <p className="text-texto-sec leading-relaxed font-medium mb-8">
               {product.description || "Este producto premium forma parte de nuestra selección exclusiva para el canal Horeca y licoreras. Consulta disponibilidad para entregas inmediatas en tu zona."}
             </p>
+
+            {productPromo && (
+              <div className="mb-8 p-5 bg-[#F8F9FA] border border-[#E8EAEE] rounded-2xl relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-1 h-full bg-rojo" />
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-rojo/10 flex items-center justify-center text-rojo shrink-0">
+                    <Tag size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black text-rojo uppercase tracking-widest mb-0.5">{productPromo.badge}</div>
+                    <p className="text-sm font-black text-texto leading-snug">{productPromo.title}</p>
+                    <p className="text-[11px] font-bold text-gris mt-1 leading-relaxed">{productPromo.description}</p>
+                    {onGoPromotions && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onClose();
+                          onGoPromotions();
+                        }}
+                        className="mt-3 text-[10px] font-black text-rojo uppercase tracking-wider hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        Ver detalles de la promoción →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-auto space-y-8">
@@ -73,40 +124,83 @@ export function ProductModal({ product, onClose, onAddToCart }: ProductModalProp
                 <div className="text-3xl font-black text-texto">{product.price}</div>
               </div>
               
-              <div className="flex flex-col items-end">
-                <div className="text-[11px] text-gris font-black uppercase mb-1">Cantidad</div>
-                <div className="flex items-center gap-3 border border-borde rounded-lg p-1.5 bg-gray-50">
-                  <button 
-                    onClick={handleDecrease}
-                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:text-rojo transition-all cursor-pointer border border-transparent hover:border-borde disabled:opacity-30"
-                    disabled={quantity <= 1}
-                  >
-                    <Minus size={16} strokeWidth={2.5} />
-                  </button>
-                  <span className="w-8 text-center text-lg font-black">{quantity}</span>
-                  <button 
-                    onClick={handleIncrease}
-                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:text-rojo transition-all cursor-pointer border border-transparent hover:border-borde"
-                  >
-                    <Plus size={16} strokeWidth={2.5} />
-                  </button>
+              {canBuy && (
+                <div className="flex flex-col items-end">
+                  <div className="text-[11px] text-gris font-black uppercase mb-1">Cantidad</div>
+                  <div className="flex items-center gap-3 border border-borde rounded-lg p-1.5 bg-gray-50">
+                    <button 
+                      onClick={handleDecrease}
+                      className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:text-rojo transition-all cursor-pointer border border-transparent hover:border-borde disabled:opacity-30"
+                      disabled={quantity <= 1}
+                    >
+                      <Minus size={16} strokeWidth={2.5} />
+                    </button>
+                    <span className="w-8 text-center text-lg font-black">{quantity}</span>
+                    <button 
+                      onClick={handleIncrease}
+                      className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:text-rojo transition-all cursor-pointer border border-transparent hover:border-borde"
+                    >
+                      <Plus size={16} strokeWidth={2.5} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <button 
-              onClick={() => {
-                onAddToCart(product, quantity);
-                onClose();
-              }}
-              className="w-full h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
-            >
-              <ShoppingCart size={22} strokeWidth={2.5} />
-              Agregar
-            </button>
+            <div className="flex gap-4">
+              {canBuy ? (
+                <button 
+                  onClick={() => {
+                    onAddToCart(product, quantity);
+                    onClose();
+                  }}
+                  className="flex-1 h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
+                >
+                  <ShoppingCart size={22} strokeWidth={2.5} />
+                  Agregar
+                </button>
+              ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
+                <div className="flex-1 h-14 bg-gray-100 text-gris rounded-xl font-black text-sm flex items-center justify-center text-center px-4">
+                  Compra no disponible para perfiles de marca/proveedor
+                </div>
+              ) : (
+                <button 
+                  onClick={() => {
+                    onClose();
+                    // In a real app we might trigger a specific event
+                  }}
+                  className="flex-1 h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
+                >
+                  Solicitar acceso
+                </button>
+              )}
+              
+              {canBuy && onAddToList && (
+                <button 
+                  onClick={() => setIsSaveModalOpen(true)}
+                  className="w-14 h-14 border border-borde rounded-xl flex items-center justify-center text-gris hover:text-rojo hover:border-rojo transition-all cursor-pointer"
+                  title="Guardar en lista"
+                >
+                  <Star size={24} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {isSaveModalOpen && onAddToList && onCreateList && (
+          <SaveToListModal 
+            product={product}
+            isOpen={isSaveModalOpen}
+            onClose={() => setIsSaveModalOpen(false)}
+            shoppingLists={shoppingLists}
+            onAddToList={onAddToList}
+            onCreateList={onCreateList}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

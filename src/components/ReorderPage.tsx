@@ -30,6 +30,7 @@ interface ReorderPageProps {
   onAddToCart: (product: Product, quantity: number) => void;
   onOpenCart: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
+  onGoShoppingLists: () => void;
 }
 
 const formatCOP = (value: number) => {
@@ -185,7 +186,8 @@ export function ReorderPage({
   onGoCatalog,
   onAddToCart,
   onOpenCart,
-  onGoAdvisorChat
+  onGoAdvisorChat,
+  onGoShoppingLists
 }: ReorderPageProps) {
   const [activeTab, setActiveTab] = useState<'todos' | 'pedido_anterior' | 'lista_frecuente' | 'recomendado'>('todos');
   const [search, setSearch] = useState('');
@@ -417,6 +419,12 @@ export function ReorderPage({
                     )}
                   </div>
                   <div className="flex gap-2">
+                    <button 
+                      onClick={onGoShoppingLists}
+                      className="px-4 py-2 border border-rojo/30 bg-rojo-suave text-rojo rounded-lg text-xs font-black hover:bg-rojo/10 transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <Star size={16} className="fill-rojo" /> Ver mis listas
+                    </button>
                     <button 
                       onClick={() => handleToggleGroup(group)}
                       className="px-4 py-2 border border-borde rounded-lg text-xs font-black text-gris hover:border-rojo/30 hover:text-rojo transition-all flex items-center gap-2 cursor-pointer bg-white"

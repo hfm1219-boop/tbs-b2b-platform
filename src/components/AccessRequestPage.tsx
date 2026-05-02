@@ -11,17 +11,19 @@ import {
   CheckCircle2, 
   ArrowRight,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  HelpCircle
 } from 'lucide-react';
 
 interface AccessRequestPageProps {
   onBack: () => void;
+  onGoFAQ: () => void;
   initialRole?: 'client' | 'provider';
 }
 
 type RequestRole = 'client' | 'provider';
 
-export function AccessRequestPage({ onBack, initialRole = 'client' }: AccessRequestPageProps) {
+export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: AccessRequestPageProps) {
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [role, setRole] = useState<RequestRole>(initialRole);
   const [personType, setPersonType] = useState<'natural' | 'juridica'>('juridica');
@@ -138,13 +140,22 @@ export function AccessRequestPage({ onBack, initialRole = 'client' }: AccessRequ
       {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde bg-[#F8FAFC]">
         <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBack}
-            className="inline-flex items-center gap-2 mb-12 text-[13px] font-black uppercase tracking-widest text-gris hover:text-rojo transition-colors outline-none cursor-pointer group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
-            Volver al inicio
-          </button>
+          <div className="flex items-center justify-between mb-12">
+            <button 
+              onClick={onBack}
+              className="inline-flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-gris hover:text-rojo transition-colors outline-none cursor-pointer group"
+            >
+              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
+              Volver al inicio
+            </button>
+
+            <button 
+              onClick={onGoFAQ}
+              className="px-6 py-3 bg-white border border-borde text-gris rounded-xl font-black text-xs uppercase tracking-widest hover:text-rojo transition-all flex items-center gap-2 cursor-pointer outline-none"
+            >
+              <HelpCircle size={16} /> Centro de ayuda
+            </button>
+          </div>
 
           <div className="max-w-4xl">
             <motion.div 
