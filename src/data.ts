@@ -19,10 +19,162 @@ import {
   B2BCompanyAccount,
   B2BManagedUser,
   B2BUserActivity,
+  CreditRequest,
   PendingApprovalOrder,
-  FAQItem
+  FAQItem,
+  BrandAdCampaign,
+  CampaignPageData,
+  HospitalityPartnerProfile,
+  ManagedClient,
+  ManagedEvent,
+  HospitalityCommissionRule,
+  HospitalityCommission
 } from './types';
 
+export const BRAND_AD_CAMPAIGNS: BrandAdCampaign[] = [
+  {
+    id: "ad-001",
+    brandName: "Marca Premium Demo",
+    supplierName: "Importadora Demo",
+    campaignName: "Whisky destacado del mes",
+    format: "banner",
+    placement: "catalog_top_banner",
+    title: "Whisky Premium para operación HORECA",
+    subtitle: "Portafolio destacado para bares, restaurantes y hoteles.",
+    description: "Condiciones especiales sujetas a disponibilidad, ciudad y validación comercial.",
+    image: "https://images.unsplash.com/photo-1527281400828-ac737a999b1c?auto=format&fit=crop&q=80&w=1200",
+    logo: "https://images.unsplash.com/photo-1541167760496-162955ed8a9f?auto=format&fit=crop&q=80&w=100",
+    ctaLabel: "Ver productos",
+    ctaTarget: "category",
+    category: "Whisky",
+    audienceSegments: ["cliente_b2b", "horeca", "premium"],
+    cityTargets: ["Cartagena", "Barranquilla"],
+    priority: 1,
+    active: true,
+    sponsoredLabel: "Marca destacada"
+  },
+  {
+    id: "ad-002",
+    brandName: "Gin Botánico Demo",
+    campaignName: "Coctelería rentable",
+    format: "sponsored_product",
+    placement: "product_card_sponsored",
+    title: "Gin Botánico 750 ml",
+    subtitle: "Producto patrocinado",
+    description: "Ideal para cartas de coctelería y activaciones.",
+    image: "https://images.unsplash.com/photo-1556855810-ac404aa91f85?auto=format&fit=crop&q=80&w=400",
+    ctaLabel: "Ver producto",
+    ctaTarget: "product",
+    productId: 3,
+    category: "Ginebra",
+    audienceSegments: ["bares", "restaurantes", "hoteles"],
+    priority: 2,
+    active: true,
+    sponsoredLabel: "Patrocinado"
+  },
+  {
+    id: "ad-003",
+    brandName: "Ron Reserva Demo",
+    campaignName: "Ron para eventos",
+    format: "campaign_page",
+    placement: "home_mid_banner",
+    title: "Campaña especial para eventos",
+    subtitle: "Ron Reserva con visibilidad destacada",
+    description: "Soluciones para compras por volumen y activaciones.",
+    image: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&q=80&w=1200",
+    ctaLabel: "Ver campaña",
+    ctaTarget: "campaignPage",
+    campaignSlug: "ron-reserva-eventos",
+    audienceSegments: ["eventos", "cliente_b2b"],
+    priority: 3,
+    active: true,
+    sponsoredLabel: "Campaña de marca"
+  },
+  {
+    id: "ad-004",
+    brandName: "Vinos Selección Demo",
+    campaignName: "Cupón vinos HORECA",
+    format: "coupon",
+    placement: "coupon_strip",
+    title: "Cupón para vinos seleccionados",
+    subtitle: "Aplica para clientes B2B validados",
+    description: "Cupón sujeto a vigencia, disponibilidad y condiciones comerciales.",
+    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=1200",
+    ctaLabel: "Ver cupón",
+    ctaTarget: "promotions",
+    couponCode: "TBSVINOS",
+    discountLabel: "Condición especial",
+    category: "Vinos",
+    audienceSegments: ["restaurantes", "hoteles", "cliente_b2b"],
+    priority: 4,
+    active: true,
+    sponsoredLabel: "Cupón patrocinado"
+  },
+  {
+    id: "ad-005",
+    brandName: "Tequila Demo",
+    campaignName: "Contenido editorial tequila",
+    format: "editorial_content",
+    placement: "editorial_card",
+    title: "Cómo vender mejor tequila en tu carta",
+    subtitle: "Contenido patrocinado por marca",
+    description: "Guía práctica para activar consumo responsable y rentable.",
+    image: "https://images.unsplash.com/photo-1516535775484-93f2f4f958ca?auto=format&fit=crop&q=80&w=800",
+    ctaLabel: "Leer guía",
+    ctaTarget: "blogArticle",
+    audienceSegments: ["bares", "restaurantes", "premium"],
+    priority: 5,
+    active: true,
+    sponsoredLabel: "Contenido patrocinado"
+  },
+  {
+    id: "ad-006",
+    brandName: "Espumantes Demo",
+    campaignName: "Búsqueda patrocinada espumantes",
+    format: "sponsored_search",
+    placement: "search_sponsored_result",
+    title: "Espumante Brut Premium",
+    subtitle: "Resultado patrocinado",
+    description: "Producto sugerido para eventos, hoteles y celebraciones.",
+    image: "https://images.unsplash.com/photo-1594460750222-297dec78f8c0?auto=format&fit=crop&q=80&w=400",
+    ctaLabel: "Ver producto",
+    ctaTarget: "product",
+    productId: 8,
+    category: "Espumantes",
+    audienceSegments: ["eventos", "hoteles", "premium"],
+    priority: 1,
+    active: true,
+    sponsoredLabel: "Patrocinado"
+  }
+];
+
+export const CAMPAIGN_PAGES: CampaignPageData[] = [
+  {
+    id: "camp-001",
+    slug: "ron-reserva-eventos",
+    brandName: "Ron Reserva Demo",
+    campaignName: "Ron para eventos",
+    title: "Ron Reserva para eventos y activaciones",
+    subtitle: "Una campaña pensada para clientes B2B que necesitan volumen, visibilidad y soporte comercial.",
+    heroImage: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&q=80&w=1400",
+    logo: "https://images.unsplash.com/photo-1541167760496-162955ed8a9f?auto=format&fit=crop&q=80&w=120",
+    description: "Esta campaña presenta productos seleccionados para eventos, hoteles, bares y clientes especializados. Las condiciones están sujetas a validación comercial, ciudad, inventario y perfil del cliente.",
+    featuredProductIds: [2, 5],
+    benefits: [
+      "Portafolio recomendado para eventos.",
+      "Visibilidad de marca dentro del portal TBS.",
+      "Condiciones comerciales sujetas a validación.",
+      "Soporte del asesor TBS para coordinar oportunidades."
+    ],
+    terms: [
+      "Campaña simulada para prototipo.",
+      "Disponibilidad sujeta a inventario.",
+      "Precios y descuentos sujetos a perfil comercial.",
+      "No representa una oferta contractual definitiva."
+    ],
+    ctaLabel: "Consultar con asesor"
+  }
+];
 export const B2B_PERMISSIONS: B2BPermission[] = [
   {
     key: "ver_catalogo",
@@ -115,10 +267,46 @@ export const B2B_PERMISSIONS: B2BPermission[] = [
     category: "administracion"
   },
   {
+    key: "solicitar_credito",
+    label: "Solicitar crédito",
+    description: "Puede solicitar crédito comercial o aumento de cupo.",
+    category: "finanzas"
+  },
+  {
     key: "configurar_aprobaciones",
     label: "Configurar aprobaciones",
     description: "Puede crear reglas de aprobación para pedidos.",
     category: "administracion"
+  },
+  {
+    key: "crear_clientes_gestionados",
+    label: "Crear clientes gestionados",
+    description: "Puede solicitar la creación de clientes finales en el portal.",
+    category: "operacion"
+  },
+  {
+    key: "comprar_para_clientes",
+    label: "Comprar para clientes",
+    description: "Puede realizar compras en nombre de sus clientes gestionados.",
+    category: "compras"
+  },
+  {
+    key: "programar_entregas_eventos",
+    label: "Programar entregas de eventos",
+    description: "Puede gestionar la logística de entrega para eventos específicos.",
+    category: "operacion"
+  },
+  {
+    key: "ver_comisiones",
+    label: "Ver comisiones",
+    description: "Puede consultar el historial y estado de sus comisiones.",
+    category: "comercial"
+  },
+  {
+    key: "gestionar_eventos",
+    label: "Gestionar eventos",
+    description: "Puede crear y administrar eventos asociados a sus clientes.",
+    category: "operacion"
   }
 ];
 
@@ -128,7 +316,7 @@ export const B2B_COMPANY_ACCOUNT: B2BCompanyAccount = {
   nit: "900.123.456-7",
   accountType: "empresa_multi_sede",
   cities: [
-    { id: "city-ctg", name: "Cartagena", active: true },
+    { id: "city-col", name: "Colombia (Nacional)", active: true },
     { id: "city-baq", name: "Barranquilla", active: true },
     { id: "city-smr", name: "Santa Marta", active: true }
   ],
@@ -232,6 +420,7 @@ export const B2B_COMPANY_ACCOUNT: B2BCompanyAccount = {
         "gestionar_listas",
         "ver_promociones",
         "ver_inteligencia",
+        "solicitar_credito",
         "hablar_asesor",
         "gestionar_usuarios",
         "gestionar_sucursales",
@@ -333,14 +522,14 @@ export const B2B_COMPANY_ACCOUNT: B2BCompanyAccount = {
   approvalRules: [
     {
       id: "rule-001",
-      name: "Aprobación pedidos Cartagena sobre $2.500.000",
+      name: "Aprobación pedidos sobre $2.500.000",
       active: true,
-      appliesToCityIds: ["city-ctg"],
+      appliesToCityIds: ["city-col"],
       appliesToBranchIds: ["branch-ctg-001", "branch-ctg-002"],
       appliesToRole: "comprador",
       minAmount: 2500000,
       approverUserIds: ["user-001"],
-      description: "Los compradores de Cartagena requieren aprobación del master para pedidos superiores a $2.500.000."
+      description: "Los compradores requieren aprobación del master para pedidos superiores a $2.500.000."
     },
     {
       id: "rule-002",
@@ -398,6 +587,168 @@ export const B2B_COMPANY_ACCOUNT: B2BCompanyAccount = {
     validateNewUsers: false
   }
 };
+
+export const HOSPITALITY_PARTNER_PROFILES: HospitalityPartnerProfile[] = [
+  {
+    id: "partner-001",
+    userId: "user-hosp-001",
+    name: "Laura Eventos",
+    partnerType: "wedding_planner",
+    city: "Cartagena",
+    phone: "300 777 8899",
+    email: "laura.eventos@demo.com",
+    status: "activo",
+    commissionRuleId: "comm-rule-001",
+    managedClientIds: ["mc-001", "mc-002"],
+    managedEventIds: ["event-001", "event-002"]
+  }
+];
+
+export const MANAGED_CLIENTS: ManagedClient[] = [
+  {
+    id: "mc-001",
+    clientCode: "CLI-EVT-001",
+    businessName: "Evento Boda Martínez & Pérez",
+    legalName: "Cliente Final Demo SAS",
+    nit: "900.555.111-2",
+    contactName: "Cliente Final Demo",
+    contactPhone: "300 111 2233",
+    contactEmail: "cliente.final@demo.com",
+    city: "Cartagena",
+    address: "Centro Histórico, Cartagena",
+    clientType: "evento",
+    billingType: "facturar_cliente_final",
+    status: "activo",
+    createdAt: "2026-05-01",
+    notes: "Cliente creado para evento de boda.",
+    assignedPartnerId: "partner-001",
+    assignedPartnerName: "Laura Eventos"
+  },
+  {
+    id: "mc-002",
+    clientCode: "CLI-EVT-002",
+    businessName: "Evento Corporativo Hotel Demo",
+    legalName: "Hotel Demo Cartagena SAS",
+    nit: "900.777.333-4",
+    contactName: "Coordinador Hotel",
+    contactPhone: "300 444 5566",
+    contactEmail: "eventos@hoteldemo.com",
+    city: "Cartagena",
+    address: "Bocagrande, Cartagena",
+    clientType: "hotel",
+    billingType: "facturar_cliente_final",
+    status: "pendiente_validacion",
+    createdAt: "2026-05-02",
+    notes: "Pendiente validación documental.",
+    assignedPartnerId: "partner-001",
+    assignedPartnerName: "Laura Eventos"
+  }
+];
+
+export const MANAGED_EVENTS: ManagedEvent[] = [
+  {
+    id: "event-001",
+    eventName: "Boda Martínez & Pérez",
+    managedClientId: "mc-001",
+    managedClientName: "Evento Boda Martínez & Pérez",
+    eventType: "boda",
+    eventDate: "2026-06-15",
+    city: "Cartagena",
+    venueName: "Casa Colonial Demo",
+    deliveryAddress: "Centro Histórico, Cartagena",
+    estimatedGuests: 120,
+    deliveryWindow: "15 de junio, 10:00 a.m. - 1:00 p.m.",
+    status: "entrega_programada",
+    notes: "Pedido de vinos, espumantes y whisky para recepción."
+  },
+  {
+    id: "event-002",
+    eventName: "Cena corporativa Hotel Demo",
+    managedClientId: "mc-002",
+    managedClientName: "Evento Corporativo Hotel Demo",
+    eventType: "evento_corporativo",
+    eventDate: "2026-06-25",
+    city: "Cartagena",
+    venueName: "Hotel Demo",
+    deliveryAddress: "Bocagrande, Cartagena",
+    estimatedGuests: 80,
+    deliveryWindow: "25 de junio, 8:00 a.m. - 11:00 a.m.",
+    status: "planeado",
+    notes: "Pendiente aprobación del cliente final."
+  }
+];
+
+export const HOSPITALITY_COMMISSION_RULES: HospitalityCommissionRule[] = [
+  {
+    id: "comm-rule-001",
+    partnerId: "partner-001",
+    partnerName: "Laura Eventos",
+    commissionType: "porcentaje_venta",
+    commissionPercent: 5,
+    appliesToCategories: ["Whisky", "Vinos", "Espumantes", "Ron", "Ginebra"],
+    active: true,
+    description: "Comisión del 5% sobre ventas gestionadas por el perfil de hospitalidad, sujeta a validación y pago efectivo del pedido."
+  }
+];
+
+export const HOSPITALITY_COMMISSIONS: HospitalityCommission[] = [
+  {
+    id: "hcomm-001",
+    partnerId: "partner-001",
+    partnerName: "Laura Eventos",
+    managedClientId: "mc-001",
+    managedClientName: "Evento Boda Martínez & Pérez",
+    orderId: "order-001",
+    orderNumber: "TBS-10501",
+    eventId: "event-001",
+    eventName: "Boda Martínez & Pérez",
+    orderDate: "2026-05-03",
+    orderTotal: 8500000,
+    commissionBase: 8500000,
+    commissionPercent: 5,
+    commissionAmount: 425000,
+    status: "pendiente_liquidacion",
+    notes: "Comisión lista para liquidar."
+  },
+  {
+    id: "hcomm-002",
+    partnerId: "partner-001",
+    partnerName: "Laura Eventos",
+    managedClientId: "mc-001",
+    managedClientName: "Evento Boda Martínez & Pérez",
+    orderId: "order-002",
+    orderNumber: "TBS-10490",
+    eventId: "event-001",
+    eventName: "Boda Martínez & Pérez",
+    orderDate: "2026-04-15",
+    orderTotal: 4000000,
+    commissionBase: 4000000,
+    commissionPercent: 5,
+    commissionAmount: 200000,
+    status: "pagada",
+    paymentDate: "2026-04-28",
+    tbsProofOfPaymentUrl: "comprobante-pago.pdf",
+    notes: "Pago realizado por transferencia bancaria."
+  },
+  {
+    id: "hcomm-003",
+    partnerId: "partner-001",
+    partnerName: "Laura Eventos",
+    managedClientId: "mc-001",
+    managedClientName: "Evento Boda Martínez & Pérez",
+    orderId: "order-003",
+    orderNumber: "TBS-10515",
+    eventId: "event-001",
+    eventName: "Boda Martínez & Pérez",
+    orderDate: "2026-05-01",
+    orderTotal: 1200000,
+    commissionBase: 1200000,
+    commissionPercent: 5,
+    commissionAmount: 60000,
+    status: "estimada",
+    notes: "Pedido en preparación."
+  }
+];
 
 export const PENDING_APPROVAL_ORDERS: PendingApprovalOrder[] = [
   {
@@ -578,6 +929,68 @@ export const PENDING_APPROVAL_ORDERS: PendingApprovalOrder[] = [
   }
 ];
 
+export const CREDIT_REQUESTS: CreditRequest[] = [
+  {
+    id: "cred-001",
+    number: "CRD-1001",
+    requestType: "nuevo_credito",
+    status: "en_analisis",
+    createdAt: "2026-05-02",
+    updatedAt: "2026-05-02",
+    businessName: "Grupo Restaurante Demo",
+    nit: "900.123.456-7",
+    city: "Cartagena",
+    businessType: "Restaurante",
+    requestedAmount: 10000000,
+    currentCreditLimit: 5000000,
+    averageMonthlyPurchase: 12840000,
+    paymentTermRequested: "30_dias",
+    legalRepresentativeName: "Representante Legal Demo",
+    legalRepresentativeId: "123456789",
+    contactName: "Humberto",
+    contactPhone: "300 000 0000",
+    contactEmail: "humberto@demo.com",
+    monthlySalesRange: "50M - 100M",
+    yearsInBusiness: "Más de 5 años",
+    hasOtherSuppliersCredit: true,
+    references: [
+      {
+        id: "ref-001",
+        companyName: "Proveedor Demo 1",
+        contactName: "Contacto Demo",
+        phone: "300 111 2233",
+        relationshipType: "proveedor"
+      }
+    ],
+    attachments: [
+      {
+        id: "att-001",
+        type: "rut",
+        fileName: "RUT_2026.pdf",
+        fileSize: 450000,
+        uploadedAt: "2026-05-02",
+        status: "validado"
+      }
+    ],
+    history: [
+      {
+        status: "enviada",
+        date: "2026-05-02 09:00",
+        comment: "Solicitud iniciada por el cliente",
+        userId: "user-001",
+        userName: "Humberto"
+      },
+      {
+        status: "en_analisis",
+        date: "2026-05-02 14:20",
+        comment: "Documentación recibida, en proceso de validación",
+        userId: "admin-system",
+        userName: "Sistema de Riesgos"
+      }
+    ]
+  }
+];
+
 export const FAQ_ITEMS: FAQItem[] = [
   {
     id: "faq-001",
@@ -605,7 +1018,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   },
   {
     id: "faq-003",
-    question: "¿Por qué no veo precios personalizados sin iniciar sesión?",
+    question: "¿Por qué no veo precios B2B sin iniciar sesión?",
     answer: "Los precios B2B pueden depender del tipo de cliente, ciudad, volumen, disponibilidad, condiciones comerciales, crédito y acuerdos específicos. Por eso algunos precios y promociones solo se muestran a usuarios validados.",
     category: "catalogo",
     audience: "publico",
@@ -614,6 +1027,18 @@ export const FAQ_ITEMS: FAQItem[] = [
     notHelpfulCount: 2,
     relatedActionLabel: "Iniciar sesión",
     relatedActionTarget: "login"
+  },
+  {
+    id: "faq-credit-001",
+    question: "¿Cómo solicito crédito comercial con TBS?",
+    answer: "Para solicitar crédito, puedes ingresar a 'Mi Cuenta' y buscar la opción 'Solicitud de Crédito B2B'. Allí podrás completar el formulario, adjuntar el RUT, Cámara de Comercio y estados financieros. El equipo financiero de TBS analizará tu solicitud en 3 a 5 días hábiles.",
+    category: "cartera_pagos",
+    audience: "cliente_b2b",
+    tags: ["crédito", "cupo", "financiero", "solicitud"],
+    helpfulCount: 5,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Ir a solicitud",
+    relatedActionTarget: "creditRequest"
   },
   {
     id: "faq-004",
@@ -657,7 +1082,7 @@ export const FAQ_ITEMS: FAQItem[] = [
     answer: "Es un servicio para necesidades inmediatas de abastecimiento. Está sujeto a ciudad, inventario, horario, capacidad logística y validación comercial. Puede aplicar tarifa logística adicional.",
     category: "pedido_urgente",
     audience: "cliente_b2b",
-    tags: ["urgente", "horeca", "entrega", "logística"],
+    tags: ["urgente", "b2b", "entrega", "logística"],
     helpfulCount: 14,
     notHelpfulCount: 1,
     relatedActionLabel: "Crear pedido urgente",
@@ -796,7 +1221,163 @@ export const FAQ_ITEMS: FAQItem[] = [
     relatedActionTarget: "payments"
   },
   {
-    id: "faq-019",
+    id: "faq-020",
+    question: "¿TBS vende licores a domicilio?",
+    answer: "TBS ofrece un servicio especializado de abastecimiento para negocios y eventos a nivel nacional. Nuestra plataforma permite gestionar pedidos recurrentes, urgentes y programados con cobertura en las principales ciudades del país.",
+    category: "general",
+    audience: "publico",
+    tags: ["nacional", "domicilio", "entrega", "licores"],
+    helpfulCount: 5,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Solicitar acceso",
+    relatedActionTarget: "accessRequest"
+  },
+  {
+    id: "faq-021",
+    question: "¿TBS atiende bares y restaurantes a nivel nacional?",
+    answer: "Sí, somos aliados estratégicos del sector de licores a nivel nacional. Ofrecemos un portafolio completo de licores, mixers y suministros con precios competitivos, facturación legal y soporte técnico para optimizar la rentabilidad de tu negocio.",
+    category: "comprar_en_tbs",
+    audience: "publico",
+    tags: ["bares", "restaurantes", "nacional", "B2B"],
+    helpfulCount: 8,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Ver clientes B2B",
+    relatedActionTarget: "catalog"
+  },
+  {
+    id: "faq-022",
+    question: "¿Puedo comprar licores para eventos empresariales?",
+    answer: "TBS atiende eventos corporativos, bodas y activaciones de marca. Ofrecemos asesoría en la selección de bebidas, gestión logística en el lugar del evento y condiciones comerciales favorables según el volumen. Todas nuestras operaciones cumplen con la normativa legal vigente de impuestos y estampillas.",
+    category: "general",
+    audience: "publico",
+    tags: ["eventos", "corporativo", "bodas", "licores"],
+    helpfulCount: 7,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Hablar con asesor",
+    relatedActionTarget: "advisorChat"
+  },
+  {
+    id: "faq-023",
+    question: "¿TBS atiende hoteles, clubes y restaurantes?",
+    answer: "Atendemos de manera integral a grandes superficies y establecimientos del sector hospitalidad. Contamos con procesos de entrega específicos para muelles, hoteles en la zona amurallada y clubes privados, asegurando la trazabilidad y calidad de cada despacho.",
+    category: "comprar_en_tbs",
+    audience: "publico",
+    tags: ["hoteles", "clubes", "restaurantes", "hospitalidad"],
+    helpfulCount: 6,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Solicitar acceso",
+    relatedActionTarget: "accessRequest"
+  },
+  {
+    id: "faq-024",
+    question: "¿TBS tiene cobertura nacional?",
+    answer: "Ofrecemos despachos a nivel nacional. El tiempo de entrega y las condiciones logísticas están sujetos a validación según la ubicación y el volumen del pedido.",
+    category: "seguimiento",
+    audience: "publico",
+    tags: ["cobertura", "nacional", "ciudades", "logística"],
+    helpfulCount: 4,
+    notHelpfulCount: 1,
+    relatedActionLabel: "Consultar cobertura",
+    relatedActionTarget: "advisorChat"
+  },
+  {
+    id: "faq-025",
+    question: "¿TBS ofrece precios por volumen?",
+    answer: "Nuestro modelo de negocio B2B se basa en escalas de precios según el volumen de compra. A mayor volumen en categorías específicas o marcas seleccionadas, el sistema aplica descuentos automáticos o condiciones especiales validadas por su asesor comercial.",
+    category: "promociones",
+    audience: "publico",
+    tags: ["precios", "volumen", "descuentos", "escalas"],
+    helpfulCount: 9,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Ver catálogo",
+    relatedActionTarget: "catalog"
+  },
+  {
+    id: "faq-026",
+    question: "¿TBS ofrece crédito para clientes B2B?",
+    answer: "Ofrecemos opciones de crédito comercial sujetas a un estudio previo de documentos, comportamiento de pago y referenciación. Los plazos y cupos asignados varían según el perfil de cada negocio y están sujetos a las políticas de cartera de TBS Destilados.",
+    category: "cartera_pagos",
+    audience: "publico",
+    tags: ["crédito", "cartera", "plazos", "financiamiento"],
+    helpfulCount: 12,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Ir a mi cartera",
+    relatedActionTarget: "payments"
+  },
+  {
+    id: "faq-027",
+    question: "¿TBS trabaja con proveedores e importadoras?",
+    answer: "Sí, somos un canal de distribución para las principales marcas e importadoras del país. Si usted es fabricante o importador, puede integrar su portafolio a nuestra plataforma para llegar directamente a miles de clientes B2B de manera eficiente.",
+    category: "proveedores_marcas",
+    audience: "publico",
+    tags: ["proveedores", "importadoras", "distribución", "marcas"],
+    helpfulCount: 10,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Unirse como proveedor",
+    relatedActionTarget: "accessRequest"
+  },
+  {
+    id: "faq-028",
+    question: "¿Qué diferencia a TBS de una tienda tradicional de licores?",
+    answer: "A diferencia de una tienda minorista, TBS es una solución tecnológica integral para el canal institucional. Ofrecemos herramientas de inteligencia de compra, gestión de múltiples sedes, facturación electrónica, trazabilidad completa y soporte comercial especializado para negocios.",
+    category: "general",
+    audience: "publico",
+    tags: ["diferencia", "B2B", "tecnología", "institucional"],
+    helpfulCount: 15,
+    notHelpfulCount: 0,
+    relatedActionLabel: "¿Qué es TBS?",
+    relatedActionTarget: "catalog"
+  },
+  {
+    id: "faq-029",
+    question: "¿TBS puede ayudar con activaciones o carta de bebidas?",
+    answer: "Contamos con un equipo de Trade Marketing especializado en apoyar a nuestros clientes con el diseño de cartas, capacitación de personal de barra y coordinación de activaciones de marca según disponibilidad y acuerdos comerciales con cada proveedor.",
+    category: "servicios",
+    audience: "publico",
+    tags: ["activaciones", "carta de bebidas", "marketing", "capacitación"],
+    helpfulCount: 11,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Hablar con asesor",
+    relatedActionTarget: "advisorChat"
+  },
+  {
+    id: "faq-cash-001",
+    question: "¿Cómo funciona el modelo de cliente Contado?",
+    answer: "Como cliente de contado, tus pedidos deben ser pagados de forma anticipada o al momento de la entrega (sujeto a validación). No cuentas con cupo de crédito asignado inicialmente, pero puedes registrar tus soportes de pago directamente en el portal para agilizar el despacho.",
+    category: "cartera_pagos",
+    audience: "cliente_b2b",
+    tags: ["contado", "pago anticipado", "pago", "soporte"],
+    helpfulCount: 5,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Ver mis pagos",
+    relatedActionTarget: "payments"
+  },
+  {
+    id: "faq-cash-002",
+    question: "¿Puedo pasar de modo Contado a Crédito B2B?",
+    answer: "Sí. Si deseas obtener un cupo de crédito y plazos de pago, puedes solicitar un análisis de crédito comercial desde la sección de Pagos o Mi Cuenta. Deberás adjuntar documentación legal y financiera para el estudio por parte de nuestro equipo de riesgos.",
+    category: "cartera_pagos",
+    audience: "cliente_b2b",
+    tags: ["crédito", "cambio perfil", "estudio", "cupo"],
+    helpfulCount: 3,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Solicitar crédito",
+    relatedActionTarget: "creditRequest"
+  },
+  {
+    id: "faq-cash-003",
+    question: "¿Cómo registro mi soporte de pago?",
+    answer: "Una vez realizado el pago vía transferencia, consignación o PSE, ingresa a 'Pagos y comprobantes' y utiliza el botón 'Registrar soporte de pago'. Podrás subir el archivo o foto del comprobante para que nuestro equipo lo valide y libere tu pedido.",
+    category: "cartera_pagos",
+    audience: "cliente_b2b",
+    tags: ["soporte de pago", "comprobante", "validación", "pagos"],
+    helpfulCount: 7,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Registrar pago",
+    relatedActionTarget: "payments"
+  },
+  {
+    id: "faq-030",
     question: "¿Qué hago si no encuentro respuesta?",
     answer: "Si estás logueado, puedes abrir el chat interno con tu asesor o ejecutivo TBS. Si aún no tienes acceso, puedes solicitar acceso B2B y el equipo TBS se comunicará contigo.",
     category: "soporte",
@@ -806,6 +1387,18 @@ export const FAQ_ITEMS: FAQItem[] = [
     notHelpfulCount: 0,
     relatedActionLabel: "Hablar con asesor",
     relatedActionTarget: "advisorChat"
+  },
+  {
+    id: "faq-visibilidad-marcas",
+    question: "¿Cómo puede una marca tener visibilidad en el portal?",
+    answer: "TBS ofrece un módulo completo de visibilidad: banners premium, productos patrocinados en resultados, cupones de marca y contenido editorial. Esto permite destacar lanzamientos y promociones ante la audiencia B2B de forma profesional y no intrusiva.",
+    category: "proveedores_marcas",
+    audience: "todos",
+    tags: ["publicidad", "marcas", "visibilidad", "pauta"],
+    helpfulCount: 5,
+    notHelpfulCount: 0,
+    relatedActionLabel: "Plan de visibilidad",
+    relatedActionTarget: "providerDashboard"
   }
 ];
 
@@ -924,7 +1517,7 @@ export const PROVIDER_CAMPAIGNS: ProviderCampaign[] = [
   },
   {
     id: "pc-003",
-    name: "Promoción volumen HORECA",
+    name: "Promoción volumen B2B",
     type: "promocion",
     status: "activa",
     startDate: "2026-04-20",
@@ -1018,10 +1611,53 @@ export const PRODUCTS: Product[] = [
     category: "Whisky", 
     specs: "750ml • 40% Alc.", 
     price: "$ 145.000", 
+    originalPrice: "$ 162.000",
     image: "https://images.unsplash.com/photo-1527281473222-f9e87be50519?auto=format&fit=crop&q=80&w=400",
     description: "Un whisky escocés blend de malta y grado premium, conocido por su suavidad excepcional y notas ricas de miel, frutas y un toque de humo.",
     origin: "Escocia",
-    subcategory: "Blended Scotch"
+    subcategory: "Blended Scotch",
+    packagingOptions: [
+      {
+        id: "pkg-1-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 148000,
+        packagePrice: 148000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: false
+      },
+      {
+        id: "pkg-1-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 145000,
+        packagePrice: 870000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: false
+      },
+      {
+        id: "pkg-1-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 142000,
+        packagePrice: 1704000,
+        available: true,
+        stockLabel: "Mejor precio por caja",
+        isDefault: true
+      },
+      {
+        id: "pkg-1-24",
+        label: "Caja x24",
+        unitsPerPackage: 24,
+        pricePerUnit: 140000,
+        packagePrice: 3360000,
+        available: true,
+        stockLabel: "Volumen B2B",
+        isDefault: false
+      }
+    ]
   },
   { 
     id: 2, 
@@ -1032,7 +1668,38 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400",
     description: "El referente de los whiskies escoceses de lujo. Una mezcla compleja de más de 40 whiskies, cada uno madurado por al menos 12 años.",
     origin: "Escocia",
-    subcategory: "Blended Scotch"
+    subcategory: "Blended Scotch",
+    packagingOptions: [
+      {
+        id: "pkg-2-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 189000,
+        packagePrice: 189000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-2-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 185000,
+        packagePrice: 1110000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: false
+      },
+      {
+        id: "pkg-2-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 182000,
+        packagePrice: 2184000,
+        available: true,
+        stockLabel: "Recomendado",
+        isDefault: true
+      }
+    ]
   },
   { 
     id: 3, 
@@ -1040,10 +1707,42 @@ export const PRODUCTS: Product[] = [
     category: "Whisky", 
     specs: "750ml • 40% Alc.", 
     price: "$ 155.000", 
+    originalPrice: "$ 170.000",
     image: "https://images.unsplash.com/photo-1614313511387-1436a4480ebb?auto=format&fit=crop&q=80&w=400",
     description: "Reconocido por su suavidad y perfil afrutado. Perfecto para disfrutar solo, con hielo o en coctelería premium.",
     origin: "Escocia",
-    subcategory: "Blended Scotch"
+    subcategory: "Blended Scotch",
+    packagingOptions: [
+      {
+        id: "pkg-3-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 158000,
+        packagePrice: 158000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-3-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 155000,
+        packagePrice: 930000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: true
+      },
+      {
+        id: "pkg-3-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 152000,
+        packagePrice: 1824000,
+        available: true,
+        stockLabel: "Ahorro por volumen",
+        isDefault: false
+      }
+    ]
   },
   // Ron
   { 
@@ -1055,7 +1754,38 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=400",
     description: "Ron colombiano añejado en barricas de roble blanco. Notas dulces de caramelo y vainilla con un final suave.",
     origin: "Colombia",
-    subcategory: "Añejo"
+    subcategory: "Añejo",
+    packagingOptions: [
+      {
+        id: "pkg-4-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 68000,
+        packagePrice: 68000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-4-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 65000,
+        packagePrice: 780000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: true
+      },
+      {
+        id: "pkg-4-24",
+        label: "Caja x24",
+        unitsPerPackage: 24,
+        pricePerUnit: 63000,
+        packagePrice: 1512000,
+        available: true,
+        stockLabel: "Volumen B2B",
+        isDefault: false
+      }
+    ]
   },
   { 
     id: 5, 
@@ -1066,7 +1796,38 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1527281473222-f9e87be50519?auto=format&fit=crop&q=80&w=400",
     description: "Considerado uno de los mejores rones del mundo. Mezcla de rones de 6 a 23 años, añejados bajo el sistema solera en las tierras altas de Guatemala.",
     origin: "Guatemala",
-    subcategory: "Premium"
+    subcategory: "Premium",
+    packagingOptions: [
+      {
+        id: "pkg-5-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 245000,
+        packagePrice: 245000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-5-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 240000,
+        packagePrice: 1440000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: true
+      },
+      {
+        id: "pkg-5-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 235000,
+        packagePrice: 2820000,
+        available: true,
+        stockLabel: "Stock Limitado",
+        isDefault: false
+      }
+    ]
   },
   // Ginebra
   { 
@@ -1078,7 +1839,37 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1551538666-80029b3ae383?auto=format&fit=crop&q=80&w=400",
     description: "La ginebra más galardonada del mundo. Su receta equilibrada de cuatro botánicos base (enebro, cilantro, angélica y regaliz) la hace inconfundible.",
     origin: "Reino Unido",
-    subcategory: "London Dry"
+    subcategory: "London Dry",
+    packagingOptions: [
+      {
+        id: "pkg-6-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 118000,
+        packagePrice: 118000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-6-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 115000,
+        packagePrice: 690000,
+        available: true,
+        stockLabel: "Disponible",
+        isDefault: true
+      },
+      {
+        id: "pkg-6-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 112000,
+        packagePrice: 1344000,
+        available: true,
+        isDefault: false
+      }
+    ]
   },
   { 
     id: 7, 
@@ -1089,7 +1880,27 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1551538666-80029b3ae383?auto=format&fit=crop&q=80&w=400",
     description: "Infundida con pétalos de rosa y pepino, Hendrick's ofrece una experiencia refrescante y única en el mundo de las ginebras premium.",
     origin: "Escocia",
-    subcategory: "Premium"
+    subcategory: "Premium",
+    packagingOptions: [
+      {
+        id: "pkg-7-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 189000,
+        packagePrice: 189000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-7-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 185000,
+        packagePrice: 1110000,
+        available: true,
+        isDefault: true
+      }
+    ]
   },
   // Tequila
   { 
@@ -1101,8 +1912,179 @@ export const PRODUCTS: Product[] = [
     image: "https://images.unsplash.com/photo-1516535794938-6063878f28cc?auto=format&fit=crop&q=80&w=400",
     description: "Tequila 100% de agave azul, añejado por ocho meses en barricas de roble blanco americano. Color ambarino y sabor rico y suave.",
     origin: "México",
-    subcategory: "Reposado"
+    subcategory: "Reposado",
+    packagingOptions: [
+      {
+        id: "pkg-8-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 215000,
+        packagePrice: 215000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-8-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 210000,
+        packagePrice: 1260000,
+        available: true,
+        isDefault: true
+      },
+      {
+        id: "pkg-8-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 205000,
+        packagePrice: 2460000,
+        available: true,
+        isDefault: false
+      }
+    ]
   },
+  { 
+    id: 9, 
+    name: "Vodka Premium", 
+    category: "Vodka", 
+    specs: "750ml • 40% Alc.", 
+    price: "$ 85.000", 
+    image: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400",
+    description: "Vodka de pureza cristalina madurado en frío.",
+    origin: "Polonia",
+    subcategory: "Premium",
+    packagingOptions: [
+      {
+        id: "pkg-9-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 88000,
+        packagePrice: 88000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-9-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 85000,
+        packagePrice: 1020000,
+        available: true,
+        isDefault: true
+      }
+    ]
+  },
+  { 
+    id: 10, 
+    name: "Aguardiente Antioqueño Tapa Azul", 
+    category: "Aguardiente", 
+    specs: "750ml • 29% Alc.", 
+    price: "$ 48.000", 
+    image: "https://images.unsplash.com/photo-1516535794938-6063878f28cc?auto=format&fit=crop&q=80&w=400",
+    description: "El aguardiente sin azúcar preferido de Colombia.",
+    origin: "Colombia",
+    subcategory: "Sin Azúcar",
+    packagingOptions: [
+      {
+        id: "pkg-10-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 50000,
+        packagePrice: 50000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-10-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 48000,
+        packagePrice: 576000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-10-24",
+        label: "Caja x24",
+        unitsPerPackage: 24,
+        pricePerUnit: 46000,
+        packagePrice: 1104000,
+        available: true,
+        isDefault: true
+      }
+    ]
+  },
+  { 
+    id: 11, 
+    name: "Vino Reserva Cabernet Sauvignon", 
+    category: "Vinos", 
+    specs: "750ml", 
+    price: "$ 55.000", 
+    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=400",
+    description: "Vino tinto reserva con notas a frutos rojos.",
+    origin: "Chile",
+    subcategory: "Tinto",
+    packagingOptions: [
+      {
+        id: "pkg-11-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 58000,
+        packagePrice: 58000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-11-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 55000,
+        packagePrice: 330000,
+        available: true,
+        isDefault: true
+      },
+      {
+        id: "pkg-11-12",
+        label: "Caja x12",
+        unitsPerPackage: 12,
+        pricePerUnit: 52000,
+        packagePrice: 624000,
+        available: true,
+        isDefault: false
+      }
+    ]
+  },
+  { 
+    id: 12, 
+    name: "Espumante Brut", 
+    category: "Espumantes", 
+    specs: "750ml", 
+    price: "$ 72.000", 
+    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&q=80&w=400",
+    description: "Vino espumoso refinado.",
+    origin: "Argentina",
+    subcategory: "Brut",
+    packagingOptions: [
+      {
+        id: "pkg-12-1",
+        label: "Unidad",
+        unitsPerPackage: 1,
+        pricePerUnit: 75000,
+        packagePrice: 75000,
+        available: true,
+        isDefault: false
+      },
+      {
+        id: "pkg-12-6",
+        label: "Caja x6",
+        unitsPerPackage: 6,
+        pricePerUnit: 72000,
+        packagePrice: 432000,
+        available: true,
+        isDefault: true
+      }
+    ]
+  }
 ];
 
 export const NOTIFICATIONS: TBSNotification[] = [

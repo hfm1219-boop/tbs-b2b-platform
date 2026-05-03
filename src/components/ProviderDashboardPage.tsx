@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
   Package, 
@@ -22,7 +22,6 @@ import {
   FileText,
   PieChart,
   LayoutDashboard,
-  LogOut,
   X,
   HelpCircle
 } from 'lucide-react';
@@ -37,6 +36,7 @@ import {
   ProviderSettlement, 
   ProviderInsight 
 } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ProviderDashboardPageProps {
   currentUser: User | null;
@@ -48,7 +48,6 @@ interface ProviderDashboardPageProps {
   settlements: ProviderSettlement[];
   insights: ProviderInsight[];
   onGoHome: () => void;
-  onLogout: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
   onGoProviderProducts: () => void;
   onGoProviderCampaigns: () => void;
@@ -56,6 +55,8 @@ interface ProviderDashboardPageProps {
   onGoProviderReports: () => void;
   onCreateNotification: (notif: any) => void;
   onGoFAQ: () => void;
+  activeTab?: 'overview' | 'products' | 'campaigns' | 'settlements' | 'reports';
+  onTabChange?: (tab: 'overview' | 'products' | 'campaigns' | 'settlements' | 'reports') => void;
 }
 
 export function ProviderDashboardPage({
@@ -68,16 +69,32 @@ export function ProviderDashboardPage({
   settlements,
   insights,
   onGoHome,
-  onLogout,
   onGoAdvisorChat,
   onGoProviderProducts,
   onGoProviderCampaigns,
   onGoProviderSettlements,
   onGoProviderReports,
   onCreateNotification,
-  onGoFAQ
+  onGoFAQ,
+  activeTab: externalActiveTab,
+  onTabChange
 }: ProviderDashboardPageProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'campaigns' | 'settlements' | 'reports'>('overview');
+  const analytics = useAnalytics(currentUser);
+  const [internalActiveTab, setInternalActiveTab] = useState<'overview' | 'products' | 'campaigns' | 'settlements' | 'reports'>('overview');
+
+  const activeTab = externalActiveTab || internalActiveTab;
+  const setActiveTab = (tab: 'overview' | 'products' | 'campaigns' | 'settlements' | 'reports') => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
+
+  useEffect(() => {
+    analytics.trackPageView(`/provider/${activeTab}`, `Provider Dashboard - ${activeTab}`);
+  }, [activeTab]);
+
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [salesMetricType, setSalesMetricType] = useState<'revenue' | 'units'>('revenue');
   const [productSearch, setProductSearch] = useState('');
@@ -124,7 +141,7 @@ export function ProviderDashboardPage({
             <div>
               <div className="flex items-center gap-3 mb-2 text-rojo">
                 <BarChart3 size={24} />
-                <h1 className="text-3xl font-black tracking-tighter text-texto">Panel de marcas y proveedores</h1>
+                <h1 className="text-3xl font-black tracking-tighter text-texto">Panel de marcas</h1>
               </div>
               <p className="text-gris font-medium max-w-2xl">
                 Gestiona desempeño comercial, portafolio, campañas, liquidaciones y oportunidades dentro de TBS.
@@ -158,32 +175,8 @@ export function ProviderDashboardPage({
                 >
                   <HelpCircle size={16} /> Centro de ayuda
                 </button>
-                <button 
-                  onClick={onLogout}
-                  className="text-gris hover:text-rojo font-black text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 justify-center transition-colors"
-                >
-                  <LogOut size={12} /> Cerrar sesión
-                </button>
               </div>
             </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mt-10 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap ${
-                  activeTab === tab.id 
-                    ? 'bg-rojo text-white tbs-shadow shadow-rojo/20' 
-                    : 'text-gris hover:bg-gray-100 hover:text-texto'
-                }`}
-              >
-                <tab.icon size={16} />
-                {tab.label}
-              </button>
-            ))}
           </div>
         </div>
       </div>
@@ -230,13 +223,19 @@ export function ProviderDashboardPage({
                     </div>
                     <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
                       <button 
-                        onClick={() => setSalesMetricType('revenue')}
+                        onClick={() => {
+                          setSalesMetricType('revenue');
+                          analytics.track('provider_sales_metric_changed', 'provider_dashboard', { metricType: 'revenue' });
+                        }}
                         className={`px-3 py-1.5 shadow-sm rounded-lg text-[10px] font-black uppercase transition-all ${salesMetricType === 'revenue' ? 'bg-white text-texto' : 'text-gris hover:text-texto'}`}
                       >
                         Ingresos
                       </button>
                       <button 
-                        onClick={() => setSalesMetricType('units')}
+                        onClick={() => {
+                          setSalesMetricType('units');
+                          analytics.track('provider_sales_metric_changed', 'provider_dashboard', { metricType: 'units' });
+                        }}
                         className={`px-3 py-1.5 shadow-sm rounded-lg text-[10px] font-black uppercase transition-all ${salesMetricType === 'units' ? 'bg-white text-texto' : 'text-gris hover:text-texto'}`}
                       >
                         Unidades
@@ -308,6 +307,7 @@ export function ProviderDashboardPage({
                         <p className="text-[12px] font-medium text-gris leading-tight mb-4">{insight.description}</p>
                         <button 
                           onClick={() => {
+                            analytics.trackCta(`provider_insight_${i}`, 'provider_dashboard');
                             if (insight.actionTarget === 'providerProducts') setActiveTab('products');
                             else if (insight.actionTarget === 'providerCampaigns') setActiveTab('campaigns');
                             else if (insight.actionTarget === 'providerSettlements') setActiveTab('settlements');
@@ -403,6 +403,7 @@ export function ProviderDashboardPage({
                     <button
                       key={i}
                       onClick={() => {
+                        analytics.trackCta(`provider_quick_access_${item.title.toLowerCase().replace(/\s/g, '_')}`, 'provider_dashboard');
                         if (item.tab) setActiveTab(item.tab as any);
                         if (item.action) item.action();
                       }}
@@ -577,6 +578,82 @@ export function ProviderDashboardPage({
                   </div>
                 ))}
               </div>
+
+              {/* Advertising and Visibility Section */}
+              <div className="pt-16 border-t border-borde">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-texto">Publicidad y visibilidad en TBS</h3>
+                    <p className="text-sm font-medium text-gris">Las marcas pueden contratar espacios de visibilidad dentro del portal para destacar productos, campañas, cupones o contenido editorial.</p>
+                  </div>
+                  <button 
+                    onClick={() => onGoAdvisorChat('publicidad', { label: 'Solicitud Visibilidad', type: 'marketing' })}
+                    className="bg-rojo text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] transition-all tbs-shadow shrink-0"
+                  >
+                    Solicitar plan de pauta
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { 
+                      title: 'Banners Premium', 
+                      icon: LayoutDashboard, 
+                      benefit: 'Máximo Alcance',
+                      desc: 'Espacios de alto impacto en el Home y cabeceras de categorías. Ideal para lanzamientos nacionales o regionales.'
+                    },
+                    { 
+                      title: 'Productos Patrocinados', 
+                      icon: Package, 
+                      benefit: 'Venta Directa',
+                      desc: 'Tus productos aparecerán en las primeras posiciones del catálogo y resultados de búsqueda, con etiqueta de "Patrocinado".'
+                    },
+                    { 
+                      title: 'Marca Destacada', 
+                      icon: Building2, 
+                      benefit: 'Branding',
+                      desc: 'Presencia prioritaria en la sección de marcas y filtros destacados. Refuerza el posicionamiento b2b de tu portafolio.'
+                    },
+                    { 
+                      title: 'Páginas de Campaña', 
+                      icon: FileText, 
+                      benefit: 'Especializado',
+                      desc: 'Landing pages exclusivas (ej: tbs.com/campaña/tu-marca) con diseño personalizado y carruseles de productos curados.'
+                    },
+                    { 
+                      title: 'Cupones de Marca', 
+                      icon: Tag, 
+                      benefit: 'Conversión',
+                      desc: 'Activa códigos de descuento exclusivos para clientes premium o segmentos específicos (Bares, Hoteles etc).'
+                    },
+                    { 
+                      title: 'Contenido Editorial', 
+                      icon: MessageSquare, 
+                      benefit: 'Educación',
+                      desc: 'Publicación de guías de coctelera, notas de cata o artículos en el Blog TBS impulsados por tu marca.'
+                    }
+                  ].map((service, i) => (
+                    <div key={i} className="bg-white p-8 rounded-[32px] border border-borde hover:border-rojo/30 transition-all group flex flex-col h-full shadow-sm hover:shadow-md">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="w-14 h-14 bg-gray-50 text-gris group-hover:bg-rojo group-hover:text-white rounded-2xl flex items-center justify-center transition-all duration-300">
+                          <service.icon size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-gray-100 text-gris rounded-full group-hover:bg-rojo/10 group-hover:text-rojo transition-colors">
+                          {service.benefit}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black text-texto mb-3">{service.title}</h4>
+                      <p className="text-xs font-medium text-gris leading-relaxed flex-grow">
+                        {service.desc}
+                      </p>
+                      <div className="mt-6 pt-6 border-t border-borde flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-rojo">Saber más</span>
+                        <ChevronRight size={14} className="text-rojo" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -655,7 +732,7 @@ export function ProviderDashboardPage({
                   <PieChart size={32} />
                </div>
                <h3 className="text-2xl font-black text-texto mb-2">Análisis avanzado de ventas</h3>
-               <p className="text-sm font-medium text-gris max-w-sm mb-10">Módulo exclusivo para proveedores premium con insights de rotación por ciudad y canal.</p>
+               <p className="text-sm font-medium text-gris max-w-sm mb-10">Módulo exclusivo para marcas premium con insights de rotación por ciudad y canal.</p>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl px-4">
                   <div className="p-6 bg-white border border-borde rounded-[24px] text-left">
                      <Clock size={20} className="text-rojo mb-3" />
@@ -708,7 +785,9 @@ export function ProviderDashboardPage({
               </div>
 
               <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
-                <CampaignForm onComplete={() => {
+                <CampaignForm 
+                  analytics={analytics}
+                  onComplete={() => {
                   setIsCampaignModalOpen(false);
                   onCreateNotification({
                     type: 'comercial',
@@ -726,7 +805,7 @@ export function ProviderDashboardPage({
   );
 }
 
-function CampaignForm({ onComplete }: { onComplete: () => void }) {
+function CampaignForm({ onComplete, analytics }: { onComplete: () => void, analytics?: any }) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -739,11 +818,23 @@ function CampaignForm({ onComplete }: { onComplete: () => void }) {
     comments: ''
   });
 
+  useEffect(() => {
+    if (analytics) {
+      analytics.trackFormStart('provider_campaign_request');
+    }
+  }, []);
+
   const isComplete = formData.name && formData.type && formData.channel && formData.comments;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isComplete) {
+      if (analytics) {
+        analytics.trackFormSubmit('provider_campaign_request', true, {
+          campaignType: formData.type,
+          city: formData.city
+        });
+      }
       setStep(2);
     }
   };

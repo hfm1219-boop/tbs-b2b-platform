@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, 
@@ -14,19 +14,28 @@ import {
   Briefcase,
   HelpCircle
 } from 'lucide-react';
+import { Breadcrumbs } from './Breadcrumbs';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface AccessRequestPageProps {
   onBack: () => void;
   onGoFAQ: () => void;
+  onGoLegalPage: (key: any) => void;
   initialRole?: 'client' | 'provider';
 }
 
 type RequestRole = 'client' | 'provider';
 
-export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: AccessRequestPageProps) {
+export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole = 'client' }: AccessRequestPageProps) {
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [role, setRole] = useState<RequestRole>(initialRole);
   const [personType, setPersonType] = useState<'natural' | 'juridica'>('juridica');
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const analytics = useAnalytics(null);
+
+  useEffect(() => {
+    analytics.trackFormStart('access_request', 'access_request_page');
+  }, [analytics]);
 
   const handleRoleChange = (newRole: RequestRole) => {
     setRole(newRole);
@@ -35,6 +44,11 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
     } else {
       setFormData(prev => ({ ...prev, businessType: '' }));
     }
+    analytics.track('cta_click', 'engagement', { 
+      ctaLabel: `Switch to ${newRole}`,
+      source: 'access_request_page',
+      metadata: { role: newRole }
+    });
   };
   
   const [formData, setFormData] = useState({
@@ -62,13 +76,25 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
     formData.businessType && 
     formData.contactName && 
     formData.phone && 
-    formData.email;
+    formData.email &&
+    agreedToPrivacy;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid) {
       setStep('success');
       window.scrollTo(0, 0);
+      analytics.trackFormSubmit('access_request', true, {
+        metadata: {
+          requestedRole: role,
+          businessType: formData.businessType,
+          city: formData.city
+        }
+      });
+    } else {
+      analytics.trackFormSubmit('access_request', false, {
+        reason: 'invalid_form'
+      });
     }
   };
 
@@ -138,16 +164,13 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde bg-[#F8FAFC]">
+      <section className="relative pt-10 pb-20 lg:pt-10 lg:pb-32 overflow-hidden border-b border-borde bg-[#F8FAFC]">
         <div className="max-w-[1480px] mx-auto px-8">
           <div className="flex items-center justify-between mb-12">
-            <button 
-              onClick={onBack}
-              className="inline-flex items-center gap-2 text-[13px] font-black uppercase tracking-widest text-gris hover:text-rojo transition-colors outline-none cursor-pointer group"
-            >
-              <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
-              Volver al inicio
-            </button>
+            <Breadcrumbs 
+              onHomeClick={onBack}
+              items={[{ label: 'Solicitar acceso', current: true }]}
+            />
 
             <button 
               onClick={onGoFAQ}
@@ -171,8 +194,7 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
               transition={{ delay: 0.1 }}
               className="text-[44px] lg:text-[88px] font-black tracking-tighter leading-[0.9] mb-8"
             >
-              Solicita tu acceso<br />
-              <span className="text-rojo">a TBS.</span>
+              Solicita tu acceso B2B a TBS
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -180,7 +202,7 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
               transition={{ delay: 0.2 }}
               className="text-xl lg:text-[22px] text-texto-sec font-medium leading-relaxed max-w-2xl"
             >
-              Completa la información de tu negocio y un asesor comercial revisará tu solicitud para activar tu acceso, precios B2B, crédito y acompañamiento experto.
+              Completa la información de tu negocio y un asesor comercial revisará tu solicitud para activar tu acceso, precios B2B y crédito a nivel nacional.
             </motion.p>
           </div>
         </div>
@@ -434,6 +456,28 @@ export function AccessRequestPage({ onBack, onGoFAQ, initialRole = 'client' }: A
                 className="w-full bg-[#F9FAFB] border-2 border-[#F1F3F5] focus:border-rojo focus:bg-white rounded-3xl px-8 py-6 font-semibold transition-all outline-none placeholder:text-gris/40 min-h-[160px] resize-none" 
               />
             </div>
+          </div>
+
+          {/* Legal Acceptance */}
+          <div className="pt-8 border-t border-[#F1F3F5]">
+            <label className="flex gap-4 cursor-pointer group">
+              <div className="pt-1">
+                <input 
+                  type="checkbox" 
+                  checked={agreedToPrivacy}
+                  onChange={e => setAgreedToPrivacy(e.target.checked)}
+                  className="hidden"
+                />
+                <div className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                  agreedToPrivacy ? 'bg-rojo border-rojo' : 'border-[#D1D5DB] group-hover:border-rojo'
+                }`}>
+                  {agreedToPrivacy && <CheckCircle2 size={16} className="text-white" />}
+                </div>
+              </div>
+              <div className="text-sm font-semibold text-texto-sec leading-relaxed">
+                Acepto la <button type="button" onClick={() => onGoLegalPage('privacidad')} className="text-rojo font-bold underline hover:no-underline">Política de privacidad</button> y el <button type="button" onClick={() => onGoLegalPage('datos')} className="text-rojo font-bold underline hover:no-underline">Tratamiento de datos personales</button> de TBS. Entiendo que mi información será revisada para la activación de mi cuenta B2B.
+              </div>
+            </label>
           </div>
 
           <div className="pt-10">

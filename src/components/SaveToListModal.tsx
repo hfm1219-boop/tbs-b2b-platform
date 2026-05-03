@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, Plus, Check, ChevronRight, Search } from 'lucide-react';
-import { Product, ShoppingList } from '../types';
+import { Product, ShoppingList, User } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface SaveToListModalProps {
   product: Product;
@@ -10,6 +11,7 @@ interface SaveToListModalProps {
   shoppingLists: ShoppingList[];
   onCreateList: (name: string, description: string) => void;
   onAddToList: (listId: string, product: Product, quantity: number) => void;
+  currentUser?: User | null;
 }
 
 export function SaveToListModal({ 
@@ -18,8 +20,10 @@ export function SaveToListModal({
   onClose, 
   shoppingLists,
   onCreateList,
-  onAddToList
+  onAddToList,
+  currentUser
 }: SaveToListModalProps) {
+  const analytics = useAnalytics(currentUser || null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -45,6 +49,13 @@ export function SaveToListModal({
   const handleSave = (listId: string, listName: string) => {
     onAddToList(listId, product, quantity);
     setSavedSuccess(listName);
+    analytics.track('product_added_to_list', 'engagement', {
+      productId: product.id,
+      productName: product.name,
+      listId: listId,
+      listName: listName,
+      suggestedQuantity: quantity
+    });
     setTimeout(() => {
       setSavedSuccess(null);
       onClose();
@@ -146,7 +157,10 @@ export function SaveToListModal({
                   </div>
 
                   <button 
-                    onClick={() => setIsCreating(true)}
+                    onClick={() => {
+                      setIsCreating(true);
+                      analytics.trackCta('create_new_list_from_save_modal', 'save_to_list_modal');
+                    }}
                     className="w-full py-4 border-2 border-dashed border-rojo/30 rounded-xl text-rojo font-black text-sm flex items-center justify-center gap-2 hover:bg-rojo-suave transition-colors cursor-pointer"
                   >
                     <Plus size={18} strokeWidth={3} /> Crear una nueva lista

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -27,13 +27,14 @@ import {
   Check
 } from 'lucide-react';
 import { User, ShoppingList, ShoppingListProduct, Product } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ShoppingListsPageProps {
   currentUser: User | null;
   shoppingLists: ShoppingList[];
   onBackToAccount: () => void;
   onGoCatalog: () => void;
-  onAddToCart: (product: any, quantity: number) => void;
+  onAddToCart: (product: any, source?: string | any) => void;
   onOpenCart: () => void;
   onCreateList: (list: Omit<ShoppingList, 'id' | 'createdAt' | 'updatedAt' | 'products'>) => void;
   onUpdateList: (id: string, updates: Partial<ShoppingList>) => void;
@@ -67,6 +68,13 @@ export function ShoppingListsPage({
   onGoAdvisorChat,
   onCreateNotification
 }: ShoppingListsPageProps) {
+  const analytics = useAnalytics(currentUser);
+
+  // Tracking page view
+  useEffect(() => {
+    analytics.trackPageView('/shopping-lists', 'Listas de Compra');
+  }, []);
+
   const [filter, setFilter] = useState<ShoppingList['type'] | 'todos'>('todos');
   const [search, setSearch] = useState('');
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
@@ -114,6 +122,10 @@ export function ShoppingListsPage({
       description: newListDesc,
       type: newListType
     });
+    analytics.track('list_created', 'engagement', {
+      listType: newListType,
+      source: 'shopping_lists_page'
+    });
     setNewListName('');
     setNewListDesc('');
     setNewListType('personalizada');
@@ -144,12 +156,20 @@ export function ShoppingListsPage({
         specs: item.specs,
         price: formatCOP(item.price),
         image: item.image || "https://images.unsplash.com/photo-1527281473222-f9e87be50519?auto=format&fit=crop&q=80&w=400"
-      }, item.suggestedQuantity);
+      }, 'shopping_list_bulk' as any);
       totalAdded += item.suggestedQuantity;
       totalPrice += item.price * item.suggestedQuantity;
     });
 
     if (totalAdded > 0) {
+      analytics.track('add_to_cart_bulk', 'engagement', {
+        listId: list.id,
+        listType: list.type,
+        productCount: availableOnes.length,
+        totalQuantity: totalAdded,
+        estimatedValue: totalPrice,
+        source: 'shopping_lists_page_all'
+      });
       setShowAddSuccess({ count: totalAdded, total: totalPrice });
     }
   };
@@ -168,12 +188,20 @@ export function ShoppingListsPage({
         specs: item.specs,
         price: formatCOP(item.price),
         image: item.image || "https://images.unsplash.com/photo-1527281473222-f9e87be50519?auto=format&fit=crop&q=80&w=400"
-      }, item.suggestedQuantity);
+      }, 'shopping_list_bulk' as any);
       totalAdded += item.suggestedQuantity;
       totalPrice += item.price * item.suggestedQuantity;
     });
 
     if (totalAdded > 0) {
+      analytics.track('add_to_cart_bulk', 'engagement', {
+        listId: selectedList.id,
+        listType: selectedList.type,
+        productCount: selectedOnes.length,
+        totalQuantity: totalAdded,
+        estimatedValue: totalPrice,
+        source: 'shopping_lists_page_selected'
+      });
       setShowAddSuccess({ count: totalAdded, total: totalPrice });
       setSelectedItems([]);
     }
@@ -218,6 +246,7 @@ export function ShoppingListsPage({
                   setNewListDesc('');
                   setNewListType('personalizada');
                   setIsCreateModalOpen(true);
+                  analytics.trackCta('create_new_list_start', 'shopping_lists_page');
                 }}
                 className="px-5 py-2.5 bg-rojo text-white rounded-xl font-black text-sm tbs-shadow hover:bg-rojo-oscuro transition-all cursor-pointer flex items-center gap-2"
               >
@@ -269,7 +298,12 @@ export function ShoppingListsPage({
               type="text" 
               placeholder="Buscar lista, producto o categoría..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (e.target.value.length > 3) {
+                  analytics.trackSearch(e.target.value, filteredLists.length, 'shopping_lists');
+                }
+              }}
               className="w-full pl-12 pr-4 py-3.5 bg-white border border-borde rounded-2xl text-gris focus:outline-none focus:border-rojo/30 transition-all font-medium tbs-shadow"
             />
           </div>
@@ -277,7 +311,10 @@ export function ShoppingListsPage({
             {(['todos', 'frecuente', 'personalizada', 'recomendada', 'evento', 'sede'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setFilter(t)}
+                onClick={() => {
+                  setFilter(t);
+                  analytics.trackFilter('list_type', t, 'shopping_lists');
+                }}
                 className={`px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer border ${
                   filter === t 
                     ? 'bg-rojo text-white border-rojo' 
@@ -364,7 +401,10 @@ export function ShoppingListsPage({
 
                   <div className="flex flex-col gap-2">
                     <button 
-                      onClick={() => setSelectedListId(list.id)}
+                      onClick={() => {
+                        setSelectedListId(list.id);
+                        analytics.track('list_viewed', 'engagement', { listId: list.id, listType: list.type });
+                      }}
                       className="w-full py-3 bg-gray-50 text-gris rounded-xl font-black text-xs uppercase tracking-widest hover:bg-rojo-suave hover:text-rojo transition-all cursor-pointer flex items-center justify-center gap-2"
                     >
                       Ver lista
@@ -534,7 +574,12 @@ export function ShoppingListsPage({
                                     specs: product.specs,
                                     price: formatCOP(product.price),
                                     image: product.image
-                                  }, product.suggestedQuantity);
+                                  }, 'shopping_list');
+                                  analytics.track('product_selected', 'catalog', {
+                                    productId: product.productId,
+                                    productName: product.name,
+                                    source: 'shopping_list_detail'
+                                  });
                                   setShowAddSuccess({ count: product.suggestedQuantity, total: product.price * product.suggestedQuantity });
                                 } else {
                                   onGoAdvisorChat('producto', { label: 'Producto sin stock', value: product.name });
@@ -633,6 +678,7 @@ export function ShoppingListsPage({
                   onClick={() => {
                     setShowAddSuccess(null);
                     onOpenCart();
+                    analytics.trackCta('view_cart_after_list_add', 'shopping_lists_success_modal');
                   }}
                   className="w-full py-5 bg-rojo text-white rounded-2xl font-black text-base uppercase tracking-widest tbs-shadow hover:bg-rojo-oscuro transition-all cursor-pointer flex items-center justify-center gap-3"
                 >
@@ -683,7 +729,9 @@ export function ShoppingListsPage({
                 </button>
                 <button 
                   onClick={() => {
+                    const list = shoppingLists.find(l => l.id === isDeleteModalOpen);
                     onDeleteList(isDeleteModalOpen);
+                    analytics.track('list_deleted', 'engagement', { listId: isDeleteModalOpen, listType: list?.type });
                     setIsDeleteModalOpen(null);
                   }}
                   className="flex-1 py-4 bg-rojo text-white font-black rounded-2xl uppercase tracking-widest tbs-shadow hover:bg-rojo-oscuro transition-all cursor-pointer"

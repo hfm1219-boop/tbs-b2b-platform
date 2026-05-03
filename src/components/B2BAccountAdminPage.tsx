@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Briefcase, 
@@ -43,6 +43,7 @@ import {
   B2BApprovalRule,
   B2BUserActivity
 } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface B2BAccountAdminPageProps {
   currentUser: User;
@@ -69,7 +70,13 @@ export function B2BAccountAdminPage({
   onCreateNotification,
   onCreateActivity
 }: B2BAccountAdminPageProps) {
+  const analytics = useAnalytics(currentUser);
   const [activeTab, setActiveTab] = useState<AdminTab>('resumen');
+
+  useEffect(() => {
+    analytics.trackPageView(`/account-admin/${activeTab}`, `B2B Account Admin - ${activeTab}`);
+  }, [activeTab]);
+
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<ClientAccountRole | 'all'>('all');
   const [userStatusFilter, setUserStatusFilter] = useState<UserStatus | 'all'>('all');
@@ -322,6 +329,13 @@ export function B2BAccountAdminPage({
       };
 
       onUpdateCompanyAccount(updatedAccount);
+      analytics.track('user_edited', 'admin_action', {
+        metadata: { 
+          role: newUserForm.role,
+          cityNameCount: newUserForm.assignedCityIds.length,
+          branchNameCount: newUserForm.assignedBranchIds.length
+        }
+      });
       onCreateActivity({
         userId: currentUser.name,
         userName: currentUser.name,
@@ -353,6 +367,13 @@ export function B2BAccountAdminPage({
       };
 
       onUpdateCompanyAccount(updatedAccount);
+      analytics.track('user_created', 'admin_action', {
+        metadata: { 
+          role: newUserForm.role,
+          cityNameCount: newUserForm.assignedCityIds.length,
+          branchNameCount: newUserForm.assignedBranchIds.length
+        }
+      });
       onCreateActivity({
         userId: currentUser.name,
         userName: currentUser.name,
@@ -612,7 +633,8 @@ export function B2BAccountAdminPage({
       comprador: 'Comprador',
       aprobador: 'Aprobador',
       finanzas: 'Finanzas',
-      consulta: 'Consulta'
+      consulta: 'Consulta',
+      operador: 'Operador'
     };
     return roles[role];
   };

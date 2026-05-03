@@ -1,7 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowRight, CheckCircle2, Mail, FileText, UserPlus } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
+import { getAnalyticsUserRole } from '../services/analytics';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,33 +11,51 @@ interface LoginModalProps {
   onLogin: (user: User) => void;
   onRequestAccess: () => void;
   onGoFAQ: () => void;
+  onGoLegalPage: (key: any) => void;
   companyAccount?: any;
 }
 
-export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ, companyAccount }: LoginModalProps) {
+export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ, onGoLegalPage, companyAccount }: LoginModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [loginRole, setLoginRole] = useState<'cliente_b2b' | 'marca'>('cliente_b2b');
+  const [loginRole, setLoginRole] = useState<'cliente_b2b' | 'marca' | 'hospitality_partner'>('cliente_b2b');
+  const analytics = useAnalytics(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      analytics.track('login_modal_opened', 'authentication');
+    }
+  }, [isOpen, analytics]);
+
+  const handleLogin = (user: User) => {
+    analytics.track('login_success', 'authentication', {
+      userRole: getAnalyticsUserRole(user),
+      customerType: user.customerType,
+      providerType: user.providerType,
+      accountRole: user.accountRole
+    });
+    onLogin(user);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (email.trim() && password.trim()) {
       // Simulated Login based on selected role
-      if (loginRole === 'cliente_b2b') {
+          if (loginRole === 'cliente_b2b') {
         const simulatedUser: User = {
           id: "user-001",
           name: "Humberto",
           email: email,
           businessName: "Restaurante Demo",
           role: "cliente_b2b",
-          city: "Cartagena",
-          address: "Centro Histórico, Calle del Arsenal #10-20",
+          city: "Nacional",
+          address: "Cobertura Nacional",
           customerType: "Restaurante",
           creditLimit: 5000000,
           availableCredit: 3250000
         };
-        onLogin(simulatedUser);
+        handleLogin(simulatedUser);
       } else {
         const simulatedUser: User = {
           id: "user-valentina",
@@ -43,11 +63,11 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
           email: email,
           businessName: "Marca Premium Demo",
           role: "marca",
-          city: "Cartagena",
-          address: "Manga, Calle 26 #22-10",
+          city: "Nacional",
+          address: "Cobertura Nacional",
           providerType: "importadora"
         };
-        onLogin(simulatedUser);
+        handleLogin(simulatedUser);
       }
       onClose();
     }
@@ -146,6 +166,13 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                 </button>
                 <button
                   type="button"
+                  onClick={() => setLoginRole('hospitality_partner')}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginRole === 'hospitality_partner' ? 'bg-white text-rojo shadow-sm' : 'text-gris hover:text-texto'}`}
+                >
+                  Hospitalidad / Eventos
+                </button>
+                <button
+                  type="button"
                   onClick={() => setLoginRole('marca')}
                   className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${loginRole === 'marca' ? 'bg-white text-rojo shadow-sm' : 'text-gris hover:text-texto'}`}
                 >
@@ -166,8 +193,8 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                         email: "humberto@demo.com",
                         businessName: "Grupo Restaurante Demo",
                         role: "cliente_b2b",
-                        city: "Cartagena",
-                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        city: "Nacional",
+                        address: "Cobertura Nacional",
                         customerType: "Restaurante",
                         accountRole: 'master'
                       })}
@@ -184,8 +211,8 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                         email: "maria.compras@demo.com",
                         businessName: "Grupo Restaurante Demo",
                         role: "cliente_b2b",
-                        city: "Cartagena",
-                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        city: "Nacional",
+                        address: "Cobertura Nacional",
                         customerType: "Restaurante",
                         accountRole: 'comprador'
                       })}
@@ -202,8 +229,8 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                         email: "carlos.finanzas@demo.com",
                         businessName: "Grupo Restaurante Demo",
                         role: "cliente_b2b",
-                        city: "Cartagena",
-                        address: "Centro Histórico, Calle del Arsenal #10-20",
+                        city: "Nacional",
+                        address: "Cobertura Nacional",
                         customerType: "Restaurante",
                         accountRole: 'finanzas'
                       })}
@@ -212,7 +239,87 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                       <div className="w-8 h-8 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center text-xs font-black">C</div>
                       Entrar como Finanzas (Carlos)
                     </button>
+                    <button 
+                      type="button"
+                      onClick={() => onLogin({
+                        id: "user-004",
+                        name: "Sofía Contado",
+                        email: "sofia.contado@demo.com",
+                        businessName: "Licorera Contado Demo",
+                        role: "cliente_b2b",
+                        city: "Cartagena",
+                        address: "Calle de la Moneda, Cartagena",
+                        customerType: "Licorera",
+                        commercialCondition: "contado",
+                        paymentPolicy: "pago_anticipado",
+                        creditStatus: "sin_credito",
+                        creditLimit: 0,
+                        availableCredit: 0,
+                        accountRole: "master",
+                        companyAccountId: "acct-001",
+                        assignedCityIds: ["city-ctg"],
+                        assignedBranchIds: ["branch-ctg-001"],
+                        assignedPointOfSaleIds: ["pos-001"],
+                        permissions: [
+                          "ver_catalogo",
+                          "crear_pedidos",
+                          "ver_pedidos",
+                          "ver_cartera",
+                          "ver_pagos",
+                          "pedido_urgente",
+                          "reordenar",
+                          "gestionar_listas",
+                          "ver_promociones",
+                          "hablar_asesor",
+                          "solicitar_credito"
+                        ]
+                      })}
+                      className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-rojo hover:text-rojo transition-all flex items-center justify-center gap-3 group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center text-xs font-black">S</div>
+                      Entrar como Cliente Contado (Sofía)
+                    </button>
                   </>
+                ) : loginRole === 'hospitality_partner' ? (
+                  <button 
+                    type="button"
+                    onClick={() => onLogin({
+                      id: "user-hosp-001",
+                      name: "Laura Eventos",
+                      businessName: "Laura Eventos & Hospitality",
+                      role: "hospitality_partner",
+                      city: "Cartagena",
+                      customerType: "Gestor de eventos",
+                      partnerType: "wedding_planner",
+                      hospitalityPartnerId: "partner-001",
+                      commissionRuleId: "comm-rule-001",
+                      creditLimit: 0,
+                      availableCredit: 0,
+                      canCreateManagedClients: true,
+                      canBuyForManagedClients: true,
+                      canScheduleManagedDeliveries: true,
+                      canViewCommissions: true,
+                      permissions: [
+                        "ver_catalogo",
+                        "crear_pedidos",
+                        "ver_pedidos",
+                        "reordenar",
+                        "pedido_urgente",
+                        "hablar_asesor",
+                        "crear_clientes_gestionados",
+                        "comprar_para_clientes",
+                        "programar_entregas_eventos",
+                        "ver_comisiones",
+                        "gestionar_eventos"
+                      ],
+                      address: "Getsemaní, Cartagena",
+                      email: "laura.eventos@demo.com"
+                    })}
+                    className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-rojo hover:text-rojo transition-all flex items-center justify-center gap-3 group"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-rojo/10 text-rojo flex items-center justify-center text-xs font-black">L</div>
+                    Entrar como Gestor (Laura Eventos)
+                  </button>
                 ) : (
                   <button 
                     type="button"
@@ -222,8 +329,8 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                       email: "valentina@example.com",
                       businessName: "Marca Premium Demo",
                       role: "marca",
-                      city: "Cartagena",
-                      address: "Manga, Calle 26 #22-10",
+                      city: "Nacional",
+                      address: "Cobertura Nacional",
                       providerType: "importadora"
                     })}
                     className="w-full bg-white border border-borde text-texto py-4 rounded-xl font-black shadow-sm hover:border-indigo-500 hover:text-indigo-500 transition-all flex items-center justify-center gap-3 group"
@@ -311,9 +418,12 @@ export function LoginModal({ isOpen, onClose, onLogin, onRequestAccess, onGoFAQ,
                   </button>
                 </div>
                 
-                <p className="text-center text-[10px] text-gris font-medium mt-10 px-10 leading-relaxed uppercase tracking-widest">
-                  Protegido por políticas de seguridad corporativa TBS.
-                </p>
+                <div className="text-center text-[10px] text-gris font-medium mt-10 px-10 leading-relaxed uppercase tracking-widest space-y-1">
+                  <p>Protegido por políticas de seguridad corporativa TBS.</p>
+                  <p>
+                    Al iniciar sesión aceptas nuestra <button type="button" onClick={() => { onGoLegalPage('privacidad'); onClose(); }} className="font-black hover:text-rojo underline">Política de privacidad</button> y <button type="button" onClick={() => { onGoLegalPage('terminos'); onClose(); }} className="font-black hover:text-rojo underline">Términos</button>.
+                  </p>
+                </div>
               </form>
             </div>
           </div>

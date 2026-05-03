@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -28,6 +29,7 @@ import {
   CustomerInsight,
   Product
 } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface IntelligencePageProps {
   currentUser: User | null;
@@ -68,6 +70,12 @@ export function IntelligencePage({
   onOpenCart,
   onCreateNotification
 }: IntelligencePageProps) {
+  const analytics = useAnalytics(currentUser);
+  const isCash = currentUser?.commercialCondition === 'contado';
+
+  useEffect(() => {
+    analytics.trackPageView('/intelligence', 'Inteligencia B2B');
+  }, []);
 
   const formatCOP = (value: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -94,6 +102,12 @@ export function IntelligencePage({
     
     onAddToCart(productForCart, 6);
     
+    analytics.track('product_selected', 'engagement', {
+      productId: prod.productId,
+      productName: prod.name,
+      source: 'intelligence_page_reorder'
+    });
+
     if (onCreateNotification) {
       onCreateNotification({
         type: "comercial",
@@ -120,6 +134,7 @@ export function IntelligencePage({
   };
 
   const handleInsightAction = (target: string) => {
+    analytics.trackCta(`intelligence_insight_${target}`, 'intelligence_page');
     switch (target) {
       case 'reorder': onGoReorder(); break;
       case 'payments': onGoPayments(); break;
@@ -449,15 +464,20 @@ export function IntelligencePage({
                     <AlertCircle size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-texto">Facturas por vencer</h4>
+                    <h4 className="text-sm font-black text-texto">
+                      {isCash ? 'Facturas por pagar' : 'Facturas por vencer'}
+                    </h4>
                     <p className="text-xs font-medium text-gris mt-1.5 leading-relaxed">
-                      Tienes {summary.pendingInvoices} facturas pendientes de pago. Realiza tus abonos para desbloquear cupo adicional de crédito.
+                      {isCash 
+                        ? `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus pagos para liberar pedidos y mantener tu operación.`
+                        : `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus abonos para desbloquear cupo adicional de crédito.`
+                      }
                     </p>
                     <button 
                       onClick={onGoPayments}
                       className="mt-3 text-xs font-black text-amber-600 uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      Ir a cartera <ChevronRight size={14} />
+                      {isCash ? 'Ver facturas por pagar' : 'Ir a cartera'} <ChevronRight size={14} />
                     </button>
                   </div>
                 </div>

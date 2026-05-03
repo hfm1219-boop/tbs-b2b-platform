@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, 
@@ -37,6 +37,7 @@ import {
   B2BUserActivity,
   ClientAccountRole
 } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface OrderApprovalsPageProps {
   currentUser: User;
@@ -61,7 +62,12 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
   onCreateNotification,
   onCreateActivity
 }) => {
+  const analytics = useAnalytics(currentUser);
   const [filterStatus, setFilterStatus] = useState<ApprovalStatus | 'todos'>('todos');
+
+  useEffect(() => {
+    analytics.trackPageView('/order-approvals', 'Aprobación de pedidos');
+  }, []);
   const [filterCity, setFilterCity] = useState<string>('todas');
   const [filterUser, setFilterUser] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
@@ -159,6 +165,15 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
 
     onUpdateApprovalOrders(updatedOrders);
     
+    analytics.track('order_approval_decision', 'orders', {
+      orderId: selectedOrder.id,
+      metadata: { 
+        orderNumber: selectedOrder.orderNumber, 
+        decision: decisionType,
+        total: selectedOrder.total
+      }
+    });
+
     // Activity
     onCreateActivity({
       userId: currentUser.name,

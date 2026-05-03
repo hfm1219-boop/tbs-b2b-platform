@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { User, UrgentProduct, UrgentReason, UrgentOrderRequest } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface UrgentOrderPageProps {
   currentUser: User | null;
@@ -144,6 +145,16 @@ export function UrgentOrderPage({
   onGoAdvisorChat,
   onCreateNotification
 }: UrgentOrderPageProps) {
+  const analytics = useAnalytics(currentUser);
+  
+  // Tracking page view
+  useEffect(() => {
+    analytics.track('urgent_order_viewed', 'checkout', {
+      city: currentUser?.city
+    });
+    analytics.trackFormStart('urgent_order', 'urgent_order_page');
+  }, []);
+
   // Form State
   const [reason, setReason] = useState<UrgentReason | null>(null);
   const city = currentUser?.city || 'Cartagena';
@@ -214,6 +225,11 @@ export function UrgentOrderPage({
         ...selectedProducts,
         [product.id]: { product, quantity: quantities[product.id] || product.suggestedQuantity }
       });
+      analytics.track('product_selected', 'catalog', {
+        productId: product.productId,
+        productName: product.name,
+        source: 'urgent_order'
+      });
     }
   };
 
@@ -230,7 +246,12 @@ export function UrgentOrderPage({
   };
 
   const handleSubmit = () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      analytics.trackFormSubmit('urgent_order', false, {
+        reason: 'missing_required_fields'
+      });
+      return;
+    }
 
     const request: UrgentOrderRequest = {
       id: `URG-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -245,6 +266,17 @@ export function UrgentOrderPage({
       estimatedTotal: totals.total,
       status: 'en_validacion'
     };
+
+    analytics.track('urgent_order_submitted', 'checkout', {
+      requestId: request.id,
+      reason: request.reason,
+      deliveryWindow: request.deliveryWindow,
+      productCount: request.products.length,
+      estimatedTotal: request.estimatedTotal
+    });
+    analytics.trackFormSubmit('urgent_order', true, {
+      requestId: request.id
+    });
 
     setShowConfirmModal(request);
 
@@ -364,7 +396,10 @@ export function UrgentOrderPage({
                   return (
                     <button
                       key={r.id}
-                      onClick={() => setReason(r.id)}
+                      onClick={() => {
+                        setReason(r.id);
+                        analytics.track('urgent_order_reason_selected', 'checkout', { reason: r.id });
+                      }}
                       className={`p-5 rounded-2xl border-2 transition-all flex flex-col items-center text-center gap-3 cursor-pointer ${
                         isSelected 
                           ? 'border-rojo bg-rojo/5' 
@@ -798,8 +833,8 @@ function UrgentProductCard({
             onClick={onToggle}
             className={`flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
               isSelected 
-                ? 'bg-rojo text-white shadow-lg shadow-rojo/20' 
-                : 'bg-white border-2 border-borde text-gris hover:border-rojo hover:text-rojo'
+                ? 'bg-rojo text-white shadow-md shadow-rojo/20' 
+                : 'bg-white border border-borde text-gris hover:border-rojo hover:text-rojo'
             }`}
           >
             {isSelected ? 'Agregado' : 'Agregar'}
@@ -809,9 +844,10 @@ function UrgentProductCard({
         <div className="pt-4 border-t border-borde/50">
           <button 
             onClick={onConsultAdvisor}
-            className="w-full py-2.5 bg-white border border-yellow-200 rounded-xl font-black text-[10px] text-yellow-700 uppercase tracking-widest hover:bg-yellow-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-2.5 rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-700 font-black text-[10px] uppercase tracking-wider hover:bg-yellow-100 transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            <Info size={12} /> Consultar disponibilidad
+            <MessageSquare size={14} />
+            Consultar asesor
           </button>
         </div>
       )}

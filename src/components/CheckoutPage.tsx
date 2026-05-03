@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -22,8 +22,12 @@ import {
   B2BCompanyAccount, 
   ApprovalStatus, 
   ApprovalReason,
-  ApprovalOrderLine
+  ApprovalOrderLine,
+  ManagedClient,
+  ManagedEvent,
+  ManagedClientBillingType
 } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CheckoutPageProps {
   items: CartItem[];
@@ -33,6 +37,14 @@ interface CheckoutPageProps {
   onFinish: () => void;
   onCreatePendingApprovalOrder: (order: PendingApprovalOrder) => void;
   onGoOrderApprovals: () => void;
+  hospitalityContext?: {
+    partnerId: string;
+    managedClientId: string;
+    managedEventId?: string;
+    billingType: ManagedClientBillingType;
+  } | null;
+  managedClients?: ManagedClient[];
+  managedEvents?: ManagedEvent[];
 }
 
 function parsePrice(price: string) {
@@ -54,32 +66,40 @@ export function CheckoutPage({
   onBack, 
   onFinish,
   onCreatePendingApprovalOrder,
-  onGoOrderApprovals
+  onGoOrderApprovals,
+  hospitalityContext,
+  managedClients = [],
+  managedEvents = []
 }: CheckoutPageProps) {
+  const analytics = useAnalytics(currentUser);
+  const isCash = currentUser?.commercialCondition === 'contado';
   const [confirmed, setConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsApproval, setNeedsApproval] = useState(false);
   const [approvalReason, setApprovalReason] = useState<{key: ApprovalReason, label: string} | null>(null);
+  const [validationMessage, setValidationMessage] = useState<{type: 'info' | 'warning', text: string} | null>(null);
 
   const [form, setForm] = useState({
     contactName: currentUser?.name || 'Humberto',
     phone: '',
-    city: currentUser?.city || 'Cartagena',
+    city: currentUser?.city || 'Bogotá',
     address: '',
     deliveryDate: '',
     deliveryWindow: 'Mañana: 8:00 a.m. - 12:00 p.m.',
-    paymentMethod: 'Crédito B2B',
+    paymentMethod: isCash ? 'PSE' : 'Crédito B2B',
     cardFranchise: 'Visa', // New field
     notes: '',
   });
 
   const totalUnits = useMemo(() => {
-    return items.reduce((sum, item) => sum + item.quantity, 0);
+    return items.reduce((sum, item) => sum + (item.totalUnits || item.quantity), 0);
   }, [items]);
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => {
-      return sum + parsePrice(item.product.price) * item.quantity;
+      const pkgPrice = item.packaging?.packagePrice || (parsePrice(item.product.price) * (item.packaging?.unitsPerPackage || 1));
+      const qty = item.packageQuantity || 1;
+      return sum + (pkgPrice * qty);
     }, 0);
   }, [items]);
 
@@ -97,6 +117,19 @@ export function CheckoutPage({
   const commissionValue = Math.round(totalConIva * cardCommissionPercent);
   const totalEstimado = totalConIva + commissionValue;
 
+  const managedClient = managedClients.find(c => c.id === hospitalityContext?.managedClientId);
+  const managedEvent = managedEvents.find(e => e.id === hospitalityContext?.managedEventId);
+
+  // Track checkout view and form start
+  useEffect(() => {
+    analytics.track('checkout_viewed', 'checkout', {
+      productCount: items.length,
+      units: totalUnits,
+      cartValue: totalEstimado
+    });
+    analytics.trackFormStart('checkout', 'checkout_page');
+  }, [analytics, items.length, totalUnits, totalEstimado]);
+
   const isValid =
     form.contactName.trim() &&
     form.phone.trim() &&
@@ -104,15 +137,32 @@ export function CheckoutPage({
     form.address.trim() &&
     form.deliveryDate.trim() &&
     form.deliveryWindow.trim() &&
-    form.paymentMethod.trim();
+    form.paymentMethod.trim() &&
+    !(isCash && form.paymentMethod === 'Crédito B2B');
 
   const handleChange = (
     field: keyof typeof form,
     value: string
   ) => {
-    if (field === 'paymentMethod' && value === 'Tarjeta de crédito') {
-      alert("Atención: Los pagos con tarjeta de crédito tienen una comisión administrativa (Visa/Mastercard 2%, Amex 3%) que se sumará al total.");
+    // Reset message on change
+    setValidationMessage(null);
+
+    if (field === 'paymentMethod') {
+      if (value === 'Tarjeta de crédito') {
+        setValidationMessage({
+          type: 'info',
+          text: "Atención: Los pagos con tarjeta de crédito tienen una comisión administrativa (Visa/Mastercard 2%, Amex 3%) que se sumará al total."
+        });
+      }
+      
+      if (isCash && value === 'Crédito B2B') {
+        setValidationMessage({
+          type: 'warning',
+          text: "Tu cuenta está configurada como cliente contado. Para usar crédito B2B debes solicitar análisis y aprobación de cupo."
+        });
+      }
     }
+
     setForm((prev) => ({
       ...prev,
       [field]: value,
@@ -120,7 +170,14 @@ export function CheckoutPage({
   };
 
   const handleConfirm = async () => {
-    if (!isValid) return;
+    if (!isValid) {
+      analytics.trackFormSubmit('checkout', false, {
+        reason: 'missing_required_fields_or_blocked_credit',
+        productCount: items.length,
+        totalValue: totalEstimado
+      });
+      return;
+    }
     
     setIsSubmitting(true);
 
@@ -128,7 +185,7 @@ export function CheckoutPage({
     let reqApproval = false;
     let reason: {key: ApprovalReason, label: string} | null = null;
 
-    // 1. User individual limits
+    // 1. User individual limits (Not applicable for cash if we consider they pay first, but let's keep logic for safety)
     if (currentUser?.requiresApprovalAbove && currentUser.requiresApprovalAbove > 0 && totalEstimado > currentUser.requiresApprovalAbove) {
       reqApproval = true;
       reason = { key: 'supera_limite_usuario', label: 'Supera límite autorizado por pedido' };
@@ -162,6 +219,18 @@ export function CheckoutPage({
       // Mock API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      const orderPayload = {
+        paymentMethod: form.paymentMethod,
+        productCount: items.length,
+        totalValue: totalEstimado,
+        needsApproval: reqApproval,
+        approvalReason: reason?.key,
+        metadata: {
+          commercialCondition: isCash ? "contado" : "credito",
+          paymentPolicy: isCash ? "pago_anticipado" : "credito_aprobado"
+        }
+      };
+
       if (reqApproval) {
         const newApprovalOrder: PendingApprovalOrder = {
           id: `appr-${Date.now()}`,
@@ -190,16 +259,24 @@ export function CheckoutPage({
             category: item.product.category,
             specs: item.product.specs,
             image: item.product.image,
-            quantity: item.quantity,
+            quantity: item.totalUnits || item.quantity,
             unitPrice: parsePrice(item.product.price),
-            subtotal: parsePrice(item.product.price) * item.quantity
+            subtotal: (item.packaging?.packagePrice || parsePrice(item.product.price)) * (item.packageQuantity || 1),
+            packagingLabel: item.packaging?.label,
+            packageQuantity: item.packageQuantity
           })),
           approverUserIds: companyAccount.users.filter(u => u.role === 'master' || u.role === 'aprobador').map(u => u.id),
           decisions: []
         };
         
         onCreatePendingApprovalOrder(newApprovalOrder);
+        
+        analytics.track('order_approval_requested', 'checkout', orderPayload);
+      } else {
+        analytics.track('order_completed', 'checkout', orderPayload);
       }
+
+      analytics.trackFormSubmit('checkout', true, orderPayload);
 
       setNeedsApproval(reqApproval);
       setApprovalReason(reason);
@@ -207,6 +284,7 @@ export function CheckoutPage({
       
     } catch (error) {
       console.error("Order error:", error);
+      analytics.trackError('checkout_confirmation_failed', 'checkout', { error: error instanceof Error ? error.message : 'Unknown error' });
       alert("Error de conexión.");
     } finally {
       setIsSubmitting(false);
@@ -248,21 +326,23 @@ export function CheckoutPage({
             {needsApproval ? <Clock size={56} /> : <CheckCircle2 size={56} />}
           </div>
 
-          <div className={`text-xs font-black uppercase tracking-[0.2em] mb-4 ${needsApproval ? 'text-orange-500' : 'text-rojo'}`}>
-            {needsApproval ? 'Estatus: En aprobación' : 'Estatus: Pedido recibido'}
+          <div className={`text-xs font-black uppercase tracking-[0.2em] mb-4 ${needsApproval ? 'text-orange-500' : (isCash ? 'text-orange-500' : 'text-rojo')}`}>
+            {needsApproval ? 'Estatus: En aprobación' : (isCash ? 'Estatus: Pendiente de pago' : 'Estatus: Pedido recibido')}
           </div>
 
           <h1 className="text-3xl md:text-4xl font-black text-texto tracking-tighter leading-none mb-6">
             {needsApproval 
               ? 'Tu pedido fue enviado a aprobación'
-              : '¡Pedido enviado correctamente!'
+              : (isCash ? 'Pedido recibido - Pendiente de pago' : '¡Pedido enviado correctamente!')
             }
           </h1>
 
           <p className="text-lg font-medium text-gris leading-relaxed mb-10">
             {needsApproval 
               ? 'Tu pedido supera el límite autorizado o una regla de aprobación de tu cuenta. Un aprobador revisará el pedido antes de continuar con la validación comercial y logística.'
-              : 'Hemos recibido tu solicitud. El equipo TBS revisará disponibilidad, condiciones comerciales, cupo y ventana logística para confirmar tu entrega.'
+              : (isCash 
+                  ? 'Tu pedido fue registrado. Continuará su proceso cuando el pago sea confirmado según el método seleccionado (Pago anticipado o confirmación de pago).' 
+                  : 'Hemos recibido tu solicitud. El equipo TBS revisará disponibilidad, condiciones comerciales, cupo y ventana logística para confirmar tu entrega.')
             }
           </p>
 
@@ -294,12 +374,22 @@ export function CheckoutPage({
                 <ShieldCheck size={20} /> Ver mis pedidos en aprobación
               </button>
             ) : (
-              <button
-                onClick={onFinish}
-                className="px-8 py-5 bg-rojo text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-rojo-oscuro hover:scale-105 transition-all shadow-xl shadow-rojo/20 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Ir a mis pedidos
-              </button>
+              <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                <button
+                  onClick={onFinish}
+                  className="px-8 py-5 bg-rojo text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-rojo-oscuro hover:scale-105 transition-all shadow-xl shadow-rojo/20 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  Ir a mis pedidos
+                </button>
+                {isCash && (
+                  <button
+                    onClick={() => { onFinish(); /* Logic to go to payments could be handled in App.tsx by switching page after finish */ }}
+                    className="px-8 py-5 bg-texto text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-black hover:scale-105 transition-all shadow-xl shadow-black/10 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <CreditCard size={20} /> Ir a pagos
+                  </button>
+                )}
+              </div>
             )}
             <button
               onClick={onFinish}
@@ -392,7 +482,10 @@ export function CheckoutPage({
                       onChange={(e) => handleChange('city', e.target.value)}
                       className="w-full h-12 rounded-lg border border-[#F1F3F5] px-4 outline-none focus:border-rojo appearance-none bg-white cursor-pointer"
                     >
-                      <option>Cartagena</option>
+                      <option>Bogotá</option>
+                      <option>Medellín</option>
+                      <option>Cali</option>
+                      <option>Barranquilla</option>
                       <option>Barranquilla</option>
                       <option>Santa Marta</option>
                       <option>Montería</option>
@@ -483,7 +576,9 @@ export function CheckoutPage({
                   'PSE',
                   'Tarjeta de crédito',
                   'QR / pago en línea',
-                ].map((method) => (
+                ]
+                .filter(method => !(isCash && method === 'Crédito B2B'))
+                .map((method) => (
                   <button
                     key={method}
                     onClick={() => handleChange('paymentMethod', method)}
@@ -530,6 +625,17 @@ export function CheckoutPage({
                   </button>
                 ))}
               </div>
+
+              {validationMessage && (
+                <div className={`mt-6 p-4 rounded-xl flex items-start gap-3 border shadow-sm ${
+                  validationMessage.type === 'warning' 
+                    ? 'bg-amber-50 border-amber-200 text-amber-800' 
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}>
+                  <AlertCircle size={20} className="shrink-0" />
+                  <p className="text-sm font-semibold">{validationMessage.text}</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl border border-[#F1F3F5] p-6 shadow-sm">
@@ -558,6 +664,22 @@ export function CheckoutPage({
           </section>
 
           <aside className="lg:sticky lg:top-6 h-fit bg-white rounded-2xl border border-[#F1F3F5] p-6 shadow-sm">
+            {hospitalityContext && managedClient && (
+              <div className="mb-6 bg-texto text-white p-5 rounded-2xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-9 h-9 bg-white/20 rounded-lg flex items-center justify-center">
+                    <ShoppingCart size={18} />
+                  </div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-white/70 italic">Modo Gestión</div>
+                </div>
+                <h3 className="text-sm font-black mb-1">{managedClient.businessName}</h3>
+                <div className="text-[10px] font-bold text-white/50">
+                  {managedEvent ? `Evento: ${managedEvent.eventName}` : 'Compra directa'}
+                  <br />
+                  Facturación: {hospitalityContext.billingType === 'facturar_cliente_final' ? 'Cliente Final' : 'Mi Cuenta (Gestor)'}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-rojo/10 flex items-center justify-center text-rojo">
                 <PackageCheck size={23} />
@@ -593,14 +715,25 @@ export function CheckoutPage({
                     <h3 className="mt-1 text-sm font-black text-texto leading-tight">
                       {item.product.name}
                     </h3>
+                    
+                    {item.packaging && (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="px-1.5 py-0.5 bg-gray-100 text-gris font-black text-[9px] rounded uppercase border border-borde">
+                          {item.packaging.label}
+                        </span>
+                        <span className="text-[9px] font-black text-rojo">
+                          x{item.packaging.unitsPerPackage} und.
+                        </span>
+                      </div>
+                    )}
 
                     <div className="mt-1 text-xs font-semibold text-gris">
-                      {item.quantity} x {item.product.price}
+                      {item.packageQuantity || item.quantity} x {item.packaging && item.packaging.unitsPerPackage > 1 ? 'Caja' : 'Und.'} $ {(item.packaging?.packagePrice || parsePrice(item.product.price)).toLocaleString('es-CO')}
                     </div>
                   </div>
 
                   <div className="text-sm font-black text-texto">
-                    {formatCOP(parsePrice(item.product.price) * item.quantity)}
+                    {formatCOP((item.packaging?.packagePrice || parsePrice(item.product.price)) * (item.packageQuantity || 1))}
                   </div>
                 </article>
               ))}
@@ -654,6 +787,17 @@ export function CheckoutPage({
                   acuerdos comerciales y condiciones finales del cliente.
                 </p>
               </div>
+
+              {isCash && (
+                <div className="rounded-xl bg-orange-50 border border-orange-100 p-4">
+                  <div className="text-sm font-black text-orange-600 flex items-center gap-2">
+                    <WalletCards size={16} /> Pedido contado
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-orange-700 leading-relaxed">
+                    Este pedido requiere pago anticipado o confirmación de pago para continuar con validación comercial, inventario y logística.
+                  </p>
+                </div>
+              )}
             </div>
 
             <button

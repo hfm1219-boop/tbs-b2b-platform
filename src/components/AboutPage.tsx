@@ -1,28 +1,28 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Truck, CreditCard, Headset, Shield, BarChart3, Zap, Building2, Package, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Truck, CreditCard, Headset, Shield, BarChart3, Zap, Building2, Package, Users, Store, Music } from 'lucide-react';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface AboutPageProps {
   onBack: () => void;
   onGoToCatalog: () => void;
   onGoAdvisorChat: () => void;
+  onGoPage: (page: string) => void;
 }
 
-export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageProps) {
+export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat, onGoPage }: AboutPageProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde">
+      <section className="relative pt-10 pb-20 lg:pt-10 lg:pb-32 overflow-hidden border-b border-borde">
         <div className="absolute inset-0 bg-rojo-suave/30 -z-10">
           <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-rojo/5 to-transparent"></div>
         </div>
         
         <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 mb-12 text-sm font-extrabold text-gris hover:text-rojo cursor-pointer transition-colors outline-none"
-          >
-            <ArrowLeft size={18} /> Volver al inicio
-          </button>
+          <Breadcrumbs 
+            onHomeClick={onBack}
+            items={[{ label: 'Qué es TBS', current: true }]}
+          />
 
           <div className="max-w-3xl">
             <motion.div 
@@ -38,7 +38,7 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
               transition={{ delay: 0.1 }}
               className="text-5xl lg:text-[88px] font-black tracking-tighter leading-[0.85] mb-8"
             >
-              Mucho más que una tienda de licores.
+              Qué es TBS
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -46,7 +46,7 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
               transition={{ delay: 0.2 }}
               className="text-xl text-texto-sec font-semibold leading-relaxed"
             >
-              TBS es una plataforma B2B diseñada para negocios que venden, sirven o distribuyen licores. 
+              TBS Destilados es una plataforma B2B diseñada para negocios que venden, sirven o distribuyen licores. 
               Ayudamos a bares, restaurantes y hoteles a comprar mejor, operar con más control y crecer con el respaldo de un equipo comercial experto.
             </motion.p>
             
@@ -74,7 +74,7 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
             <div className="absolute -inset-4 bg-rojo/5 rounded-3xl -rotate-2 group-hover:rotate-0 transition-transform duration-500"></div>
             <img 
               src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800" 
-              alt="Operación Logística" 
+              alt="Operación Logística TBS" 
               className="relative w-full rounded-2xl shadow-2xl z-10 grayscale hover:grayscale-0 transition-all duration-700"
               referrerPolicy="no-referrer"
             />
@@ -83,31 +83,49 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
           <div>
             <h2 className="text-4xl font-black tracking-tight mb-8">Centralizamos tu abastecimiento en un solo canal.</h2>
             <p className="text-lg text-texto-sec font-medium leading-relaxed mb-10">
-              Conectamos catálogo, precios personalizados, crédito, pagos, pedidos recurrentes, trazabilidad logística y soporte comercial experto en un solo lugar. 
+              Conectamos catálogo, precios B2B competitivos, crédito, pagos, pedidos recurrentes, trazabilidad logística y soporte comercial experto en un solo lugar. 
               TBS centraliza el abastecimiento B2B para que tu negocio tenga acceso a productos, marcas y condiciones comerciales desde un mismo canal.
             </p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="flex gap-4">
+              <button 
+                onClick={() => onGoPage('clients')}
+                className="flex gap-4 p-4 rounded-xl hover:bg-rojo/5 transition-all text-left"
+              >
                 <div className="w-12 h-12 bg-rojo-suave rounded-xl flex items-center justify-center shrink-0">
                   <Shield size={24} className="text-rojo" />
                 </div>
                 <div>
-                  <h4 className="font-black text-texto mb-1">Confianza Total</h4>
-                  <p className="text-sm text-gris font-semibold">Transacciones seguras y protección de datos en cada compra.</p>
+                  <h4 className="font-black text-texto mb-1">Para Clientes B2B</h4>
+                  <p className="text-sm text-gris font-semibold">Bares, hoteles y restaurantes.</p>
                 </div>
-              </div>
-              <div className="flex gap-4">
+              </button>
+              <button 
+                onClick={() => onGoPage('providers')}
+                className="flex gap-4 p-4 rounded-xl hover:bg-rojo/5 transition-all text-left"
+              >
                 <div className="w-12 h-12 bg-rojo-suave rounded-xl flex items-center justify-center shrink-0">
                   <Zap size={24} className="text-rojo" />
                 </div>
                 <div>
-                  <h4 className="font-black text-texto mb-1">Respuesta Rápida</h4>
-                  <p className="text-sm text-gris font-semibold">Soporte inmediato para tus urgencias operativas.</p>
+                  <h4 className="font-black text-texto mb-1">Para Marcas</h4>
+                  <p className="text-sm text-gris font-semibold">Proveedores e importadoras.</p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Services Grid (Internal Links) */}
+      <section className="py-24 bg-gray-50">
+        <div className="max-w-[1480px] mx-auto px-8 text-center">
+            <h2 className="text-4xl font-black tracking-tight mb-12">Explora nuestras soluciones</h2>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button onClick={() => onGoPage('services')} className="px-6 py-3 bg-white border border-borde rounded-xl font-bold hover:border-rojo transition-all">Servicios TBS</button>
+              <button onClick={() => onGoPage('faq')} className="px-6 py-3 bg-white border border-borde rounded-xl font-bold hover:border-rojo transition-all">Centro de ayuda</button>
+              <button onClick={() => onGoPage('request-access')} className="px-6 py-3 bg-rojo text-white rounded-xl font-bold transition-all">Empieza ahora</button>
+            </div>
         </div>
       </section>
 
@@ -128,7 +146,7 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
               },
               { 
                 icon: BarChart3, 
-                title: 'Precios Personalizados', 
+                title: 'Precios B2B', 
                 desc: 'Condiciones comerciales dinámicas según tu tipo de negocio, volumen y perfil de compra.' 
               },
               { 
@@ -203,7 +221,10 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
           <h2 className="text-4xl font-black tracking-tight mb-6">¿Listo para transformar tu abastecimiento?</h2>
           <p className="text-xl opacity-80 font-medium mb-10">Únete a cientos de negocios que ya operan con TBS y ahorra tiempo y dinero en cada pedido.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button className="px-10 py-5 bg-white text-rojo rounded-xl font-black text-lg hover:bg-rojo-suave transition-all cursor-pointer">
+            <button 
+              onClick={() => onGoPage('request-access')}
+              className="px-10 py-5 bg-white text-rojo rounded-xl font-black text-lg hover:bg-rojo-suave transition-all cursor-pointer"
+            >
               Solicitar Acceso
             </button>
             <button onClick={onGoAdvisorChat} className="px-10 py-5 border border-white/30 text-white rounded-xl font-black text-lg hover:bg-white/10 transition-all cursor-pointer">
@@ -220,31 +241,3 @@ export function AboutPage({ onBack, onGoToCatalog, onGoAdvisorChat }: AboutPageP
   );
 }
 
-// Support icons that were missing in local scope but present in top level
-function Store(props: any) {
-  return (
-    <svg 
-      {...props}
-      width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-    >
-      <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
-      <path d="M2 7h20" />
-      <path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7" />
-    </svg>
-  );
-}
-
-function Music(props: any) {
-  return (
-    <svg 
-      {...props}
-      width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-    >
-      <path d="M9 18V5l12-2v13" />
-      <circle cx="6" cy="18" r="3" />
-      <circle cx="18" cy="16" r="3" />
-    </svg>
-  );
-}

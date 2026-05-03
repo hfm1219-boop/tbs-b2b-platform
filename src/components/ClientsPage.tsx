@@ -3,6 +3,7 @@ import {
   ArrowLeft, ArrowRight, Building2, Utensils, Store, Music, Package, 
   Truck, CheckCircle2, ChevronRight, BarChart3, CreditCard, Zap, Headset
 } from 'lucide-react';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface ClientsPageProps {
   onBack: () => void;
@@ -58,14 +59,12 @@ export function ClientsPage({ onBack, onGoToCatalog, onRequestAccess, onLogin, o
   return (
     <div className="min-h-screen bg-white font-sans text-texto">
       {/* Hero */}
-      <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde bg-rojo-suave/30">
+      <section className="relative pt-10 pb-20 lg:pt-10 lg:pb-32 overflow-hidden border-b border-borde bg-rojo-suave/30">
         <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 mb-12 text-[13px] font-black uppercase tracking-widest text-gris hover:text-rojo transition-colors outline-none cursor-pointer"
-          >
-            <ArrowLeft size={18} /> Volver
-          </button>
+          <Breadcrumbs 
+            onHomeClick={onBack}
+            items={[{ label: 'Clientes B2B', current: true }]}
+          />
 
           <div className="max-w-4xl">
             <motion.div 
@@ -81,7 +80,7 @@ export function ClientsPage({ onBack, onGoToCatalog, onRequestAccess, onLogin, o
               transition={{ delay: 0.1 }}
               className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8"
             >
-              Impulsa la operación de tu negocio <span className="text-rojo">B2B.</span>
+              Soluciones para clientes B2B
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -89,7 +88,7 @@ export function ClientsPage({ onBack, onGoToCatalog, onRequestAccess, onLogin, o
               transition={{ delay: 0.2 }}
               className="text-xl lg:text-2xl text-texto-sec font-medium leading-relaxed max-w-2xl"
             >
-              Centraliza el abastecimiento de licores, accede a crédito y gestiona tus pedidos con la tecnología de TBS.
+              Centraliza el abastecimiento de licores, accede a crédito y gestiona tus pedidos con la tecnología de TBS. Nuestra plataforma está optimizada para negocios que venden, sirven o necesitan licores a nivel nacional.
             </motion.p>
             
             <motion.div 
@@ -223,10 +222,6 @@ export function ClientsPage({ onBack, onGoToCatalog, onRequestAccess, onLogin, o
           </div>
         </div>
       </section>
-      
-      <footer className="py-12 border-t border-borde text-center">
-        <p className="text-[13px] font-black uppercase tracking-widest text-gris">TBS Destilados · Plataforma B2B para Negocios · 2024</p>
-      </footer>
     </div>
   );
 }

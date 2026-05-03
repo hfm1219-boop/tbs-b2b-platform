@@ -7,25 +7,26 @@ import {
   ThumbsDown, 
   ArrowLeft, 
   UserPlus, 
-  ShieldCheck, 
-  MessageSquare, 
-  Eye, 
-  Target, 
-  ShoppingCart, 
-  CreditCard, 
-  Truck, 
-  RotateCcw, 
-  List, 
-  Zap, 
-  Users, 
-  BarChart3, 
-  Tag, 
   CheckCircle2,
-  Clock,
-  Building2
+  Building2,
+  Zap,
+  MessageSquare,
+  List,
+  Users,
+  Target,
+  ShoppingCart,
+  CreditCard,
+  Truck,
+  RotateCcw,
+  BarChart3,
+  Tag,
+  Headset,
+  SearchCode,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FAQItem, FAQAudience, FAQCategory, User } from '../types';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface FAQPageProps {
   currentUser: User | null;
@@ -46,26 +47,39 @@ interface FAQPageProps {
   onGoProviderDashboard: () => void;
   onGoB2BAccountAdmin: () => void;
   onGoOrderApprovals: () => void;
+  onGoContact: () => void;
 }
 
 const CATEGORY_LABELS: Record<FAQCategory, string> = {
   general: 'General',
   acceso: 'Acceso',
+  comprar_en_tbs: 'Comprar en TBS',
   catalogo: 'Catálogo',
-  pedidos: 'Pedidos',
-  cartera_pagos: 'Cartera y Pagos',
+  pedidos: 'Pedidos y Entregas',
+  cartera_pagos: 'Pagos y Cartera',
   seguimiento: 'Seguimiento',
   pedido_urgente: 'Pedido Urgente',
-  cuenta_usuarios: 'Cuenta y Usuarios',
+  cuenta_usuarios: 'Usuarios y Permisos',
   aprobaciones: 'Aprobaciones',
   promociones: 'Promociones',
   listas_reordenar: 'Listas y Reordenar',
   inteligencia: 'Inteligencia',
   asesor_chat: 'Asesor y Chat',
-  proveedores_marcas: 'Proveedores y Marcas',
+  proveedores_marcas: 'Marcas',
+  servicios: 'Servicios TBS',
   seguridad: 'Seguridad',
   soporte: 'Soporte'
 };
+
+const POPULAR_FAQ_IDS = [
+  "faq-001", // ¿Qué es TBS?
+  "faq-002", // ¿Quién puede comprar en TBS?
+  "faq-004", // ¿Cómo solicito acceso B2B?
+  "faq-005", // ¿Cómo hago un pedido?
+  "faq-007", // ¿Qué es el pedido urgente?
+  "faq-016", // ¿Cómo puede una marca vender con TBS?
+  "faq-017"  // ¿Cómo puede una marca tener visibilidad?
+];
 
 export const FAQPage: React.FC<FAQPageProps> = ({ 
   currentUser, 
@@ -85,8 +99,18 @@ export const FAQPage: React.FC<FAQPageProps> = ({
   onGoAdvisorChat,
   onGoProviderDashboard,
   onGoB2BAccountAdmin,
-  onGoOrderApprovals
+  onGoOrderApprovals,
+  onGoContact
 }) => {
+  const isCash = currentUser?.commercialCondition === 'contado';
+  
+  const categoryLabels = useMemo(() => {
+    return {
+      ...CATEGORY_LABELS,
+      cartera_pagos: isCash ? 'Pagos y comprobantes' : 'Pagos y Cartera'
+    };
+  }, [isCash]);
+
   const [search, setSearch] = useState('');
   const [audienceFilter, setAudienceFilter] = useState<'todas' | FAQAudience>('todas');
   const [categoryFilter, setCategoryFilter] = useState<'todas' | FAQCategory>('todas');
@@ -95,11 +119,12 @@ export const FAQPage: React.FC<FAQPageProps> = ({
 
   const filteredItems = useMemo(() => {
     return faqItems.filter(item => {
+      const label = categoryLabels[item.category];
       const matchesSearch = 
         item.question.toLowerCase().includes(search.toLowerCase()) || 
         item.answer.toLowerCase().includes(search.toLowerCase()) ||
         item.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase())) ||
-        CATEGORY_LABELS[item.category].toLowerCase().includes(search.toLowerCase());
+        label.toLowerCase().includes(search.toLowerCase());
 
       const matchesAudience = audienceFilter === 'todas' || 
         item.audience === audienceFilter || 
@@ -110,6 +135,60 @@ export const FAQPage: React.FC<FAQPageProps> = ({
       return matchesSearch && matchesAudience && matchesCategory;
     });
   }, [faqItems, search, audienceFilter, categoryFilter]);
+
+  const jsonLd = useMemo(() => {
+    const publicFaqs = faqItems.filter(item => item.audience === 'publico' || item.audience === 'todos');
+    
+    return [
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": publicFaqs.map(item => ({
+          "@type": "Question",
+          "name": item.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": item.answer
+          }
+        }))
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "TBS Destilados",
+        "image": "https://tbsdestilados.com/logo.png",
+        "@id": "https://tbsdestilados.com",
+        "url": "https://tbsdestilados.com",
+        "telephone": "+573000000000",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Zona Industrial Mamonal",
+          "addressLocality": "Bogotá",
+          "addressRegion": "Bolívar",
+          "postalCode": "130001",
+          "addressCountry": "CO"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 10.3333,
+          "longitude": -75.5000
+        },
+        "openingHoursSpecification": {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday"
+          ],
+          "opens": "08:00",
+          "closes": "18:00"
+        }
+      }
+    ];
+  }, [faqItems]);
 
   const handleFAQAction = (item: FAQItem) => {
     if (!item.relatedActionTarget) return;
@@ -175,17 +254,17 @@ export const FAQPage: React.FC<FAQPageProps> = ({
     setFeedback(prev => ({ ...prev, [id]: type }));
   };
 
+  const popularFaqs = faqItems.filter(item => POPULAR_FAQ_IDS.includes(item.id));
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
       {/* Header section */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between">
-          <button 
-            onClick={onGoHome}
-            className="flex items-center gap-2 text-gris hover:text-rojo transition-colors font-bold text-sm uppercase tracking-wider"
-          >
-            <ArrowLeft size={18} /> Volver al Inicio
-          </button>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-4 flex items-center justify-between">
+          <Breadcrumbs 
+            onHomeClick={onGoHome}
+            items={[{ label: 'Centro de ayuda', current: true }]}
+          />
           <div className="flex items-center gap-2 text-rojo font-black text-xl tracking-tighter">
             TBS Help Center
           </div>
@@ -196,9 +275,9 @@ export const FAQPage: React.FC<FAQPageProps> = ({
       <div className="bg-rojo py-16 px-4 md:px-8 text-white relative overflow-hidden">
         <HelpCircle className="absolute -right-12 -bottom-12 w-96 h-96 text-white/5 rotate-12" />
         <div className="max-w-4xl mx-auto relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de ayuda</h1>
+          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de ayuda TBS</h1>
           <p className="text-lg opacity-90 mb-10 max-w-2xl mx-auto">
-            Encuentra respuestas sobre acceso B2B, catálogo, pedidos, pagos, seguimiento, usuarios, proveedores y soporte.
+            Preguntas frecuentes sobre abastecimiento B2B de licores, pedidos, cartera, pagos, seguimiento, marcas y soporte.
           </p>
 
           <div className="relative max-w-2xl mx-auto group">
@@ -211,10 +290,54 @@ export const FAQPage: React.FC<FAQPageProps> = ({
             />
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gris group-focus-within:text-rojo transition-colors" size={24} />
           </div>
+
+          {/* Popular Search Tags */}
+          <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
+            <span className="text-xs font-black uppercase tracking-widest text-white/60 mr-2">Populares:</span>
+            {['Pedidos', 'Acceso B2B', 'Cobertura', 'Pagos', 'Crédito', 'Urgente'].map(tag => (
+              <button 
+                key={tag}
+                onClick={() => setSearch(tag)}
+                className="text-xs font-bold px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 -mt-8 relative z-20">
+        
+        {/* Popular Questions Section (NEW) */}
+        {!search && categoryFilter === 'todas' && audienceFilter === 'todas' && (
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-rojo text-white rounded-lg">
+                <Target size={20} />
+              </div>
+              <h2 className="text-xl font-black uppercase tracking-tight text-texto">Preguntas frecuentes populares</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {popularFaqs.map(item => (
+                <button
+                  key={`popular-${item.id}`}
+                  onClick={() => {
+                    setOpenId(item.id);
+                    document.getElementById(`faq-item-${item.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                  className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-rojo/30 text-left transition-all group"
+                >
+                  <h3 className="font-bold text-texto group-hover:text-rojo mb-2 line-clamp-1">{item.question}</h3>
+                  <p className="text-xs text-gris line-clamp-2 leading-relaxed opacity-70">
+                    {item.answer}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Quick access cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <button 
@@ -245,8 +368,8 @@ export const FAQPage: React.FC<FAQPageProps> = ({
             <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Zap size={28} />
             </div>
-            <h3 className="font-black text-sm uppercase tracking-wider mb-1">Soy proveedor o marca</h3>
-            <h3 className="text-xs text-gris font-medium">Ventas y rotación</h3>
+            <h3 className="font-black text-sm uppercase tracking-wider mb-1">Soy una marca</h3>
+            <p className="text-xs text-gris font-medium">Ventas y rotación</p>
           </button>
 
           <button 
@@ -265,7 +388,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
             className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center text-center hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group"
           >
             <div className="w-14 h-14 bg-rojo/5 text-rojo rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <MessageSquare size={28} />
+              <Headset size={28} />
             </div>
             <h3 className="font-black text-sm uppercase tracking-wider mb-1">Necesito soporte</h3>
             <p className="text-xs text-gris font-medium">Hablar con un experto</p>
@@ -285,7 +408,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
                   { value: 'todas', label: 'Todas' },
                   { value: 'publico', label: 'Público' },
                   { value: 'cliente_b2b', label: 'Cliente B2B' },
-                  { value: 'proveedor_marca', label: 'Proveedor / Marca' }
+                  { value: 'proveedor_marca', label: 'Marcas' }
                 ].map(opt => (
                   <button
                     key={opt.value}
@@ -305,7 +428,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
             {/* Category filter */}
             <div>
               <h4 className="font-black text-xs uppercase tracking-widest text-gris mb-4 flex items-center gap-2">
-                <List size={14} /> Categoría
+                <List size={14} /> Intenciones
               </h4>
               <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 <button
@@ -316,9 +439,9 @@ export const FAQPage: React.FC<FAQPageProps> = ({
                       : 'text-gris hover:bg-gray-100'
                   }`}
                 >
-                  Todas las categorías
+                  Todas
                 </button>
-                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                {Object.entries(categoryLabels).map(([key, label]) => (
                   <button
                     key={key}
                     onClick={() => setCategoryFilter(key as FAQCategory)}
@@ -343,6 +466,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
                   <motion.div
                     layout
                     key={item.id}
+                    id={`faq-item-${item.id}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -360,7 +484,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
                           <h3 className="font-bold text-texto transition-colors">{item.question}</h3>
                           <div className="flex flex-wrap items-center gap-3 mt-1">
                             <span className="text-[10px] font-black uppercase tracking-widest text-rojo">
-                              {CATEGORY_LABELS[item.category]}
+                              {categoryLabels[item.category]}
                             </span>
                             <span className="text-[10px] font-black uppercase tracking-widest text-gris opacity-60">
                               {item.audience === 'todos' ? 'Todos' : item.audience.replace('_', ' ')}
@@ -459,7 +583,7 @@ export const FAQPage: React.FC<FAQPageProps> = ({
                   className="bg-white p-12 rounded-[40px] text-center border border-gray-100 shadow-sm"
                 >
                   <div className="w-20 h-20 bg-gray-50 text-gris/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Search size={40} />
+                    <SearchCode size={40} />
                   </div>
                   <h3 className="text-2xl font-black mb-2">No encontramos resultados</h3>
                   <p className="text-gris font-medium mb-8 max-w-sm mx-auto">Prueba con otra palabra clave o contacta a TBS para recibir ayuda.</p>
@@ -484,33 +608,46 @@ export const FAQPage: React.FC<FAQPageProps> = ({
           </div>
         </div>
 
-        {/* Final CTA section */}
+        {/* Final SEO block (NEW) */}
         <div className="mt-20 p-12 bg-white rounded-[40px] border border-gray-100 shadow-xl overflow-hidden relative group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-rojo/5 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700" />
           
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
-            <div className="max-w-xl">
-              <h2 className="text-3xl font-black mb-4 tracking-tight">¿Necesitas ayuda personalizada?</h2>
-              {currentUser ? (
-                <p className="text-gris font-medium text-lg leading-relaxed">
-                  Comunícate con tu asesor o ejecutivo TBS desde el chat interno sin salir de la plataforma.
-                </p>
-              ) : (
-                <p className="text-gris font-medium text-lg leading-relaxed">
-                  Solicita acceso B2B y un asesor TBS revisará tu información para brindarte atención directa.
-                </p>
-              )}
-            </div>
+          <div className="relative z-10 flex flex-col items-center text-center">
+            <h2 className="text-3xl font-black mb-6 tracking-tight">¿No encontraste lo que buscabas?</h2>
+            <p className="text-gris font-medium text-lg leading-relaxed max-w-3xl mb-10">
+              TBS acompaña a negocios de todo el país, incluyendo bares, restaurantes, hoteles, licoreras, eventos, marcas y proveedores, con soluciones de abastecimiento, pedidos, pagos, seguimiento y soporte comercial especializado a nivel nacional.
+            </p>
             
-            <button 
-              onClick={() => currentUser ? onGoAdvisorChat('soporte', { label: 'FAQ', value: 'Ayuda personalizada' }) : onGoAccessRequest('client')}
-              className="px-10 py-5 bg-rojo text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-xl hover:shadow-rojo/20 active:scale-95 flex items-center gap-3 shrink-0"
-            >
-              {currentUser ? <><MessageSquare size={18} /> Abrir chat interno</> : <><UserPlus size={18} /> Solicitar acceso B2B</>}
-            </button>
+            <div className="flex flex-wrap justify-center gap-4">
+              <button 
+                onClick={() => onGoAccessRequest('client')}
+                className="px-10 py-5 bg-rojo text-white rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-red-700 transition-all shadow-xl hover:shadow-rojo/20 active:scale-95 flex items-center gap-3 shrink-0"
+              >
+                <UserPlus size={18} /> Solicitar acceso B2B
+              </button>
+              <button 
+                onClick={() => onGoAdvisorChat('soporte', { label: 'FAQ', value: 'Soporte adicional' })}
+                className="px-10 py-5 bg-white border-2 border-rojo text-rojo rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-rojo hover:text-white transition-all active:scale-95 flex items-center gap-3 shrink-0"
+              >
+                <MessageSquare size={18} /> Hablar con asesor
+              </button>
+              <button 
+                onClick={onGoContact}
+                className="px-10 py-5 bg-white border-2 border-gris text-gris rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gris hover:text-white transition-all active:scale-95 flex items-center gap-3 shrink-0"
+              >
+                <MapPin size={18} /> Contacto y ubicación
+              </button>
+              <button 
+                onClick={() => { setAudienceFilter('proveedor_marca'); setCategoryFilter('proveedores_marcas'); }}
+                className="px-10 py-5 bg-gray-50 text-gris rounded-[20px] font-black text-xs uppercase tracking-widest hover:bg-gray-100 transition-all active:scale-95 flex items-center gap-3 shrink-0"
+              >
+                <Target size={18} /> Marcas
+              </button>
+            </div>
           </div>
         </div>
       </main>
     </div>
   );
 };
+

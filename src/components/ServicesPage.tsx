@@ -3,15 +3,18 @@ import {
   ArrowLeft, ArrowRight, Truck, Zap, CreditCard, Repeat, BarChart3, 
   Headset, MessageSquare, ShieldCheck, ShoppingBag
 } from 'lucide-react';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface ServicesPageProps {
   onBack: () => void;
   onRequestAccess: () => void;
   onGoToCatalog: () => void;
   onLogin: () => void;
+  onGoAdvisorChat: () => void;
+  onGoPage: (page: string) => void;
 }
 
-export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }: ServicesPageProps) {
+export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin, onGoAdvisorChat, onGoPage }: ServicesPageProps) {
   const allServices = [
     {
       category: 'Operación Comercial',
@@ -42,14 +45,12 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }
   return (
     <div className="min-h-screen bg-white font-sans text-texto">
       {/* Hero */}
-      <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde bg-[#111827] text-white">
+      <section className="relative pt-10 pb-20 lg:pt-10 lg:pb-32 overflow-hidden border-b border-borde bg-[#111827] text-white">
         <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 mb-12 text-[13px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-colors outline-none cursor-pointer"
-          >
-            <ArrowLeft size={18} /> Volver
-          </button>
+          <Breadcrumbs 
+            onHomeClick={onBack}
+            items={[{ label: 'Servicios TBS', current: true }]}
+          />
 
           <div className="max-w-4xl">
             <motion.div 
@@ -65,7 +66,7 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }
               transition={{ delay: 0.1 }}
               className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8"
             >
-              Servicios diseñados para ganar en el canal <span className="text-rojo">B2B.</span>
+              Servicios TBS
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -73,7 +74,7 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }
               transition={{ delay: 0.2 }}
               className="text-xl lg:text-2xl text-white/60 font-medium leading-relaxed max-w-2xl"
             >
-              Desde logística avanzada hasta crédito flexible, TBS te ofrece todo lo que necesitas para operar sin fricciones.
+              De logística avanzada hasta crédito flexible a nivel nacional, TBS te ofrece todo lo que necesitas para operar tu negocio de licores sin fricciones.
             </motion.p>
           </div>
         </div>
@@ -165,7 +166,7 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }
               Ir al Catálogo <ArrowRight size={24} />
             </button>
             <button 
-              onClick={onBack}
+              onClick={onGoAdvisorChat}
               className="px-12 py-6 border-2 border-borde text-texto rounded-2xl font-black text-xl hover:bg-gray-50 transition-all cursor-pointer"
             >
               Hablemos ahora
@@ -173,10 +174,6 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin }
           </div>
         </div>
       </section>
-      
-      <footer className="py-12 border-t border-borde text-center">
-        <p className="text-[13px] font-black uppercase tracking-widest text-gris">TBS Enterprise Solutions · 2024</p>
-      </footer>
     </div>
   );
 }

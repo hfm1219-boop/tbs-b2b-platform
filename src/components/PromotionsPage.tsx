@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -17,16 +17,20 @@ import {
   MessageSquare,
   Package,
   TrendingDown,
-  Star
+  Star,
+  Wallet
 } from 'lucide-react';
-import { User, B2BPromotion, Product, PromotionType, PromotionProduct } from '../types';
+import { User, B2BPromotion, Product, PromotionType, PromotionProduct, BrandAdCampaign } from '../types';
+import { BRAND_AD_CAMPAIGNS } from '../data';
+import { AdSlot } from './advertising/AdSlot';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface PromotionsPageProps {
   currentUser: User | null;
   promotions: B2BPromotion[];
   onBackToAccount: () => void;
   onGoCatalog: () => void;
-  onAddToCart: (product: Product, quantity: number) => void;
+  onAddToCart: (product: Product, source?: string | any) => void;
   onOpenCart: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
   onCreateNotification?: (notif: any) => void;
@@ -50,7 +54,13 @@ export function PromotionsPage({
   onGoAdvisorChat,
   onCreateNotification
 }: PromotionsPageProps) {
+  const analytics = useAnalytics(currentUser);
+  const isCash = currentUser?.commercialCondition === 'contado';
   const [filterType, setFilterType] = useState<PromotionType | 'todas'>('todas');
+
+  useEffect(() => {
+    analytics.trackPageView('/promociones', 'Promociones B2B');
+  }, []);
   const [filterCategory, setFilterCategory] = useState<string>('Todas');
   const [search, setSearch] = useState('');
   const [selectedPromo, setSelectedPromo] = useState<B2BPromotion | null>(null);
@@ -116,7 +126,13 @@ export function PromotionsPage({
         image: pp.image || ''
       };
       
-      onAddToCart(product, quantity);
+      onAddToCart(product, 'promo_bulk' as any);
+      
+      analytics.track('product_selected', 'engagement', {
+        productId: product.id,
+        productName: product.name,
+        source: `promotion_${promo.id}`
+      });
       
       units += quantity;
       totalPromo += (pp.promoPrice || pp.regularPrice) * quantity;
@@ -139,6 +155,16 @@ export function PromotionsPage({
       show: true,
       promo,
       results: { units, totalSavings, totalPromo, items: availableProducts.length }
+    });
+
+    analytics.track('promotion_added_to_cart', 'engagement', {
+      metadata: { 
+        promoId: promo.id, 
+        promoTitle: promo.title, 
+        units, 
+        totalPromo, 
+        totalSavings 
+      }
     });
   };
 
@@ -177,6 +203,29 @@ export function PromotionsPage({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
+        {/* Brand Coupons Section */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-rojo text-white rounded-lg">
+              <Star size={20} />
+            </div>
+            <h2 className="text-xl font-black uppercase tracking-tight text-texto">Cupones y beneficios de marcas</h2>
+          </div>
+          <AdSlot 
+            placement="coupon_strip"
+            campaigns={BRAND_AD_CAMPAIGNS}
+            currentUser={currentUser}
+            onAdClick={(campaign) => {
+              analytics.track('ad_click', 'provider', {
+                targetId: campaign.id,
+                placement: 'coupon_strip'
+              });
+              // Custom handling if needed, or default click
+            }}
+            maxItems={3}
+          />
+        </div>
+
         {/* Banner Comercial */}
         <div className="bg-white rounded-2xl border border-rojo/10 shadow-sm overflow-hidden mb-8">
           <div className="bg-texto px-6 py-2">
@@ -190,19 +239,24 @@ export function PromotionsPage({
               <h3 className="text-lg font-black text-texto">Condiciones comerciales</h3>
               <p className="text-sm text-gris mt-2 leading-relaxed">
                 Las promociones están sujetas a perfil de cliente, ciudad, disponibilidad, inventario, cupo de crédito y vigencia. 
-                <span className="font-bold text-rojo"> Algunas promociones pueden requerir validación comercial antes de confirmarse.</span>
+                <span className="font-bold text-rojo"> 
+                  {isCash 
+                    ? ' Algunas promociones requieren pago anticipado o validación comercial antes de facturación.' 
+                    : ' Algunas promociones pueden requerir validación comercial antes de confirmarse.'
+                  }
+                </span>
               </p>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-auto">
               {[
-                { icon: Users, text: 'Perfil B2B' },
+                { icon: Users, text: isCash ? 'Cliente Contado' : 'Perfil B2B' },
                 { icon: TrendingDown, text: 'Venta x volumen' },
                 { icon: MapPin, text: 'Stock x ciudad' },
-                { icon: TrendingDown, text: 'Cupo de crédito' }
+                { icon: Wallet, text: isCash ? 'Pago Anticipado' : 'Cupo de Crédito' }
               ].map((item, idx) => (
-                <div key={idx} className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl border border-borde">
+                <div key={idx} className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl border border-borde min-w-[90px]">
                   <item.icon size={18} className="text-rojo mb-1" />
-                  <span className="text-[10px] font-bold text-gris text-center">{item.text}</span>
+                  <span className="text-[10px] font-bold text-gris text-center leading-tight">{item.text}</span>
                 </div>
               ))}
             </div>
@@ -507,7 +561,7 @@ export function PromotionsPage({
                                 specs: p.specs,
                                 price: formatCOP(p.promoPrice || p.regularPrice),
                                 image: p.image || ''
-                              }, p.requiredQuantity || 1);
+                              }, 'promotion_detail');
                             } else {
                               onGoAdvisorChat('disponibilidad', p.name);
                             }
@@ -524,7 +578,10 @@ export function PromotionsPage({
 
                 <div className="mt-10 p-6 bg-rojo-suave/30 rounded-2xl border border-rojo/10 border-dashed text-center">
                   <p className="text-xs text-gris italic">
-                    "La aplicación final de la promoción queda sujeta a validación comercial, inventario, cupo y facturación al momento de procesar el pedido."
+                    {isCash 
+                      ? '"La aplicación final de la promoción queda sujeta a pago anticipado, inventario, condiciones comerciales y facturación al momento de procesar el pedido."'
+                      : '"La aplicación final de la promoción queda sujeta a validación comercial, inventario, cupo y facturación al momento de procesar el pedido."'
+                    }
                   </p>
                 </div>
               </div>

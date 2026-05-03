@@ -1,8 +1,11 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Minus, Plus, ShoppingCart, Star, Tag } from 'lucide-react';
-import { Product, ShoppingList, B2BPromotion, User } from '../types';
-import { useState } from 'react';
+import { Product, ShoppingList, B2BPromotion, User, BrandAdCampaign } from '../types';
+import { BRAND_AD_CAMPAIGNS } from '../data';
+import { AdSlot } from './advertising/AdSlot';
+import { useState, useEffect } from 'react';
 import { SaveToListModal } from './SaveToListModal';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ProductModalProps {
   product: Product;
@@ -30,7 +33,18 @@ export function ProductModal({
   onGoPromotions
 }: ProductModalProps) {
   const [quantity, setQuantity] = useState(1);
+  const analytics = useAnalytics(currentUser || null);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  
+  useEffect(() => {
+    analytics.track('product_viewed', 'engagement', {
+      productId: product.id,
+      productName: product.name,
+      category: product.category,
+      price: product.price
+    });
+  }, [product, analytics]);
+
   const productPromo = promotions.find(p => p.products.some(pp => pp.productId === product.id));
 
   const canBuy = isCliente && (currentUser?.role === 'cliente_b2b' || !currentUser);
@@ -85,7 +99,7 @@ export function ProductModal({
             </div>
             
             <p className="text-texto-sec leading-relaxed font-medium mb-8">
-              {product.description || "Este producto premium forma parte de nuestra selección exclusiva para el canal Horeca y licoreras. Consulta disponibilidad para entregas inmediatas en tu zona."}
+              {product.description || "Este producto premium forma parte de nuestra selección exclusiva para negocios y licoreras. Consulta disponibilidad para entregas inmediatas a nivel nacional."}
             </p>
 
             {productPromo && (
@@ -121,7 +135,16 @@ export function ProductModal({
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-[11px] text-gris font-black uppercase mb-1">Precio Unitario</div>
-                <div className="text-3xl font-black text-texto">{product.price}</div>
+                <div className="flex flex-col">
+                  {product.originalPrice && (
+                    <span className="text-xs text-gris line-through font-bold leading-none mb-1">
+                      {product.originalPrice}
+                    </span>
+                  )}
+                  <div className={`text-3xl font-black ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
+                    {product.price}
+                  </div>
+                </div>
               </div>
               
               {canBuy && (
@@ -151,7 +174,15 @@ export function ProductModal({
               {canBuy ? (
                 <button 
                   onClick={() => {
-                    onAddToCart(product, quantity);
+                    onAddToCart(product, 'product_modal' as any);
+                    analytics.track('product_selected', 'engagement', {
+                      productId: product.id,
+                      productName: product.name,
+                      category: product.category,
+                      quantity: quantity,
+                      price: product.price,
+                      source: 'product_modal_add'
+                    });
                     onClose();
                   }}
                   className="flex-1 h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
@@ -184,6 +215,22 @@ export function ProductModal({
                   <Star size={24} />
                 </button>
               )}
+            </div>
+
+            {/* Recommendation Slot */}
+            <div className="mt-8 pt-8 border-t border-borde">
+              <h4 className="text-[10px] font-black text-gris uppercase tracking-widest mb-4">También te puede interesar</h4>
+              <AdSlot 
+                placement="product_detail_premium"
+                campaigns={BRAND_AD_CAMPAIGNS}
+                currentUser={currentUser}
+                category={product.category}
+                onAdClick={(campaign) => {
+                  analytics.track('ad_click', 'provider', { target: campaign.id, placement: 'product_detail_premium' });
+                }}
+                maxItems={1}
+                compact={true}
+              />
             </div>
           </div>
         </div>

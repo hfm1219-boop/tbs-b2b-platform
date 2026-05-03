@@ -1,9 +1,14 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Info, Plus, ShoppingCart, Package, Filter, ChevronRight, Check, Star, Tag, X, Search } from 'lucide-react';
-import { Product, ShoppingList, B2BPromotion, User } from '../types';
+import { ArrowLeft, Info, Plus, ShoppingCart, Package, Filter, ChevronRight, Check, Star, Tag, X, Search, ShoppingBag } from 'lucide-react';
+import { Product, ShoppingList, B2BPromotion, User, BrandAdCampaign, ManagedClient, ManagedEvent, ManagedClientBillingType } from '../types';
+import { BRAND_AD_CAMPAIGNS } from '../data';
+import { AdSlot } from './advertising/AdSlot';
 import { ProductModal } from './ProductModal';
 import { SaveToListModal } from './SaveToListModal';
+import { Breadcrumbs } from './Breadcrumbs';
+import { ProductCarousel } from './ProductCarousel';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CategoryPageProps {
   category: string | null;
@@ -11,7 +16,7 @@ interface CategoryPageProps {
   onBack: () => void;
   isCliente: boolean;
   currentUser?: User | null;
-  onAddToCart: (product: Product, quantity?: number) => void;
+  onAddToCart: (product: Product, source?: string | any) => void;
   onCategorySelect: (category: string | null) => void;
   onRequestAccess: () => void;
   onLogin: () => void;
@@ -22,6 +27,17 @@ interface CategoryPageProps {
   promotions?: B2BPromotion[];
   searchQuery?: string;
   onClearSearch?: () => void;
+  onAdClick?: (campaign: BrandAdCampaign) => void;
+  hospitalityContext?: {
+    partnerId: string;
+    managedClientId: string;
+    managedEventId?: string;
+    billingType: ManagedClientBillingType;
+  } | null;
+  managedClients?: ManagedClient[];
+  managedEvents?: ManagedEvent[];
+  onClearHospitalityContext?: () => void;
+  onGoHospitalityDashboard?: () => void;
 }
 
 export function CategoryPage({ 
@@ -40,14 +56,47 @@ export function CategoryPage({
   onGoPromotions,
   promotions = [],
   searchQuery = '',
-  onClearSearch
+  onClearSearch,
+  onAdClick,
+  hospitalityContext,
+  managedClients = [],
+  managedEvents = [],
+  onClearHospitalityContext,
+  onGoHospitalityDashboard
 }: CategoryPageProps) {
+  const analytics = useAnalytics(currentUser || null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [saveToListProduct, setSaveToListProduct] = useState<Product | null>(null);
+  
+  // Track catalog view
+  useEffect(() => {
+    analytics.track('catalog_viewed', 'catalog', { 
+      productCategory: category || 'all',
+      searchTerm: searchQuery || undefined
+    });
+  }, [category, searchQuery, analytics]);
+
+  // Track search
+  useEffect(() => {
+    if (searchQuery) {
+      analytics.trackSearch('catalog', searchQuery);
+    }
+  }, [searchQuery, analytics]);
   
   // Filter states
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedSubcat, setSelectedSubcat] = useState<string | null>(null);
+
+  // Track filters
+  const handleOriginFilter = (origin: string | null) => {
+    setSelectedOrigin(origin);
+    if (origin) analytics.trackFilter('catalog', 'origin', origin);
+  };
+
+  const handleSubcatFilter = (sub: string | null) => {
+    setSelectedSubcat(sub);
+    if (sub) analytics.trackFilter('catalog', 'subcategory', sub);
+  };
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,6 +135,7 @@ export function CategoryPage({
   }, [filteredList, currentPage]);
 
   const clearFilters = () => {
+    analytics.trackCta('catalog_clear_filters', 'catalog');
     setSelectedOrigin(null);
     setSelectedSubcat(null);
     onCategorySelect(null);
@@ -93,6 +143,7 @@ export function CategoryPage({
   };
 
   const handlePageChange = (page: number) => {
+    analytics.track('pagination_clicked', 'engagement', { page, source: 'catalog' });
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -102,21 +153,71 @@ export function CategoryPage({
     setCurrentPage(1);
   }, [selectedOrigin, selectedSubcat]);
 
-  const canBuy = isCliente && (currentUser?.role === 'cliente_b2b' || !currentUser);
+  const canBuy = isCliente && (currentUser?.role === 'cliente_b2b' || currentUser?.role === 'hospitality_partner' || !currentUser);
+
+  const managedClient = managedClients.find(c => c.id === hospitalityContext?.managedClientId);
+  const managedEvent = managedEvents.find(e => e.id === hospitalityContext?.managedEventId);
 
   return (
     <div className="max-w-[1480px] mx-auto px-8 py-10">
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 mb-8 text-sm font-extrabold text-gris hover:text-rojo cursor-pointer transition-colors outline-none"
-      >
-        <ArrowLeft size={18} /> Volver al inicio
-      </button>
+      <AnimatePresence>
+        {hospitalityContext && managedClient && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-8 bg-texto text-white p-6 rounded-[24px] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6"
+          >
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white shrink-0">
+                <ShoppingBag size={28} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest bg-rojo px-2 py-0.5 rounded text-white italic">Modo Gestión</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Comprando para cliente</span>
+                </div>
+                <h3 className="text-xl font-black tracking-tight">{managedClient.businessName}</h3>
+                <div className="text-xs font-bold text-white/60">
+                   {managedEvent ? `Evento: ${managedEvent.eventName} • ${managedEvent.eventDate}` : 'Compra directa para cliente'}
+                   {hospitalityContext.billingType && ` • Facturación: ${hospitalityContext.billingType === 'facturar_cliente_final' ? 'Cliente Final' : 'Gestor'}`}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={onGoHospitalityDashboard}
+                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black transition-all"
+              >
+                Cambiar Cliente / Evento
+              </button>
+              <button 
+                onClick={onClearHospitalityContext}
+                className="px-5 py-2.5 bg-rojo text-white rounded-xl text-xs font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+              >
+                <X size={14} strokeWidth={3} />
+                Cancelar Modo Gestión
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Breadcrumbs 
+        onHomeClick={onBack}
+        items={[
+          { label: 'Catálogo', onClick: () => { onCategorySelect(null); window.scrollTo(0,0); }, current: !category },
+          ...(category ? [{ label: category, current: true }] : [])
+        ]}
+      />
 
       <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-10">
         <div>
-          <div className="text-rojo text-[11px] font-black uppercase tracking-[0.2em] mb-2">Catálogo B2B</div>
-          <h2 className="text-4xl lg:text-[48px] font-black tracking-tighter leading-tight">{category || 'Todos los productos'}</h2>
+          <div className="text-rojo text-[11px] font-black uppercase tracking-[0.2em] mb-2">Abastecimiento TBS</div>
+          <h1 className="text-4xl lg:text-[48px] font-black tracking-tighter leading-tight">
+            Catálogo B2B de licores {category ? `- ${category}` : ''}
+          </h1>
           {searchQuery && (
             <div className="mt-3 flex items-center gap-3">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-[#303844] text-white rounded-lg">
@@ -132,7 +233,7 @@ export function CategoryPage({
               </button>
             </div>
           )}
-          <p className="mt-2 text-gris font-medium uppercase tracking-widest text-[11px]">Mostrando {filteredList.length} productos disponibles en Cartagena.</p>
+          <p className="mt-2 text-gris font-medium uppercase tracking-widest text-[11px]">Mostrando {filteredList.length} productos disponibles.</p>
         </div>
         {!isCliente && (
           <div className="bg-rojo-suave border border-[#F0D3D3] p-4 rounded-xl flex items-center gap-4 max-w-md">
@@ -145,6 +246,19 @@ export function CategoryPage({
       </div>
       
       {onGoPromotions && (
+        <div className="mb-12">
+          <AdSlot 
+            placement="catalog_top_banner"
+            campaigns={BRAND_AD_CAMPAIGNS}
+            currentUser={currentUser}
+            category={category || undefined}
+            onAdClick={onAdClick || (() => {})}
+            compact={false}
+          />
+        </div>
+      )}
+
+      {onGoPromotions && !BRAND_AD_CAMPAIGNS.some(c => c.active && c.placement === 'catalog_top_banner' && (!category || c.category === category)) && (
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -156,13 +270,16 @@ export function CategoryPage({
           <div className="relative z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              Exclusivo B2B
+              Exclusivo TBS
             </div>
             <h3 className="text-2xl font-black text-white">Promociones y activaciones activas</h3>
             <p className="text-white/80 font-bold mt-1 uppercase tracking-widest text-[10px]">Aprovecha combos y descuentos por volumen disponibles hoy</p>
           </div>
           <button 
-            onClick={onGoPromotions}
+            onClick={() => {
+              analytics.trackCta('catalog_promo_banner', 'catalog');
+              onGoPromotions();
+            }}
             className="relative z-10 px-8 py-3.5 bg-white text-rojo rounded-xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all shadow-xl cursor-pointer"
           >
             Ver promociones TBS
@@ -219,7 +336,7 @@ export function CategoryPage({
                   {filterOptions.origins.map(origin => (
                     <button
                       key={origin}
-                      onClick={() => setSelectedOrigin(origin === selectedOrigin ? null : origin)}
+                      onClick={() => handleOriginFilter(origin === selectedOrigin ? null : origin)}
                       className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
                         selectedOrigin === origin 
                           ? 'bg-rojo/5 text-rojo border border-rojo/20' 
@@ -242,7 +359,7 @@ export function CategoryPage({
                   {filterOptions.subcategories.map(sub => (
                     <button
                       key={sub}
-                      onClick={() => setSelectedSubcat(sub === selectedSubcat ? null : sub)}
+                      onClick={() => handleSubcatFilter(sub === selectedSubcat ? null : sub)}
                       className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
                         selectedSubcat === sub 
                           ? 'bg-rojo/5 text-rojo border border-rojo/20' 
@@ -262,6 +379,21 @@ export function CategoryPage({
 
         {/* Product Grid */}
         <div className="flex-1">
+          {searchQuery && (
+            <div className="mb-8">
+              <AdSlot 
+                placement="search_sponsored_result"
+                campaigns={BRAND_AD_CAMPAIGNS}
+                currentUser={currentUser}
+                onAdClick={onAdClick || (() => {})}
+                products={products}
+                onAddToCart={onAddToCart}
+                maxItems={2}
+                compact={true}
+              />
+            </div>
+          )}
+
           {paginatedList.length > 0 ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -275,11 +407,11 @@ export function CategoryPage({
                       onClick={() => setSelectedProduct(product)}
                       className="bg-white border border-borde rounded-xl overflow-hidden tarjeta-hover flex flex-col h-full cursor-pointer relative group"
                     >
-                      {productPromo && (
+                      {product.originalPrice && (
                         <div className="absolute top-3 left-3 z-10">
-                          <div className="bg-[#303844] text-white text-[9px] font-black px-2 py-1 rounded-md flex items-center gap-1.5 shadow-xl">
-                            <Tag size={10} className="text-rojo" /> 
-                            <span className="uppercase tracking-widest">Oferta</span>
+                          <div className="bg-amber-400 text-black text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-lg border border-amber-500/20">
+                            <Tag size={10} className="fill-black" /> 
+                            <span className="uppercase tracking-widest">Oferta Especial</span>
                           </div>
                         </div>
                       )}
@@ -308,12 +440,30 @@ export function CategoryPage({
                       
                       <div className="mt-auto pt-4 border-t border-[#F1F3F5] flex items-center justify-between">
                         <div>
-                          <div className="text-[11px] text-gris font-bold mb-0.5">Precio {isCliente ? 'B2B' : 'público'}</div>
+                          <div className="text-[11px] text-gris font-bold mb-0.5">Precio {isCliente ? '' : 'público'}</div>
                           {isCliente ? (
-                            <div className="text-xl font-black text-texto">{product.price}</div>
-                        ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
-                          <div className="text-xl font-black text-texto">{product.price}</div>
-                        ) : (
+                            <div className="flex flex-col">
+                              {product.originalPrice && (
+                                <span className="text-[11px] text-gris line-through font-bold leading-none mb-1">
+                                  {product.originalPrice}
+                                </span>
+                              )}
+                              <div className={`text-xl font-black ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
+                                {product.price}
+                              </div>
+                            </div>
+                          ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
+                            <div className="flex flex-col">
+                              {product.originalPrice && (
+                                <span className="text-[11px] text-gris line-through font-bold leading-none mb-1">
+                                  {product.originalPrice}
+                                </span>
+                              )}
+                              <div className={`text-xl font-black ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
+                                {product.price}
+                              </div>
+                            </div>
+                          ) : (
                           <button 
                             onClick={(e) => { e.stopPropagation(); onRequestAccess(); }}
                             className="text-sm font-black text-rojo hover:underline cursor-pointer"
@@ -334,7 +484,10 @@ export function CategoryPage({
                             </button>
                           )}
                           <button 
-                            onClick={(e) => { e.stopPropagation(); onAddToCart(product, 1); }}
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              onAddToCart(product, 'catalog_grid' as any); 
+                            }}
                             className="w-10 h-10 bg-rojo text-white rounded-lg flex items-center justify-center hover:bg-rojo-oscuro tbs-shadow transition-colors cursor-pointer group outline-none"
                             title="Agregar"
                           >
@@ -347,6 +500,19 @@ export function CategoryPage({
                   </motion.article>
                 );
               })}
+              </div>
+
+              {/* Bottom Carousel Ad Slot */}
+              <div className="mt-16">
+                <AdSlot 
+                  placement="catalog_bottom_carousel"
+                  campaigns={BRAND_AD_CAMPAIGNS}
+                  currentUser={currentUser}
+                  onAdClick={onAdClick || (() => {})}
+                  products={products}
+                  onAddToCart={onAddToCart}
+                  maxItems={4}
+                />
               </div>
 
               {/* Pagination UI */}
@@ -427,6 +593,23 @@ export function CategoryPage({
           />
         )}
       </AnimatePresence>
+      
+      {/* Carrusel de Productos Destacados */}
+      <ProductCarousel 
+        products={products.slice(0, 10)}
+        onProductClick={(product) => {
+          analytics.track('product_viewed', 'catalog', {
+            source: 'catalog_carousel',
+            productId: product.id,
+            productCategory: product.category
+          });
+          setSelectedProduct(product);
+        }}
+        onAddToCart={(product, source) => {
+          onAddToCart(product, source || 'catalog_carousel');
+        }}
+        isCliente={isCliente}
+      />
     </div>
   );
 }

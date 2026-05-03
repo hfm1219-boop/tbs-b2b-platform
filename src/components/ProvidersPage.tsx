@@ -3,14 +3,16 @@ import {
   ArrowLeft, ArrowRight, BarChart3, Globe, LineChart, ShieldCheck, 
   Store, Truck, Zap, CheckCircle2, MessageSquare
 } from 'lucide-react';
+import { Breadcrumbs } from './Breadcrumbs';
 
 interface ProvidersPageProps {
   onBack: () => void;
   onRequestAccess: () => void;
   onLogin: () => void;
+  onGoAdvisorChat: () => void;
 }
 
-export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPageProps) {
+export function ProvidersPage({ onBack, onRequestAccess, onLogin, onGoAdvisorChat }: ProvidersPageProps) {
   const models = [
     { title: 'Compra directa', desc: 'TBS compra tu inventario y gestiona la venta y distribución 100%.' },
     { title: 'Consignación', desc: 'Pagamos lo vendido. Tú mantienes la propiedad hasta la transacción final.' },
@@ -21,7 +23,7 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
   const services = [
     { icon: Globe, title: 'Publicación de portafolio', desc: 'Tus productos visibles ante miles de compradores profesionales.' },
     { icon: Truck, title: 'Logística', desc: 'Acceso a rutas compartidas y entregas de última milla eficientes.' },
-    { icon: BarChart3, title: 'Reportes', desc: 'Inteligencia de mercado, precios dinámicos y sell-out en tiempo real.' },
+    { icon: BarChart3, title: 'Precios personalizados', desc: 'Define condiciones dinámicas y precios personalizados para diferentes segmentos de clientes.' },
     { icon: Zap, title: 'Activaciones', desc: 'Ejecución de marca en el punto de consumo gestionada por expertos.' },
     { icon: ShieldCheck, title: 'Garantía de pago', desc: 'TBS asume el riesgo crediticio del cliente final en modelos seleccionados.' },
     { icon: LineChart, title: 'Visibilidad comercial', desc: 'Posicionamiento privilegiado en el catálogo y comunicaciones.' }
@@ -30,14 +32,12 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
   return (
     <div className="min-h-screen bg-white font-sans text-texto">
       {/* Hero */}
-      <section className="relative py-20 lg:py-32 overflow-hidden border-b border-borde bg-[#F8FAFC]">
+      <section className="relative pt-10 pb-20 lg:pt-10 lg:pb-32 overflow-hidden border-b border-borde bg-[#F8FAFC]">
         <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 mb-12 text-[13px] font-black uppercase tracking-widest text-gris hover:text-rojo transition-colors outline-none cursor-pointer"
-          >
-            <ArrowLeft size={18} /> Volver
-          </button>
+          <Breadcrumbs 
+            onHomeClick={onBack}
+            items={[{ label: 'Marcas', current: true }]}
+          />
 
           <div className="max-w-4xl">
             <motion.div 
@@ -53,7 +53,7 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
               transition={{ delay: 0.1 }}
               className="text-5xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-8"
             >
-              Escala tu distribución con el aliado experto en <span className="text-rojo">B2B.</span>
+              Canal B2B para marcas
             </motion.h1>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -61,7 +61,7 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
               transition={{ delay: 0.2 }}
               className="text-xl lg:text-2xl text-texto-sec font-medium leading-relaxed max-w-2xl"
             >
-              Conectamos a fabricantes, importadores y marcas con el ecosistema de consumo más grande de la región.
+              Conectamos a fabricantes, importadores y marcas con el ecosistema de consumo B2B más grande del país. Potencia tu distribución a nivel nacional.
             </motion.p>
             
             <motion.div 
@@ -174,6 +174,7 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
               Comenzar ahora <ArrowRight size={24} />
             </button>
             <button 
+              onClick={onGoAdvisorChat}
               className="px-14 py-7 border-2 border-borde text-texto rounded-2xl font-black text-xl hover:bg-gray-50 transition-all cursor-pointer flex items-center gap-3"
             >
               <MessageSquare size={24} /> Contactar ventas
@@ -181,10 +182,6 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin }: ProvidersPag
           </div>
         </div>
       </section>
-      
-      <footer className="py-12 border-t border-borde text-center">
-        <p className="text-[13px] font-black uppercase tracking-widest text-gris">TBS Supply Chain · Operador Logístico Especializado · 2024</p>
-      </footer>
     </div>
   );
 }

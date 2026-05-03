@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -17,9 +17,16 @@ import {
   ChevronDown,
   X,
   CreditCard as CreditCardIcon,
-  MessageSquare
+  MessageSquare,
+  TrendingUp,
+  Upload,
+  Calendar as CalendarIcon,
+  DollarSign,
+  Hash,
+  WalletCards
 } from 'lucide-react';
 import { User, Invoice, InvoiceStatus, PaymentRecord } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface PaymentsPageProps {
   currentUser: User | null;
@@ -27,6 +34,7 @@ interface PaymentsPageProps {
   onGoHome: () => void;
   onGoAccount: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
+  onGoCreditRequest?: () => void;
   highlightedInvoiceId?: string | null;
   onClearHighlight?: () => void;
 }
@@ -123,9 +131,12 @@ export function PaymentsPage({
   onGoHome, 
   onGoAccount,
   onGoAdvisorChat,
+  onGoCreditRequest,
   highlightedInvoiceId,
   onClearHighlight
 }: PaymentsPageProps) {
+  const analytics = useAnalytics(currentUser);
+  const isCash = currentUser?.commercialCondition === 'contado';
   const [filter, setFilter] = useState<InvoiceStatus | 'todos'>('todos');
   const [search, setSearch] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
@@ -134,6 +145,7 @@ export function PaymentsPage({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
+  const [showRegistrationMode, setShowRegistrationMode] = useState(false);
 
   const filteredInvoices = useMemo(() => {
     return DUMMY_INVOICES.filter(inv => {
@@ -148,15 +160,23 @@ export function PaymentsPage({
     const pendingBalance = DUMMY_INVOICES.reduce((sum, inv) => sum + inv.balance, 0);
     const overdueCount = DUMMY_INVOICES.filter(inv => inv.status === 'vencida').length;
     return {
-      limit: currentUser?.creditLimit || 5000000,
-      available: currentUser?.availableCredit || 3250000,
+      limit: currentUser?.creditLimit || (isCash ? 0 : 5000000),
+      available: currentUser?.availableCredit || (isCash ? 0 : 3250000),
       pending: pendingBalance,
       overdue: overdueCount
     };
-  }, [currentUser]);
+  }, [currentUser, isCash]);
 
   const usedCredit = stats.limit - stats.available;
-  const usedPercentage = (usedCredit / stats.limit) * 100;
+  const usedPercentage = stats.limit > 0 ? (usedCredit / stats.limit) * 100 : 0;
+
+  useEffect(() => {
+    analytics.track('payment_page_viewed', 'payments', {
+      invoiceCount: filteredInvoices.length,
+      pendingBalance: stats.pending,
+      overdueCount: stats.overdue
+    });
+  }, []);
 
   const totalToPay = selectedInvoices.reduce((sum, id) => {
     const inv = DUMMY_INVOICES.find(i => i.id === id);
@@ -174,14 +194,34 @@ export function PaymentsPage({
   const finalTotal = totalToPay + commissionValue;
 
   const handleToggleInvoice = (id: string) => {
+    const isSelecting = !selectedInvoices.includes(id);
     setSelectedInvoices(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
+
+    if (isSelecting) {
+      const inv = DUMMY_INVOICES.find(i => i.id === id);
+      analytics.track('invoice_selected', 'payments', {
+        productId: inv?.id,
+        metadata: { invoiceNumber: inv?.number, balance: inv?.balance }
+      });
+    }
   };
 
   const handleSimulatePayment = () => {
     if (selectedInvoices.length === 0 || !paymentMethod) return;
     setIsProcessing(true);
+
+    analytics.track('payment_simulated', 'payments', {
+      paymentValue: finalTotal,
+      invoiceCount: selectedInvoices.length,
+      metadata: { 
+        method: paymentMethod, 
+        franchise: paymentMethod === 'card' ? franchise : undefined,
+        commission: commissionValue
+      }
+    });
+
     setTimeout(() => {
       setIsProcessing(false);
       setShowConfirmation(true);
@@ -296,15 +336,22 @@ export function PaymentsPage({
           
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
-              <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto mb-2">Cartera y pagos</h1>
+              <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto mb-2">
+                {isCash ? 'Pagos y comprobantes' : 'Cartera y pagos'}
+              </h1>
               <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
-                Consulta tus facturas, vencimientos, cupo disponible y realiza pagos de forma centralizada.
+                {isCash 
+                  ? 'Gestiona tus pagos de contado, registra nuevos soportes y consulta tus comprobantes confirmados.'
+                  : 'Consulta tus facturas, vencimientos, cupo disponible y realiza pagos de forma centralizada.'
+                }
               </p>
             </div>
             <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
               <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Negocio Registrado</div>
               <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
-              <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city} · {currentUser?.customerType}</div>
+              <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">
+                {currentUser?.city} · {isCash ? 'Cliente Contado' : (currentUser?.customerType || 'Cliente B2B')}
+              </div>
             </div>
           </div>
         </div>
@@ -313,29 +360,59 @@ export function PaymentsPage({
       <div className="max-w-[1480px] mx-auto px-8 mt-10">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Cupo asignado" value={formatCOP(stats.limit)} icon={Wallet} />
-          <StatCard title="Cupo disponible" value={formatCOP(stats.available)} icon={CheckCircle2} color="text-green-600" />
-          <StatCard title="Saldo pendiente" value={formatCOP(stats.pending)} icon={Clock} color="text-yellow-600" />
-          <StatCard title="Facturas vencidas" value={stats.overdue.toString()} icon={AlertCircle} color="text-red-600" />
+          {!isCash && <StatCard title="Cupo asignado" value={formatCOP(stats.limit)} icon={Wallet} />}
+          {!isCash && <StatCard title="Cupo disponible" value={formatCOP(stats.available)} icon={CheckCircle2} color="text-green-600" />}
+          <StatCard title={isCash ? "Facturas pendientes" : "Saldo pendiente"} value={formatCOP(stats.pending)} icon={Clock} color="text-yellow-600" />
+          {!isCash && <StatCard title="Facturas vencidas" value={stats.overdue.toString()} icon={AlertCircle} color="text-red-600" />}
+          {isCash && <StatCard title="Pagos en validación" value="2" icon={Clock} color="text-orange-500" />}
+          {isCash && <StatCard title="Comprobantes" value="12" icon={FileText} color="text-blue-500" />}
         </div>
 
-        {/* Credit Usage Bar */}
-        <div className="bg-white p-8 rounded-3xl border border-borde tbs-shadow mb-10">
-          <div className="flex justify-between items-end mb-4">
-            <div>
-              <h3 className="text-sm font-black text-texto uppercase tracking-widest mb-1">Uso del cupo</h3>
-              <p className="text-gris-oscuro font-bold">Has usado <span className="text-texto font-black">{formatCOP(usedCredit)}</span> de {formatCOP(stats.limit)}</p>
+        {/* Credit Usage Bar - Only for Credit Customers */}
+        {!isCash && (
+          <div className="bg-white p-8 rounded-3xl border border-borde tbs-shadow mb-10">
+            <div className="flex justify-between items-end mb-4">
+              <div>
+                <h3 className="text-sm font-black text-texto uppercase tracking-widest mb-1">Uso del cupo</h3>
+                <p className="text-gris-oscuro font-bold">Has usado <span className="text-texto font-black">{formatCOP(usedCredit)}</span> de {formatCOP(stats.limit)}</p>
+              </div>
+              <span className={`text-sm font-black ${usedPercentage > 80 ? 'text-rojo' : 'text-texto'}`}>{usedPercentage.toFixed(0)}%</span>
             </div>
-            <span className={`text-sm font-black ${usedPercentage > 80 ? 'text-rojo' : 'text-texto'}`}>{usedPercentage.toFixed(0)}%</span>
+            <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${usedPercentage}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={`h-full ${progressColor()}`}
+              />
+            </div>
           </div>
-          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${usedPercentage}%` }}
-              transition={{ duration: 1, ease: "easeOut" }}
-              className={`h-full ${progressColor()}`}
-            />
+        )}
+
+        {/* Banner Solicitud Crédito - Adapted for Cash */}
+        <div className={`rounded-3xl p-8 border mb-10 flex flex-col md:flex-row items-center justify-between gap-6 ${isCash ? 'bg-orange-50 border-orange-100' : 'bg-gradient-to-r from-rojo/10 to-rojo-suave/30 border-rojo/20'}`}>
+          <div className="flex items-center gap-6">
+            <div className={`w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm ${isCash ? 'text-orange-500' : 'text-rojo'}`}>
+              <TrendingUp size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-texto mb-1">
+                {isCash ? '¿Deseas comprar a crédito con TBS?' : '¿Necesitas un cupo de crédito mayor?'}
+              </h3>
+              <p className="text-gris-oscuro font-medium">
+                {isCash 
+                  ? 'Como cliente contado pagas antes de recibir. Solicita un análisis de crédito para obtener cupo y plazos de pago.'
+                  : 'Incrementa tu capacidad de compra o solicita un nuevo crédito 100% digital.'
+                }
+              </p>
+            </div>
           </div>
+          <button 
+            onClick={onGoCreditRequest}
+            className={`px-8 py-4 text-white rounded-xl font-black transition-all shadow-lg whitespace-nowrap cursor-pointer ${isCash ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20' : 'bg-rojo hover:bg-rojo-oscuro shadow-rojo/20'}`}
+          >
+            {isCash ? 'Solicitar estudio de crédito' : 'Solicitar aumento de cupo'}
+          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-10">
@@ -343,13 +420,16 @@ export function PaymentsPage({
           <div className="flex-1 min-w-0">
             {/* Filters & Search */}
             <div className="flex flex-col md:flex-row gap-6 mb-8">
-              <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 md:pb-0 scrollbar-hide">
+              <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 md:pb-0 scrollbar-hide flex-1">
                 {(['todos', 'pendiente', 'por_vencer', 'vencida', 'pagada'] as const).map(status => (
                   <button
                     key={status}
-                    onClick={() => setFilter(status)}
+                    onClick={() => {
+                      setFilter(status);
+                      setShowRegistrationMode(false);
+                    }}
                     className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-                      filter === status 
+                      filter === status && !showRegistrationMode
                         ? 'bg-texto text-white shadow-lg' 
                         : 'bg-white text-gris border border-borde hover:border-rojo/30 hover:text-rojo'
                     }`}
@@ -357,6 +437,18 @@ export function PaymentsPage({
                     {status === 'por_vencer' ? 'Por vencer' : status.replace('_', ' ')}
                   </button>
                 ))}
+                {isCash && (
+                  <button
+                    onClick={() => setShowRegistrationMode(true)}
+                    className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                      showRegistrationMode 
+                        ? 'bg-orange-500 text-white shadow-lg' 
+                        : 'bg-white text-orange-500 border border-orange-200 hover:bg-orange-50'
+                    }`}
+                  >
+                    Registrar soporte de pago
+                  </button>
+                )}
               </div>
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={20} />
@@ -370,30 +462,34 @@ export function PaymentsPage({
               </div>
             </div>
 
-            {/* Invoices List */}
-            <div className="space-y-4">
-              {filteredInvoices.length > 0 ? (
-                filteredInvoices.map(inv => (
-                  <InvoiceRow 
-                    key={inv.id} 
-                    invoice={inv} 
-                    selected={selectedInvoices.includes(inv.id)}
-                    onToggle={() => handleToggleInvoice(inv.id)}
-                    statusColor={getStatusColor(inv.status)}
-                    onShowDetail={() => setDetailInvoice(inv)}
-                    isHighlighted={highlightedInvoiceId === inv.number}
-                  />
-                ))
-              ) : (
-                <div className="bg-white rounded-3xl p-20 border border-dash border-borde text-center">
-                  <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FileText size={32} />
+            {/* Invoices List or Registration Mode */}
+            {showRegistrationMode ? (
+              <PaymentRegistrationForm onCancel={() => setShowRegistrationMode(false)} onFinish={handleSimulatePayment} />
+            ) : (
+              <div className="space-y-4">
+                {filteredInvoices.length > 0 ? (
+                  filteredInvoices.map(inv => (
+                    <InvoiceRow 
+                      key={inv.id} 
+                      invoice={inv} 
+                      selected={selectedInvoices.includes(inv.id)}
+                      onToggle={() => handleToggleInvoice(inv.id)}
+                      statusColor={getStatusColor(inv.status)}
+                      onShowDetail={() => setDetailInvoice(inv)}
+                      isHighlighted={highlightedInvoiceId === inv.number}
+                    />
+                  ))
+                ) : (
+                  <div className="bg-white rounded-3xl p-20 border border-dash border-borde text-center">
+                    <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FileText size={32} />
+                    </div>
+                    <h3 className="text-xl font-black text-texto mb-2">No encontramos resultados</h3>
+                    <p className="text-gris font-medium">Intenta con otros filtros o términos de búsqueda.</p>
                   </div>
-                  <h3 className="text-xl font-black text-texto mb-2">No encontramos resultados</h3>
-                  <p className="text-gris font-medium">Intenta con otros filtros o términos de búsqueda.</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Payment Panel (Sticky Sidebar) */}
@@ -718,5 +814,154 @@ function PaymentMethodBtn({ id, label, active, onClick, disabled = false }: { id
         </div>
       )}
     </button>
+  );
+}
+
+function PaymentRegistrationForm({ onCancel, onFinish }: { onCancel: () => void, onFinish: () => void }) {
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    reference: '',
+    bank: 'Bancolombia',
+    notes: '',
+  });
+  const [file, setFile] = useState<File | null>(null);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-3xl border border-borde p-8 tbs-shadow"
+    >
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 mb-1">Registro de soporte</div>
+          <h3 className="text-3xl font-black text-texto tracking-tighter tracking-tight">Carga tu comprobante</h3>
+        </div>
+        <button onClick={onCancel} className="text-gris hover:text-rojo transition-colors cursor-pointer p-2">
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Fecha de pago</label>
+          <div className="relative">
+            <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
+            <input 
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+              className="w-full h-12 bg-gray-50 border border-borde rounded-xl pl-12 pr-4 font-semibold outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Monto pagado</label>
+          <div className="relative">
+            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
+            <input 
+              type="number"
+              value={formData.amount}
+              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              placeholder="0.00"
+              className="w-full h-12 bg-gray-50 border border-borde rounded-xl pl-12 pr-4 font-semibold outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Referencia / CUS</label>
+          <div className="relative">
+            <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
+            <input 
+              type="text"
+              value={formData.reference}
+              onChange={(e) => setFormData({...formData, reference: e.target.value})}
+              placeholder="Ej: 98213456"
+              className="w-full h-12 bg-gray-50 border border-borde rounded-xl pl-12 pr-4 font-semibold outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Banco / Origen</label>
+          <div className="relative">
+            <WalletCards className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
+            <select 
+              value={formData.bank}
+              onChange={(e) => setFormData({...formData, bank: e.target.value})}
+              className="w-full h-12 bg-gray-50 border border-borde rounded-xl pl-12 pr-4 font-semibold outline-none focus:border-orange-500 transition-colors appearance-none"
+            >
+              <option>Bancolombia</option>
+              <option>Davivienda</option>
+              <option>PSE / ACH</option>
+              <option>Nequi / Daviplata</option>
+              <option>Corresponsal Bancario</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gris pointer-events-none" size={18} />
+          </div>
+        </div>
+
+        <div className="md:col-span-2 space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Soporte adjunto (Imagen/PDF)</label>
+          <div className="border-2 border-dashed border-borde rounded-2xl p-8 flex flex-col items-center justify-center bg-gray-50/50 hover:bg-gray-50 transition-colors group">
+            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-gris group-hover:text-orange-500 shadow-sm transition-colors mb-3">
+              <Upload size={24} />
+            </div>
+            {file ? (
+              <div className="text-center font-bold text-texto-sec">
+                <p className="text-sm">{file.name}</p>
+                <button onClick={() => setFile(null)} className="mt-2 text-xs text-rojo font-black uppercase hover:underline">Quitar archivo</button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold text-texto text-center">Arrastra aquí tu comprobante o haz clic para buscar</p>
+                <p className="text-[10px] font-semibold text-gris mt-1">Formatos: JPG, PNG, PDF (Máx. 5MB)</p>
+                <input 
+                  type="file" 
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="md:col-span-2 space-y-2">
+          <label className="text-[10px] font-black text-gris uppercase tracking-widest pl-1">Notas adicionales (Opcional)</label>
+          <textarea 
+            value={formData.notes}
+            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            placeholder="Alguna observación sobre tu pago..."
+            className="w-full h-24 bg-gray-50 border border-borde rounded-xl p-4 font-semibold outline-none focus:border-orange-500 transition-colors resize-none"
+          />
+        </div>
+      </div>
+
+      <div className="mt-10 flex flex-col sm:flex-row gap-4">
+        <button 
+          onClick={onCancel}
+          className="flex-1 py-4 border-2 border-borde text-texto rounded-xl font-black hover:bg-gray-50 transition-all cursor-pointer"
+        >
+          Cancelar
+        </button>
+        <button 
+          onClick={onFinish}
+          disabled={!formData.amount || !formData.reference}
+          className="flex-[2] py-4 bg-orange-500 text-white rounded-xl font-black hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Enviar soporte para validación
+        </button>
+      </div>
+
+      <div className="mt-6 flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+        <Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-[10px] font-bold text-blue-800 leading-normal">
+          Tu soporte será revisado por nuestro equipo de recaudo. Una vez validado, el saldo se aplicará a tus facturas pendientes y se liberará tu pedido para despacho.
+        </p>
+      </div>
+    </motion.div>
   );
 }

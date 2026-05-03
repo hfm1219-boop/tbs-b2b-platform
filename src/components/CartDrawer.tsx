@@ -1,14 +1,16 @@
 import { X, Plus, Minus, Trash2, ShoppingCart, CreditCard, UserPlus, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useEffect } from 'react';
 import { CartItem, User } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CartDrawerProps {
   isOpen: boolean;
   currentUser: User | null;
   items: CartItem[];
   onClose: () => void;
-  onIncrement: (productId: number) => void;
-  onDecrement: (productId: number) => void;
+  onIncrement: (productId: number, packagingId?: string) => void;
+  onDecrement: (productId: number, packagingId?: string) => void;
   onRemove: (productId: number) => void;
   onClear: () => void;
   onCheckout: () => void;
@@ -43,13 +45,41 @@ export function CartDrawer({
   onGoToCatalog,
   onGoPromotions,
 }: CartDrawerProps) {
-  const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
-  const isCliente = currentUser?.role === 'cliente_b2b';
+  const analytics = useAnalytics(currentUser);
+  const totalUnits = items.reduce((sum, item) => sum + (item.totalUnits || item.quantity), 0);
+  const isCliente = currentUser?.role === 'cliente_b2b' || currentUser?.role === 'hospitality_partner';
   const isProvider = currentUser?.role === 'marca' || currentUser?.role === 'proveedor';
+  const isCash = currentUser?.commercialCondition === 'contado';
 
   const subtotal = items.reduce((sum, item) => {
-    return sum + parsePrice(item.product.price) * item.quantity;
+    const pkgPrice = item.packaging?.packagePrice || (parsePrice(item.product.price) * (item.packaging?.unitsPerPackage || 1));
+    const qty = item.packageQuantity || 1;
+    return sum + (pkgPrice * qty);
   }, 0);
+
+  useEffect(() => {
+    if (isOpen) {
+      analytics.track('cart_opened', 'cart', {
+        productCount: items.length,
+        units: totalUnits,
+        cartValue: subtotal
+      });
+    }
+  }, [isOpen, analytics, items.length, totalUnits, subtotal]);
+
+  const handleClearCart = () => {
+    analytics.track('cart_cleared', 'cart');
+    onClear();
+  };
+
+  const handleCheckout = () => {
+    analytics.track('checkout_started', 'checkout', {
+      productCount: items.length,
+      units: totalUnits,
+      cartValue: subtotal
+    });
+    onCheckout();
+  };
 
   return (
     <AnimatePresence>
@@ -135,34 +165,57 @@ export function CartDrawer({
                           {item.product.name}
                         </h3>
 
-                        <p className="mt-1 text-xs font-semibold text-gris">
-                          {item.product.specs}
-                        </p>
+                        {item.packaging && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 bg-gray-100 text-gris font-black text-[9px] rounded uppercase border border-borde">
+                              {item.packaging.label}
+                            </span>
+                            <span className="text-[9px] font-black text-rojo">
+                              x{item.packaging.unitsPerPackage} und.
+                            </span>
+                          </div>
+                        )}
 
                         <div className="mt-3 flex items-center justify-between gap-3">
                           <div>
                             <div className="text-[10px] text-gris font-bold uppercase">
-                              Precio unitario
+                              {item.packaging && item.packaging.unitsPerPackage > 1 ? 'Precio caja' : 'Precio unitario'}
                             </div>
                             <div className="text-sm font-black text-texto">
-                              {item.product.price}
+                              $ {(item.packaging?.packagePrice || parsePrice(item.product.price)).toLocaleString('es-CO')}
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => onDecrement(item.product.id)}
+                              onClick={() => {
+                                onDecrement(item.product.id, item.packaging?.id);
+                                analytics.track('cart_item_quantity_changed', 'cart', {
+                                  productId: item.product.id,
+                                  productName: item.product.name,
+                                  quantity: (item.packageQuantity || item.quantity) - 1,
+                                  action: 'decrease'
+                                });
+                              }}
                               className="w-8 h-8 rounded-md border border-[#F1F3F5] flex items-center justify-center hover:border-rojo hover:text-rojo transition-colors cursor-pointer"
                             >
                               <Minus size={15} />
                             </button>
 
                             <span className="w-7 text-center font-black">
-                              {item.quantity}
+                              {item.packageQuantity || item.quantity}
                             </span>
 
                             <button
-                              onClick={() => onIncrement(item.product.id)}
+                              onClick={() => {
+                                onIncrement(item.product.id, item.packaging?.id);
+                                analytics.track('cart_item_quantity_changed', 'cart', {
+                                  productId: item.product.id,
+                                  productName: item.product.name,
+                                  quantity: (item.packageQuantity || item.quantity) + 1,
+                                  action: 'increase'
+                                });
+                              }}
                               className="w-8 h-8 rounded-md border border-[#F1F3F5] flex items-center justify-center hover:border-rojo hover:text-rojo transition-colors cursor-pointer"
                             >
                               <Plus size={15} />
@@ -171,12 +224,20 @@ export function CartDrawer({
                         </div>
 
                         <div className="mt-3 flex items-center justify-between border-t border-[#F1F3F5] pt-3">
-                          <div className="text-sm font-black text-texto">
-                            {formatCOP(parsePrice(item.product.price) * item.quantity)}
+                          <div className="text-sm font-black text-rojo">
+                            {formatCOP((item.packaging?.packagePrice || parsePrice(item.product.price)) * (item.packageQuantity || 1))}
                           </div>
 
                           <button
-                            onClick={() => onRemove(item.product.id)}
+                            onClick={() => {
+                              onRemove(item.product.id);
+                              analytics.track('cart_item_quantity_changed', 'cart', {
+                                productId: item.product.id,
+                                productName: item.product.name,
+                                quantity: 0,
+                                action: 'remove'
+                              });
+                            }}
                             className="text-gris hover:text-rojo transition-colors cursor-pointer"
                             title="Eliminar producto"
                           >
@@ -211,8 +272,8 @@ export function CartDrawer({
                   )}
 
                   <div className="flex items-center justify-between text-sm font-bold text-texto-sec">
-                    <span>Productos</span>
-                    <span>{totalUnits} unidades</span>
+                    <span>Resumen</span>
+                    <span>{items.length} productos / {totalUnits} unidades</span>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
@@ -223,6 +284,12 @@ export function CartDrawer({
                       {formatCOP(subtotal)}
                     </span>
                   </div>
+
+                  {isCash && (
+                    <div className="mt-2 text-[10px] font-black text-orange-600 uppercase tracking-widest text-center px-4">
+                      Cliente contado: el pedido requerirá pago anticipado o confirmación de pago.
+                    </div>
+                  )}
 
                   {isProvider ? (
                     <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 p-4 text-sm font-semibold text-gris text-center leading-relaxed">
@@ -238,7 +305,7 @@ export function CartDrawer({
                   <button
                     onClick={() => {
                       if (isCliente) {
-                        onCheckout();
+                        handleCheckout();
                       } else if (isProvider) {
                         onClose();
                       } else {
@@ -253,7 +320,7 @@ export function CartDrawer({
                     {isCliente ? (
                       <>
                         <CreditCard size={20} />
-                        Continuar pedido
+                        {isCash ? 'Continuar a pago' : 'Continuar pedido'}
                       </>
                     ) : isProvider ? (
                       <>
@@ -269,7 +336,7 @@ export function CartDrawer({
                   </button>
 
                   <button
-                    onClick={onClear}
+                    onClick={handleClearCart}
                     className="mt-3 w-full text-sm font-black text-gris hover:text-rojo transition-colors cursor-pointer"
                   >
                     Vaciar carrito

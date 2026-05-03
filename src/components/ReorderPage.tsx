@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, 
@@ -21,13 +21,14 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { User, ReorderProduct, ReorderGroup, Product } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface ReorderPageProps {
   currentUser: User | null;
   onBackToAccount: () => void;
   onGoHome: () => void;
   onGoCatalog: () => void;
-  onAddToCart: (product: Product, quantity: number) => void;
+  onAddToCart: (product: Product, source?: string | any) => void;
   onOpenCart: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
   onGoShoppingLists: () => void;
@@ -189,8 +190,27 @@ export function ReorderPage({
   onGoAdvisorChat,
   onGoShoppingLists
 }: ReorderPageProps) {
+  const analytics = useAnalytics(currentUser);
   const [activeTab, setActiveTab] = useState<'todos' | 'pedido_anterior' | 'lista_frecuente' | 'recomendado'>('todos');
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    analytics.trackPageView('/reorder', 'Reordenar pedido');
+  }, []);
+
+  useEffect(() => {
+    if (search.length >= 3) {
+      const handler = setTimeout(() => {
+        analytics.trackSearch('reorder', search);
+      }, 1000);
+      return () => clearTimeout(handler);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    analytics.trackFilter('reorder', 'type', activeTab);
+  }, [activeTab]);
+
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -287,7 +307,13 @@ export function ReorderPage({
         price: formatCOP(p.lastPrice),
         image: p.image || ""
       };
-      onAddToCart(product, q);
+      onAddToCart(product, 'reorder_bulk' as any);
+    });
+
+    analytics.track('selection_reordered', 'engagement', {
+      productCount: selectedProducts.length,
+      totalValue: totals.total,
+      units: totals.units
     });
 
     setShowConfirmModal({ ...totals });
@@ -314,7 +340,15 @@ export function ReorderPage({
         price: formatCOP(p.lastPrice),
         image: p.image || ""
       };
-      onAddToCart(product, q);
+      onAddToCart(product, 'reorder_bulk' as any);
+    });
+
+    analytics.track('group_reordered', 'engagement', {
+      groupId: group.id,
+      groupTitle: group.title,
+      productCount: availableProducts.length,
+      totalValue: groupTotal,
+      units: groupUnits
     });
 
     setShowConfirmModal({ count: availableProducts.length, units: groupUnits, total: groupTotal });
@@ -458,7 +492,7 @@ export function ReorderPage({
                           price: formatCOP(product.lastPrice),
                           image: product.image || ""
                         };
-                        onAddToCart(p, quantities[product.id] || 1);
+                        onAddToCart(p, 'reorder');
                         setShowConfirmModal({ count: 1, units: quantities[product.id] || 1, total: product.lastPrice * (quantities[product.id] || 1) });
                       }}
                       onConsultAdvisor={() => setShowAdvisorModal(product)}

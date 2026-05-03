@@ -22,6 +22,7 @@ import {
   Info
 } from 'lucide-react';
 import { User, Advisor, ChatMessage, Conversation, ConversationTopic } from '../types';
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface AdvisorChatPageProps {
   currentUser: User | null;
@@ -182,6 +183,7 @@ export default function AdvisorChatPage({
   onClearInitialStates,
   onCreateNotification
 }: AdvisorChatPageProps) {
+  const analytics = useAnalytics(currentUser);
   const isProvider = currentUser?.role === 'marca' || currentUser?.role === 'proveedor';
   const advisorData = isProvider ? ADVISOR_DATA_PROVIDER : ADVISOR_DATA_CLIENTE;
   const topicLabels = isProvider ? TOPIC_LABELS_PROVIDER : TOPIC_LABELS_CLIENTE;
@@ -253,6 +255,12 @@ export default function AdvisorChatPage({
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !activeConvId) return;
+
+    // Track message sent (without content)
+    analytics.track('chat_message_sent', 'chat', {
+      conversationId: activeConvId,
+      topic: activeConversation?.topic
+    });
 
     const msg: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -356,6 +364,12 @@ export default function AdvisorChatPage({
       messages
     };
 
+    analytics.track('chat_conversation_started', 'chat', {
+      conversationId: newId,
+      topic: newConvTopic,
+      hasContext: newConvContext !== null || !!initialContext
+    });
+
     setConversations([newConv, ...conversations]);
     setActiveConvId(newId);
     setIsNewConvModalOpen(false);
@@ -380,6 +394,12 @@ export default function AdvisorChatPage({
 
   const handleAddContextToChat = (ctx: typeof CONTEXT_OPTIONS_CLIENTE[0]) => {
     if (!activeConvId) return;
+
+    analytics.track('chat_context_added', 'chat', {
+      conversationId: activeConvId,
+      contextType: ctx.type,
+      contextLabel: ctx.label
+    });
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
     const msg: ChatMessage = {
@@ -637,6 +657,14 @@ export default function AdvisorChatPage({
 
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Security Notice */}
+                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex gap-3">
+                      <AlertCircle size={18} className="text-orange-500 shrink-0" />
+                      <p className="text-[11px] font-bold text-orange-800 leading-tight">
+                        Este chat es corporativo y monitoreado. Por tu seguridad, no compartas contraseñas, datos de tarjetas de crédito o información personal sensible. El equipo TBS nunca te pedirá tus claves por este medio.
+                      </p>
+                    </div>
+
                     {activeConversation.messages.map(msg => (
                       <div 
                         key={msg.id} 
@@ -803,16 +831,16 @@ export default function AdvisorChatPage({
                 </div>
 
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gris">Tema de consulta</label>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-gris tracking-widest mb-2">Tema de consulta</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {Object.entries(topicLabels).map(([val, label]) => (
-                        <button 
-                          key={val}
-                          onClick={() => setNewConvTopic(val as ConversationTopic)}
-                          className={`px-3 py-2.5 rounded-xl border text-[11px] font-black text-center transition-all ${
-                            newConvTopic === val 
-                              ? 'bg-rojo/5 border-rojo text-rojo shadow-sm shadow-rojo/5' 
+                      {Object.entries(topicLabels).map(([topic, label]) => (
+                        <button
+                          key={topic}
+                          onClick={() => setNewConvTopic(topic as ConversationTopic)}
+                          className={`px-3 py-2.5 rounded-xl text-[11px] font-bold border transition-all text-left ${
+                            newConvTopic === topic 
+                              ? 'bg-rojo/5 border-rojo/30 text-rojo' 
                               : 'bg-gray-50 border-transparent text-gris hover:bg-gray-100'
                           }`}
                         >
@@ -822,60 +850,61 @@ export default function AdvisorChatPage({
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gris">Asunto</label>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-gris tracking-widest mb-2">Asunto / Contexto</label>
                     <input 
                       type="text" 
-                      placeholder="Ej: Necesito ayuda con un pedido"
+                      placeholder="Ej: Duda sobre entrega pedido TBS-10245"
                       value={newConvSubject}
                       onChange={(e) => setNewConvSubject(e.target.value)}
-                      className="w-full h-11 bg-gray-50 border border-transparent focus:border-rojo/20 focus:bg-white rounded-xl px-4 text-xs font-bold text-texto outline-none transition-all placeholder:text-gris/40"
+                      className="w-full h-12 bg-gray-50 border border-transparent focus:border-rojo/20 rounded-xl px-4 text-sm font-bold text-texto outline-none transition-all"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gris">Mensaje detallado</label>
-                    <textarea 
-                      placeholder="Escribe el detalle de tu solicitud..."
-                      value={newConvMessage}
-                      onChange={(e) => setNewConvMessage(e.target.value)}
-                      className="w-full h-28 bg-gray-50 border border-transparent focus:border-rojo/20 focus:bg-white rounded-xl p-4 text-xs font-bold text-texto outline-none transition-all resize-none placeholder:text-gris/40"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-gris">Contexto opcional</label>
-                    <div className="relative">
-                      <select 
-                        value={newConvContext === null ? '' : newConvContext}
-                        onChange={(e) => setNewConvContext(e.target.value === '' ? null : Number(e.target.value))}
-                        className="w-full h-11 bg-gray-50 border border-transparent focus:border-rojo/20 focus:bg-white rounded-xl px-4 text-xs font-bold text-texto outline-none cursor-pointer appearance-none"
-                      >
-                        <option value="">Sin contexto específico</option>
-                        {contextOptions.map((ctx, idx) => (
-                          <option key={idx} value={idx}>{ctx.label}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <ChevronRight className="rotate-90 text-gris" size={14} />
-                      </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-black uppercase text-gris tracking-widest">Vincular información (Opcional)</label>
+                      {newConvContext !== null && (
+                        <button onClick={() => setNewConvContext(null)} className="text-[9px] font-black text-rojo uppercase tracking-wider">Limpiar</button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      {contextOptions.map((ctx, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setNewConvContext(idx)}
+                          className={`shrink-0 px-3 py-2 rounded-xl text-[10px] font-bold border transition-all flex items-center gap-2 ${
+                            newConvContext === idx 
+                              ? 'bg-rojo text-white border-rojo' 
+                              : 'bg-white border-borde text-gris hover:bg-gray-50'
+                          }`}
+                        >
+                          {ctx.type === 'pedido' ? <Package size={12} /> :
+                           ctx.type === 'factura' ? <FileText size={12} /> :
+                           <Zap size={12} />}
+                          {ctx.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-8">
-                  <button 
-                    onClick={() => setIsNewConvModalOpen(false)}
-                    className="h-12 rounded-xl bg-gray-100 text-gris font-black text-xs hover:bg-gray-200 transition-colors cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
+                  <div className="pt-2">
+                    <label className="block text-[10px] font-black uppercase text-gris tracking-widest mb-2">Mensaje inicial</label>
+                    <textarea 
+                      placeholder="Describe tu consulta detalladamente..."
+                      value={newConvMessage}
+                      onChange={(e) => setNewConvMessage(e.target.value)}
+                      className="w-full h-32 bg-gray-50 border border-transparent focus:border-rojo/20 rounded-xl p-4 text-sm font-bold text-texto outline-none transition-all resize-none"
+                    />
+                  </div>
+
                   <button 
                     disabled={!newConvTopic || !newConvSubject.trim() || !newConvMessage.trim()}
                     onClick={handleCreateConversation}
-                    className="h-12 rounded-xl bg-rojo text-white font-black text-xs tbs-shadow shadow-rojo/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 cursor-pointer"
+                    className="w-full h-14 bg-rojo text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 tbs-shadow hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:grayscale disabled:scale-100 disabled:cursor-not-allowed"
                   >
                     Crear conversación
+                    <ChevronRight size={18} />
                   </button>
                 </div>
               </div>
