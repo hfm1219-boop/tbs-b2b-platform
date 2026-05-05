@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Minus, Plus, ShoppingCart, Star, Tag } from 'lucide-react';
+import { X, Minus, Plus, ShoppingCart, Star, Tag, Zap, History } from 'lucide-react';
 import { Product, ShoppingList, B2BPromotion, User, BrandAdCampaign } from '../types';
 import { BRAND_AD_CAMPAIGNS } from '../data';
 import { AdSlot } from './advertising/AdSlot';
 import { useState, useEffect } from 'react';
 import { SaveToListModal } from './SaveToListModal';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { Button, Tooltip } from './ui';
+import { useToasts } from './ToastContext';
 
 interface ProductModalProps {
   product: Product;
@@ -29,12 +31,15 @@ export function ProductModal({
   shoppingLists = [],
   onAddToList,
   onCreateList,
+  onAddToListSuccess,
   promotions = [],
   onGoPromotions
-}: ProductModalProps) {
+}: ProductModalProps & { onAddToListSuccess?: () => void }) {
   const [quantity, setQuantity] = useState(1);
   const analytics = useAnalytics(currentUser || null);
+  const toasts = useToasts();
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   
   useEffect(() => {
     analytics.track('product_viewed', 'engagement', {
@@ -55,6 +60,20 @@ export function ProductModal({
 
   const handleIncrease = () => {
     setQuantity(prev => prev + 1);
+  };
+
+  const handleAddToCart = async () => {
+    setIsAdding(true);
+    // Simulate brief processing
+    await new Promise(resolve => setTimeout(resolve, 800));
+    onAddToCart(product, quantity as any);
+    setIsAdding(false);
+    
+    toasts.success(
+      "Producto agregado", 
+      `${quantity} unidades de ${product.name} se agregaron correctamente.`
+    );
+    onClose();
   };
 
   return (
@@ -92,10 +111,65 @@ export function ProductModal({
         {/* Detalles del Producto */}
         <div className="w-full md:w-1/2 p-8 md:p-10 flex flex-col">
           <div className="mb-6">
-            <div className="text-[11px] font-black text-rojo uppercase tracking-widest mb-2">{product.category}</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] font-black text-rojo uppercase tracking-widest">{product.category}</div>
+              <div className="flex gap-2">
+                {product.isSponsored && (
+                   <Tooltip content="Este producto tiene visibilidad contratada por la marca.">
+                     <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 cursor-help">
+                       <Star size={10} fill="currentColor" /> Patrocinado
+                     </div>
+                   </Tooltip>
+                )}
+                {product.previouslyPurchased && (
+                   <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-texto-sec bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                     <History size={10} /> Comprado antes
+                   </div>
+                )}
+              </div>
+            </div>
+            
             <h2 className="text-3xl font-black text-texto tracking-tight mb-3">{product.name}</h2>
-            <div className="inline-block px-3 py-1 bg-rojo-suave text-rojo rounded-full text-xs font-black mb-6">
-              {product.specs}
+            
+            <div className="flex flex-wrap gap-2 mb-6">
+              <div className="inline-block px-3 py-1 bg-rojo-suave text-rojo rounded-full text-xs font-black">
+                {product.specs}
+              </div>
+              {product.isUrgent && (
+                <div className="inline-block px-3 py-1 bg-yellow-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                  <Zap size={10} fill="currentColor" /> Entrega Urgente
+                </div>
+              )}
+              {product.hasPromotion && (
+                <div className="inline-block px-3 py-1 bg-rojo text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1">
+                  <Tag size={10} /> Promoción Activa
+                </div>
+              )}
+            </div>
+            
+            {/* Availability Status */}
+            <div className="mb-6 flex items-center gap-4 py-3 border-y border-gray-100 border-dashed">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${
+                  product.stockStatus === 'out_of_stock' ? 'bg-red-500' : 
+                  product.stockStatus === 'low_stock' ? 'bg-orange-500 animate-pulse' : 
+                  'bg-green-500'
+                }`} />
+                <span className={`text-xs font-black uppercase tracking-widest ${
+                  product.stockStatus === 'out_of_stock' ? 'text-red-600' : 
+                  product.stockStatus === 'low_stock' ? 'text-orange-600' : 
+                  'text-green-600'
+                }`}>
+                  {product.stockStatus === 'out_of_stock' ? 'Sin Stock' : 
+                   product.stockStatus === 'low_stock' ? 'Últimas Unidades' : 
+                   'Disponible'}
+                </span>
+              </div>
+              {product.stockStatus !== 'out_of_stock' && (
+                <div className="text-[10px] font-bold text-gris uppercase tracking-tight flex items-center gap-1">
+                  <Zap size={10} className="text-rojo" /> Despacho prioritario en 24h
+                </div>
+              )}
             </div>
             
             <p className="text-texto-sec leading-relaxed font-medium mb-8">
@@ -172,44 +246,33 @@ export function ProductModal({
 
             <div className="flex gap-4">
               {canBuy ? (
-                <button 
-                  onClick={() => {
-                    onAddToCart(product, 'product_modal' as any);
-                    analytics.track('product_selected', 'engagement', {
-                      productId: product.id,
-                      productName: product.name,
-                      category: product.category,
-                      quantity: quantity,
-                      price: product.price,
-                      source: 'product_modal_add'
-                    });
-                    onClose();
-                  }}
-                  className="flex-1 h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
+                <Button 
+                  onClick={handleAddToCart}
+                  isLoading={isAdding}
+                  className="flex-1 h-14 rounded-xl text-lg gap-3"
+                  leftIcon={ShoppingCart}
                 >
-                  <ShoppingCart size={22} strokeWidth={2.5} />
-                  Agregar
-                </button>
+                  Agregar al pedido
+                </Button>
               ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
                 <div className="flex-1 h-14 bg-gray-100 text-gris rounded-xl font-black text-sm flex items-center justify-center text-center px-4">
                   Compra no disponible para perfiles de marca/proveedor
                 </div>
               ) : (
-                <button 
+                <Button 
                   onClick={() => {
                     onClose();
-                    // In a real app we might trigger a specific event
                   }}
-                  className="flex-1 h-14 bg-rojo text-white rounded-xl font-black text-lg flex items-center justify-center gap-3 tbs-shadow hover:bg-rojo-oscuro hover:scale-[1.02] active:scale-100 transition-all cursor-pointer"
+                  className="flex-1 h-14 rounded-xl text-lg"
                 >
                   Solicitar acceso
-                </button>
+                </Button>
               )}
               
               {canBuy && onAddToList && (
                 <button 
                   onClick={() => setIsSaveModalOpen(true)}
-                  className="w-14 h-14 border border-borde rounded-xl flex items-center justify-center text-gris hover:text-rojo hover:border-rojo transition-all cursor-pointer"
+                  className="w-14 h-14 border border-borde rounded-xl flex items-center justify-center text-gris hover:text-rojo hover:border-rojo transition-all cursor-pointer bg-white"
                   title="Guardar en lista"
                 >
                   <Star size={24} />

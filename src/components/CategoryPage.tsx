@@ -1,6 +1,37 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Info, Plus, ShoppingCart, Package, Filter, ChevronRight, Check, Star, Tag, X, Search, ShoppingBag } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Info, 
+  Plus, 
+  ShoppingCart, 
+  Package, 
+  Filter, 
+  ChevronRight, 
+  Check, 
+  Star, 
+  Tag, 
+  X, 
+  Search, 
+  ShoppingBag,
+  History,
+  TrendingUp,
+  Zap,
+  Info as InfoIcon
+} from 'lucide-react';
+import { 
+  Button,
+  StatusBadge,
+  AlertBox,
+  EmptyState,
+  ActionCard,
+  SectionHeader,
+  ModalShell,
+  Tooltip,
+  PageContainer,
+  PageHeader
+} from './ui';
+import { useToasts } from './ToastContext';
 import { Product, ShoppingList, B2BPromotion, User, BrandAdCampaign, ManagedClient, ManagedEvent, ManagedClientBillingType } from '../types';
 import { BRAND_AD_CAMPAIGNS } from '../data';
 import { AdSlot } from './advertising/AdSlot';
@@ -65,8 +96,24 @@ export function CategoryPage({
   onGoHospitalityDashboard
 }: CategoryPageProps) {
   const analytics = useAnalytics(currentUser || null);
+  const toasts = useToasts();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [saveToListProduct, setSaveToListProduct] = useState<Product | null>(null);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [addingToCartId, setAddingToCartId] = useState<string | null>(null);
+
+  const handleAddToCart = async (product: Product, source: string) => {
+    setAddingToCartId(product.id);
+    // Simulate brief processing
+    await new Promise(resolve => setTimeout(resolve, 600));
+    onAddToCart(product, source as any);
+    setAddingToCartId(null);
+    
+    toasts.success(
+      "Producto agregado", 
+      `${product.name} se agregó al carrito correctamente.`
+    );
+  };
   
   // Track catalog view
   useEffect(() => {
@@ -159,46 +206,51 @@ export function CategoryPage({
   const managedEvent = managedEvents.find(e => e.id === hospitalityContext?.managedEventId);
 
   return (
-    <div className="max-w-[1480px] mx-auto px-8 py-10">
+    <PageContainer variant="dashboard" className="py-10">
       <AnimatePresence>
         {hospitalityContext && managedClient && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="mb-8 bg-texto text-white p-6 rounded-[24px] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6"
+            className="mb-10 bg-texto text-white p-6 rounded-[32px] shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-6 border border-white/10"
           >
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-white shrink-0">
-                <ShoppingBag size={28} />
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-inner">
+                <ShoppingBag size={32} />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest bg-rojo px-2 py-0.5 rounded text-white italic">Modo Gestión</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Comprando para cliente</span>
+                  <StatusBadge status="aprobado" label="Modo Gestión" className="bg-rojo text-primary border-none py-0.5" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Abastecimiento Delegado</span>
                 </div>
-                <h3 className="text-xl font-black tracking-tight">{managedClient.businessName}</h3>
-                <div className="text-xs font-bold text-white/60">
+                <h3 className="text-2xl font-black tracking-tight leading-none mb-1">{managedClient.businessName}</h3>
+                <div className="text-[11px] font-bold text-white/60 flex items-center gap-2">
+                   <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                    {managedEvent ? `Evento: ${managedEvent.eventName} • ${managedEvent.eventDate}` : 'Compra directa para cliente'}
                    {hospitalityContext.billingType && ` • Facturación: ${hospitalityContext.billingType === 'facturar_cliente_final' ? 'Cliente Final' : 'Gestor'}`}
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              <button 
+            <div className="flex items-center gap-3 w-full lg:w-auto">
+              <Button 
+                variant="ghost"
+                size="sm"
                 onClick={onGoHospitalityDashboard}
-                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black transition-all"
+                className="text-white hover:bg-white/10 flex-1 lg:flex-none border border-white/20"
               >
-                Cambiar Cliente / Evento
-              </button>
-              <button 
+                Cambiar destino
+              </Button>
+              <Button 
+                variant="primary"
+                size="sm"
                 onClick={onClearHospitalityContext}
-                className="px-5 py-2.5 bg-rojo text-white rounded-xl text-xs font-black shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+                leftIcon={X}
+                className="flex-1 lg:flex-none"
               >
-                <X size={14} strokeWidth={3} />
-                Cancelar Modo Gestión
-              </button>
+                Cancelar Gestión
+              </Button>
             </div>
           </motion.div>
         )}
@@ -212,36 +264,40 @@ export function CategoryPage({
         ]}
       />
 
-      <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-10">
-        <div>
-          <div className="text-rojo text-[11px] font-black uppercase tracking-[0.2em] mb-2">Abastecimiento TBS</div>
-          <h1 className="text-4xl lg:text-[48px] font-black tracking-tighter leading-tight">
-            Catálogo B2B de licores {category ? `- ${category}` : ''}
-          </h1>
+      <div className="flex flex-col md:flex-row items-end justify-between gap-6 mb-12">
+        <div className="flex-1">
+          <PageHeader
+            eyebrow="Abastecimiento B2B"
+            title={category ? `Catálogo: ${category}` : 'Catálogo B2B de Licores'}
+            description="Consulta productos, precios según tu perfil, disponibilidad y condiciones comerciales."
+            variant="dashboard"
+          />
           {searchQuery && (
-            <div className="mt-3 flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#303844] text-white rounded-lg">
-                <Search size={14} className="text-rojo" strokeWidth={3} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{searchQuery}</span>
+            <div className="mt-[-1rem] mb-6 flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-texto text-white rounded-xl shadow-lg">
+                <Search size={16} className="text-rojo" strokeWidth={3} />
+                <span className="text-xs font-black uppercase tracking-widest leading-none">{searchQuery}</span>
               </div>
-              <button 
+              <Button 
+                variant="ghost" 
+                size="sm" 
                 onClick={onClearSearch}
-                className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-rojo/10 text-gris hover:text-rojo rounded-lg transition-colors cursor-pointer outline-none"
-                title="Limpiar búsqueda"
-              >
-                <X size={16} strokeWidth={2.5} />
-              </button>
+                leftIcon={X}
+                className="h-10 w-10 p-0 rounded-xl"
+              />
             </div>
           )}
-          <p className="mt-2 text-gris font-medium uppercase tracking-widest text-[11px]">Mostrando {filteredList.length} productos disponibles.</p>
         </div>
         {!isCliente && (
-          <div className="bg-rojo-suave border border-[#F0D3D3] p-4 rounded-xl flex items-center gap-4 max-w-md">
-            <Info size={24} className="text-rojo shrink-0" />
-            <p className="text-sm font-bold text-texto">
-              Estás viendo precios públicos. <button onClick={onLogin} className="text-rojo underline font-black cursor-pointer bg-transparent border-none p-0 outline-none">Inicia sesión</button> para ver tus precios B2B.
-            </p>
-          </div>
+          <AlertBox 
+            variant="warning"
+            className="max-w-md w-full mb-8 shadow-sm"
+            description="Estás viendo precios públicos sugeridos. Accede para ver condiciones de canal."
+            cta={{
+              label: "Inicia sesión",
+              onClick: onLogin
+            }}
+          />
         )}
       </div>
       
@@ -288,94 +344,190 @@ export function CategoryPage({
       )}
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters */}
-        <aside className="w-full lg:w-64 shrink-0">
-          <div className="sticky top-24 space-y-8">
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-black text-texto">
-                <Filter size={18} /> Filtros
-              </h3>
-              {(selectedOrigin || selectedSubcat || category) && (
-                <button 
-                  onClick={clearFilters}
-                  className="text-xs font-bold text-rojo hover:underline cursor-pointer"
-                >
-                  Limpiar
-                </button>
+        {/* Mobile Filter Toggle & Chips */}
+        <div className="lg:hidden flex flex-col gap-4 mb-6">
+          <Button 
+            variant="secondary" 
+            onClick={() => setIsFiltersOpen(true)}
+            leftIcon={Filter}
+            className="w-full h-14 rounded-2xl font-black text-sm uppercase tracking-widest border-2"
+          >
+            Filtros {(selectedOrigin || selectedSubcat || category) ? '(Activos)' : ''}
+          </Button>
+
+          {(selectedOrigin || selectedSubcat || category) && (
+            <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {category && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-rojo-suave text-rojo rounded-xl text-xs font-bold border border-rojo/10 whitespace-nowrap">
+                  {category}
+                  <X size={14} onClick={() => onCategorySelect(null)} className="cursor-pointer" />
+                </div>
               )}
-            </div>
-
-            {/* Filter Group: Category */}
-            <div>
-              <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Categoría</h4>
-              <div className="space-y-2">
-                {[
-                  'Whisky', 'Ron', 'Ginebra', 'Vodka', 'Tequila y mezcal', 'Aguardiente', 'Vinos y espumantes'
-                ].map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => onCategorySelect(cat === category ? null : cat)}
-                    className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
-                      category === cat 
-                        ? 'bg-rojo/5 text-rojo border border-rojo/20' 
-                        : 'text-texto-sec hover:bg-gray-100'
-                    }`}
-                  >
-                    {cat}
-                    {category === cat && <Check size={14} strokeWidth={3} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Filter Group: Origin */}
-            {filterOptions.origins.length > 0 && (
-              <div>
-                <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Origen</h4>
-                <div className="space-y-2">
-                  {filterOptions.origins.map(origin => (
-                    <button
-                      key={origin}
-                      onClick={() => handleOriginFilter(origin === selectedOrigin ? null : origin)}
-                      className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
-                        selectedOrigin === origin 
-                          ? 'bg-rojo/5 text-rojo border border-rojo/20' 
-                          : 'text-texto-sec hover:bg-gray-100'
-                      }`}
-                    >
-                      {origin}
-                      {selectedOrigin === origin && <Check size={14} strokeWidth={3} />}
-                    </button>
-                  ))}
+              {selectedOrigin && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-rojo-suave text-rojo rounded-xl text-xs font-bold border border-rojo/10 whitespace-nowrap">
+                  {selectedOrigin}
+                  <X size={14} onClick={() => setSelectedOrigin(null)} className="cursor-pointer" />
                 </div>
-              </div>
-            )}
-
-            {/* Filter Group: Subcategory */}
-            {filterOptions.subcategories.length > 0 && (
-              <div>
-                <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Tipo de destilado</h4>
-                <div className="space-y-2">
-                  {filterOptions.subcategories.map(sub => (
-                    <button
-                      key={sub}
-                      onClick={() => handleSubcatFilter(sub === selectedSubcat ? null : sub)}
-                      className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
-                        selectedSubcat === sub 
-                          ? 'bg-rojo/5 text-rojo border border-rojo/20' 
-                          : 'text-texto-sec hover:bg-gray-100'
-                      }`}
-                    >
-                      {sub}
-                      {selectedSubcat === sub && <Check size={14} strokeWidth={3} />}
-                    </button>
-                  ))}
+              )}
+              {selectedSubcat && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-rojo-suave text-rojo rounded-xl text-xs font-bold border border-rojo/10 whitespace-nowrap">
+                  {selectedSubcat}
+                  <X size={14} onClick={() => setSelectedSubcat(null)} className="cursor-pointer" />
                 </div>
-              </div>
-            )}
+              )}
+              <button 
+                onClick={clearFilters}
+                className="text-xs font-black text-rojo uppercase tracking-widest px-2 py-2"
+              >
+                Limpiar Todo
+              </button>
+            </div>
+          )}
+        </div>
 
-          </div>
-        </aside>
+        {/* Sidebar Filters (Desktop) / Drawer (Mobile) */}
+        <AnimatePresence>
+          {(isFiltersOpen || window.innerWidth >= 1024) && (
+            <>
+              {/* Mobile Overlay */}
+              {isFiltersOpen && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsFiltersOpen(false)}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden"
+                />
+              )}
+
+              <motion.aside 
+                initial={isFiltersOpen ? { x: '100%' } : {}}
+                animate={isFiltersOpen ? { x: 0 } : {}}
+                exit={isFiltersOpen ? { x: '100%' } : {}}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className={`w-full lg:w-64 shrink-0 ${
+                  isFiltersOpen 
+                    ? 'fixed inset-y-0 right-0 z-[101] bg-white p-8 shadow-2xl overflow-y-auto w-[85%] max-w-sm lg:relative lg:inset-auto lg:p-0 lg:shadow-none lg:bg-transparent lg:w-64' 
+                    : 'hidden lg:block'
+                }`}
+              >
+                <div className={`${isFiltersOpen ? '' : 'sticky top-24'} space-y-8 pb-20 lg:pb-0`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="flex items-center gap-2 font-black text-texto">
+                      <Filter size={18} /> Filtros
+                    </h3>
+                    <div className="flex items-center gap-4">
+                      {(selectedOrigin || selectedSubcat || category) && (
+                        <button 
+                          onClick={clearFilters}
+                          className="text-xs font-bold text-rojo hover:underline cursor-pointer"
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                      {isFiltersOpen && (
+                        <button onClick={() => setIsFiltersOpen(false)} className="lg:hidden text-gris">
+                          <X size={20} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filter Group: Category */}
+                  <div>
+                    <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Categoría</h4>
+                    <div className="space-y-2">
+                      {[
+                        'Whisky', 'Ron', 'Ginebra', 'Vodka', 'Tequila y mezcal', 'Aguardiente', 'Vinos y espumantes'
+                      ].map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            onCategorySelect(cat === category ? null : cat);
+                            if (isFiltersOpen) setIsFiltersOpen(false);
+                          }}
+                          className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
+                            category === cat 
+                              ? 'bg-rojo/5 text-rojo border border-rojo/20' 
+                              : 'text-texto-sec hover:bg-gray-100'
+                          }`}
+                        >
+                          {cat}
+                          {category === cat && <Check size={14} strokeWidth={3} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filter Group: Origin */}
+                  {filterOptions.origins.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Origen</h4>
+                      <div className="space-y-2">
+                        {filterOptions.origins.map(origin => (
+                          <button
+                            key={origin}
+                            onClick={() => {
+                              handleOriginFilter(origin === selectedOrigin ? null : origin);
+                              if (isFiltersOpen) setIsFiltersOpen(false);
+                            }}
+                            className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
+                              selectedOrigin === origin 
+                                ? 'bg-rojo/5 text-rojo border border-rojo/20' 
+                                : 'text-texto-sec hover:bg-gray-100'
+                            }`}
+                          >
+                            {origin}
+                            {selectedOrigin === origin && <Check size={14} strokeWidth={3} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Filter Group: Subcategory */}
+                  {filterOptions.subcategories.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-black text-gris uppercase tracking-widest mb-4">Tipo de destilado</h4>
+                      <div className="space-y-2">
+                        {filterOptions.subcategories.map(sub => (
+                          <button
+                            key={sub}
+                            onClick={() => {
+                              handleSubcatFilter(sub === selectedSubcat ? null : sub);
+                              if (isFiltersOpen) setIsFiltersOpen(false);
+                            }}
+                            className={`flex items-center justify-between w-full text-sm font-bold p-2.5 rounded-lg transition-all cursor-pointer ${
+                              selectedSubcat === sub 
+                                ? 'bg-rojo/5 text-rojo border border-rojo/20' 
+                                : 'text-texto-sec hover:bg-gray-100'
+                            }`}
+                          >
+                            {sub}
+                            {selectedSubcat === sub && <Check size={14} strokeWidth={3} />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile Bottom Action */}
+                {isFiltersOpen && (
+                  <div className="absolute bottom-0 left-0 right-0 p-6 bg-white border-t border-gray-100 lg:hidden">
+                    <Button 
+                      variant="primary" 
+                      onClick={() => setIsFiltersOpen(false)}
+                      className="w-full"
+                    >
+                      Aplicar Filtros
+                    </Button>
+                  </div>
+                )}
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Product Grid */}
         <div className="flex-1">
@@ -396,7 +548,7 @@ export function CategoryPage({
 
           {paginatedList.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
                 {paginatedList.map((product) => {
                   const productPromo = promotions.find(p => p.products.some(pp => pp.productId === product.id));
                   
@@ -405,101 +557,156 @@ export function CategoryPage({
                       key={product.id}
                       whileHover={{ y: -5 }}
                       onClick={() => setSelectedProduct(product)}
-                      className="bg-white border border-borde rounded-xl overflow-hidden tarjeta-hover flex flex-col h-full cursor-pointer relative group"
+                      className="bg-white border border-borde rounded-[24px] overflow-hidden panel-shadow flex flex-col h-full cursor-pointer relative group transition-all hover:border-rojo/10"
                     >
-                      {product.originalPrice && (
-                        <div className="absolute top-3 left-3 z-10">
-                          <div className="bg-amber-400 text-black text-[10px] font-black px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-lg border border-amber-500/20">
-                            <Tag size={10} className="fill-black" /> 
-                            <span className="uppercase tracking-widest">Oferta Especial</span>
+                      {/* Badge Stack Top Left */}
+                      <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
+                        {product.originalPrice && (
+                          <StatusBadge status="pendiente" label="Oferta TBS" className="bg-amber-400 text-black border-none py-1.5 font-sans shadow-lg" />
+                        )}
+                        {product.isUrgent && (
+                          <div className="bg-yellow-500 text-white rounded-full px-3 py-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest shadow-lg">
+                            <Zap size={10} fill="currentColor" /> Entrega Urgente
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Badge Stack Top Right */}
+                      <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                        {product.isSponsored && (
+                          <Tooltip content="Este producto tiene visibilidad contratada por la marca.">
+                            <div className="bg-white/90 backdrop-blur text-texto rounded-full px-3 py-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest border border-borde shadow-sm cursor-help">
+                              <Star size={10} className="text-amber-500" fill="currentColor" /> Patrocinado
+                            </div>
+                          </Tooltip>
+                        )}
+                        {product.hasPromotion && (
+                          <div className="bg-rojo text-white rounded-full px-3 py-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest shadow-lg">
+                            <Tag size={10} /> Promoción Activa
+                          </div>
+                        )}
+                        {product.previouslyPurchased && (
+                          <div className="bg-texto text-white rounded-full px-3 py-1 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest shadow-lg">
+                            <History size={10} /> Comprado Antes
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="relative aspect-square overflow-hidden bg-gray-50 border-b border-gray-50">
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <div className="bg-white/90 backdrop-blur px-6 py-2.5 rounded-2xl text-xs font-black text-texto shadow-xl uppercase tracking-widest">
+                            Detalles
                           </div>
                         </div>
-                      )}
-                      <div className="relative aspect-square overflow-hidden bg-gray-50">
-                      <img 
-                        src={product.image} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <div className="bg-white/90 backdrop-blur px-4 py-2 rounded-full text-xs font-black text-texto tbs-shadow">
-                          Ver detalles
-                        </div>
                       </div>
-                    </div>
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-[10px] font-black text-gris uppercase tracking-[0.16em]">{product.category}</div>
-                        {product.origin && (
-                          <div className="text-[9px] font-black text-rojo bg-rojo-suave px-2 py-0.5 rounded-md uppercase tracking-wider">{product.origin}</div>
-                        )}
-                      </div>
-                      <h3 className="text-[17px] font-black text-texto leading-snug mb-2 group-hover:text-rojo transition-colors">{product.name}</h3>
-                      <p className="text-[13px] text-gris font-medium mb-4">{product.specs}</p>
-                      
-                      <div className="mt-auto pt-4 border-t border-[#F1F3F5] flex items-center justify-between">
-                        <div>
-                          <div className="text-[11px] text-gris font-bold mb-0.5">Precio {isCliente ? '' : 'público'}</div>
-                          {isCliente ? (
-                            <div className="flex flex-col">
-                              {product.originalPrice && (
-                                <span className="text-[11px] text-gris line-through font-bold leading-none mb-1">
-                                  {product.originalPrice}
-                                </span>
-                              )}
-                              <div className={`text-xl font-black ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
-                                {product.price}
-                              </div>
-                            </div>
-                          ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
-                            <div className="flex flex-col">
-                              {product.originalPrice && (
-                                <span className="text-[11px] text-gris line-through font-bold leading-none mb-1">
-                                  {product.originalPrice}
-                                </span>
-                              )}
-                              <div className={`text-xl font-black ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
-                                {product.price}
-                              </div>
-                            </div>
-                          ) : (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); onRequestAccess(); }}
-                            className="text-sm font-black text-rojo hover:underline cursor-pointer"
-                          >
-                            Solicitar acceso
-                          </button>
-                        )}
-                      </div>
-                      {canBuy && (
-                        <div className="flex gap-2">
-                          {onAddToList && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setSaveToListProduct(product); }}
-                              className="w-10 h-10 border border-borde text-gris rounded-lg flex items-center justify-center hover:text-rojo hover:border-rojo transition-all cursor-pointer outline-none"
-                              title="Guardar en lista"
-                            >
-                              <Star size={18} />
-                            </button>
+                      <div className="p-8 flex flex-col flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-[10px] font-black text-gris-oscuro uppercase tracking-[0.2em] font-sans">{product.category}</div>
+                          {product.origin && (
+                            <StatusBadge status="info" label={product.origin} className="bg-gray-100 text-gris-oscuro border-none text-[9px] py-0.5 font-sans" />
                           )}
-                          <button 
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
-                              onAddToCart(product, 'catalog_grid' as any); 
-                            }}
-                            className="w-10 h-10 bg-rojo text-white rounded-lg flex items-center justify-center hover:bg-rojo-oscuro tbs-shadow transition-colors cursor-pointer group outline-none"
-                            title="Agregar"
-                          >
-                            <Plus size={20} strokeWidth={2.5} className="group-active:scale-90 transition-transform" />
-                          </button>
                         </div>
-                      )}
-                    </div>
-                    </div>
-                  </motion.article>
-                );
-              })}
+                        <h3 className="text-xl font-black text-texto leading-none tracking-tight mb-3 group-hover:text-rojo transition-colors">{product.name}</h3>
+                        <p className="text-sm text-texto-sec font-medium mb-4 leading-relaxed line-clamp-2">{product.specs}</p>
+                        
+                        {/* Availability Status */}
+                        <div className="mb-6 pt-4 border-t border-dashed border-gray-100">
+                          <div className="flex items-center justify-between gap-2">
+                             <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${
+                                  product.stockStatus === 'out_of_stock' ? 'bg-red-500' : 
+                                  product.stockStatus === 'low_stock' ? 'bg-orange-500 animate-pulse' : 
+                                  'bg-green-500'
+                                }`} />
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                  product.stockStatus === 'out_of_stock' ? 'text-red-600' : 
+                                  product.stockStatus === 'low_stock' ? 'text-orange-600' : 
+                                  'text-green-600'
+                                }`}>
+                                  {product.stockStatus === 'out_of_stock' ? 'Sin Stock' : 
+                                   product.stockStatus === 'low_stock' ? 'Últimas Unidades' : 
+                                   'Disponible'}
+                                </span>
+                             </div>
+                             {product.stockStatus !== 'out_of_stock' && (
+                               <div className="text-[10px] font-bold text-gris uppercase tracking-tight">
+                                  Despacho en 24h
+                               </div>
+                             )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-auto pt-6 border-t border-gray-100 flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="text-[10px] text-gris font-black uppercase tracking-widest mb-1 leading-none">Precio {isCliente ? 'B2B' : 'Sugerido'}</div>
+                            {isCliente ? (
+                              <div className="flex flex-col">
+                                {product.originalPrice && (
+                                  <span className="text-xs text-gris line-through font-bold leading-none mb-1 opacity-50">
+                                    {product.originalPrice}
+                                  </span>
+                                )}
+                                <div className={`text-2xl font-black tracking-tight leading-none ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
+                                  {product.price}
+                                </div>
+                              </div>
+                            ) : currentUser && (currentUser.role === 'marca' || currentUser.role === 'proveedor') ? (
+                              <div className="flex flex-col">
+                                {product.originalPrice && (
+                                  <span className="text-xs text-gris line-through font-bold leading-none mb-1 opacity-50">
+                                    {product.originalPrice}
+                                  </span>
+                                )}
+                                <div className={`text-2xl font-black tracking-tight leading-none ${product.originalPrice ? 'text-rojo' : 'text-texto'}`}>
+                                  {product.price}
+                                </div>
+                              </div>
+                            ) : (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={(e) => { e.stopPropagation(); onRequestAccess(); }}
+                                className="h-auto p-0 text-rojo font-black"
+                              >
+                                Consultar
+                              </Button>
+                            )}
+                          </div>
+                          {canBuy && (
+                            <div className="flex gap-2">
+                              {onAddToList && (
+                                <Button
+                                  variant="ghost"
+                                  size="md"
+                                  onClick={(e) => { e.stopPropagation(); setSaveToListProduct(product); }}
+                                  className="rounded-[18px] border border-borde bg-white"
+                                  leftIcon={Star}
+                                />
+                              )}
+                              <Button
+                                variant="primary"
+                                size="md"
+                                isLoading={addingToCartId === product.id}
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleAddToCart(product, 'catalog_grid'); 
+                                }}
+                                className="rounded-[18px] tbs-shadow shrink-0"
+                                leftIcon={Plus}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </motion.article>
+                  );
+                })}
               </div>
 
               {/* Bottom Carousel Ad Slot */}
@@ -551,14 +758,14 @@ export function CategoryPage({
               )}
             </>
           ) : (
-            <div className="py-20 text-center border-2 border-dashed border-borde rounded-2xl">
-              <Package size={48} className="mx-auto text-gris mb-4 opacity-50" />
-              <h3 className="text-xl font-black text-texto">No se encontraron productos</h3>
-              <p className="text-gris font-semibold mt-2">Prueba ajustando los filtros seleccionados.</p>
-              <button onClick={clearFilters} className="mt-6 px-6 py-3 bg-rojo text-white rounded-md font-black cursor-pointer hover:bg-rojo-oscuro transition-colors outline-none">
-                Limpiar filtros
-              </button>
-            </div>
+            <EmptyState 
+              variant="noResults"
+              title="No se encontraron productos"
+              description="Prueba ajustando los filtros seleccionados o busca con otros términos."
+              primaryActionLabel="Limpiar filtros"
+              onPrimaryAction={clearFilters}
+              className="py-32"
+            />
           )}
         </div>
       </div>
@@ -610,6 +817,6 @@ export function CategoryPage({
         }}
         isCliente={isCliente}
       />
-    </div>
+    </PageContainer>
   );
 }

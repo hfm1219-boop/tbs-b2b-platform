@@ -655,28 +655,28 @@ export function B2BAccountAdminPage({
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       {/* Header Administrativo */}
-      <div className="bg-white border-b border-borde sticky top-[108px] z-40 shadow-sm">
-        <div className="max-w-[1480px] mx-auto px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center gap-6">
+      <div className="bg-white border-b border-borde sticky top-[64px] lg:top-[108px] z-40 shadow-sm">
+        <div className="max-w-[1480px] mx-auto px-4 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between py-6 gap-6">
+            <div className="flex items-center gap-4 lg:gap-6">
               <button 
                 onClick={onBackToAccount}
-                className="w-10 h-10 bg-gray-100 text-texto rounded-full flex items-center justify-center hover:bg-rojo hover:text-white transition-all cursor-pointer"
+                className="w-10 h-10 shrink-0 bg-gray-100 text-texto rounded-full flex items-center justify-center hover:bg-rojo hover:text-white transition-all cursor-pointer"
               >
                 <ArrowLeft size={20} />
               </button>
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-black text-texto tracking-tight">Administración de Cuenta</h1>
-                  <span className="px-3 py-1 bg-rojo text-white text-[10px] font-black uppercase rounded-full tracking-widest">Portal B2B</span>
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3 mb-1">
+                  <h1 className="text-xl lg:text-2xl font-black text-texto tracking-tight leading-none">Administración</h1>
+                  <span className="px-2 py-0.5 bg-rojo text-white text-[9px] font-black uppercase rounded-full tracking-widest whitespace-nowrap">Portal B2B</span>
                 </div>
-                <p className="text-sm font-bold text-gris uppercase tracking-tight flex items-center gap-2">
-                  <Briefcase size={14} /> {companyAccount.businessName} · NIT: {companyAccount.nit}
+                <p className="text-[11px] lg:text-sm font-bold text-gris uppercase tracking-tight flex items-center gap-2 leading-none">
+                  <Briefcase size={12} /> {companyAccount.businessName}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="hidden lg:flex items-center gap-3">
                <button 
                 onClick={() => onGoAdvisorChat('soporte', { label: 'Administración de Cuenta', type: 'solicitud_urgente' })}
                 className="px-6 py-3 border border-rojo text-rojo rounded-xl font-black text-sm uppercase tracking-wider hover:bg-rojo-suave transition-all flex items-center gap-2"

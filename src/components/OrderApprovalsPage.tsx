@@ -296,7 +296,7 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
         )}
 
         {/* Resumen Stats */}
-        <div id="approvals-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
+        <div id="approvals-list" className="flex overflow-x-auto lg:grid lg:grid-cols-5 gap-4 lg:gap-6 mb-12 pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
           {[
             { label: 'PENDIENTES', val: stats.pendientes, color: 'bg-yellow-50 text-yellow-600', icon: Clock },
             { label: 'APROBADOS', val: stats.aprobados, color: 'bg-green-50 text-green-600', icon: CheckCircle2 },
@@ -304,35 +304,35 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
             { label: 'DEVUELTOS', val: stats.devueltos, color: 'bg-blue-50 text-blue-600', icon: Undo2 },
             { label: 'TOTAL EN ESPERA', val: formatCurrency(stats.totalPendiente).replace('$', '$ '), color: 'bg-white/5 text-white', icon: Target, isDark: true },
           ].map((item, i) => (
-            <div key={i} className={`p-8 rounded-[32px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[180px] relative border ${item.isDark ? 'bg-[#0f172a] border-transparent' : 'bg-white border-[#f1f3f6]'}`}>
+            <div key={i} className={`p-6 lg:p-8 rounded-[32px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[160px] lg:h-[180px] shrink-0 w-[240px] lg:w-auto relative border ${item.isDark ? 'bg-[#0f172a] border-transparent' : 'bg-white border-[#f1f3f6]'}`}>
               <div className="flex items-start justify-between">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${item.color}`}>
-                  <item.icon size={22} strokeWidth={2} />
+                <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-2xl flex items-center justify-center shrink-0 ${item.color}`}>
+                  <item.icon size={20} className="lg:w-[22px]" strokeWidth={2} />
                 </div>
-                <div className={`text-[9px] font-black uppercase tracking-[0.2em] opacity-30 mt-1 ${item.isDark ? 'text-white' : 'text-texto'}`}>MÓDULO</div>
+                <div className={`text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mt-1 ${item.isDark ? 'text-white' : 'text-texto'}`}>MÓDULO</div>
               </div>
               <div className="mt-4">
-                <div className={`text-[32px] font-black tracking-[-0.04em] mb-0.5 leading-none ${item.isDark ? 'text-white' : 'text-texto'}`}>{item.val}</div>
-                <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${item.isDark ? 'text-white/40' : 'text-gris'}`}>{item.label}</div>
+                <div className={`text-[24px] lg:text-[32px] font-black tracking-[-0.04em] mb-0.5 leading-none ${item.isDark ? 'text-white' : 'text-texto'}`}>{item.val}</div>
+                <div className={`text-[9px] lg:text-[10px] font-black uppercase tracking-[0.2em] ${item.isDark ? 'text-white/40' : 'text-gris'}`}>{item.label}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-[40px] border border-borde p-8 tbs-shadow mb-10">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="bg-white rounded-[32px] lg:rounded-[40px] border border-borde p-6 lg:p-8 tbs-shadow mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
             {/* Buscador */}
-            <div className="lg:col-span-1 space-y-3">
-              <label className="text-[11px] font-black uppercase tracking-[0.15em] text-gris px-1">Buscar Pedido</label>
+            <div className="space-y-2 lg:space-y-3">
+              <label className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.15em] text-gris px-1">Buscar Pedido</label>
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
                 <input 
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Nro. pedido, sucursal..."
-                  className="w-full h-14 bg-gray-50 border-2 border-transparent focus:border-rojo focus:bg-white rounded-2xl pl-12 pr-6 text-sm font-bold transition-all outline-none"
+                  placeholder="Nro. pedido..."
+                  className="w-full h-12 lg:h-14 bg-gray-50 border-2 border-transparent focus:border-rojo focus:bg-white rounded-xl lg:rounded-2xl pl-12 pr-6 text-sm font-bold transition-all outline-none font-sans"
                 />
               </div>
             </div>
@@ -404,42 +404,41 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
               <motion.div 
                 layout
                 key={order.id}
-                className="bg-white rounded-[40px] border border-borde p-8 tbs-shadow group hover:border-rojo/30 transition-all"
+                className="bg-white rounded-[32px] lg:rounded-[40px] border border-borde p-6 lg:p-8 tbs-shadow group hover:border-rojo/30 transition-all"
               >
-                <div className="flex flex-wrap items-start justify-between gap-6 mb-8">
-                  <div className="flex gap-6">
-                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gris group-hover:bg-rojo-suave group-hover:text-rojo transition-colors shrink-0">
-                      <Package size={32} />
+                <div className="flex flex-col lg:flex-row items-start justify-between gap-4 lg:gap-6 mb-6 lg:mb-8">
+                  <div className="flex gap-4 lg:gap-6 w-full">
+                    <div className="w-14 h-14 lg:w-16 lg:h-16 bg-gray-50 rounded-xl lg:rounded-2xl flex items-center justify-center text-gris group-hover:bg-rojo-suave group-hover:text-rojo transition-colors shrink-0">
+                      <Package className="w-7 h-7 lg:w-8 lg:h-8" />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <h3 className="text-2xl font-black text-texto tracking-tight">{order.orderNumber}</h3>
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border ${getStatusColor(order.status)} flex items-center gap-1.5`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1.5 leading-none">
+                        <h3 className="text-xl lg:text-2xl font-black text-texto tracking-tight truncate">{order.orderNumber}</h3>
+                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(order.status)} flex items-center gap-1`}>
                           {getStatusIcon(order.status)}
                           {order.status}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-y-2 gap-x-4">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gris">
-                          <MapPin size={14} className="text-rojo" /> {order.cityName} • {order.branchName}
+                      <div className="flex flex-wrap items-center gap-y-1.5 gap-x-4">
+                        <div className="flex items-center gap-1 text-[10px] lg:text-xs font-bold text-gris truncate max-w-[150px]">
+                          <MapPin size={12} className="text-rojo" /> {order.branchName}
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gris">
-                          <UserIcon size={14} className="text-rojo" /> Por {order.createdByUserName}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-gris">
-                          <Calendar size={14} className="text-rojo" /> {order.createdAt}
+                        <div className="flex items-center gap-1 text-[10px] lg:text-xs font-bold text-gris">
+                          <UserIcon size={12} className="text-rojo" /> {order.createdByUserName}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <div className="text-3xl font-black text-texto tracking-tighter mb-1">{formatCurrency(order.total)}</div>
-                    <div className="text-[10px] font-black text-rojo uppercase tracking-[0.2em]">{order.reasonLabel}</div>
+                  <div className="flex items-center justify-between lg:block w-full lg:w-auto pt-4 lg:pt-0 border-t lg:border-t-0 border-gray-50">
+                    <div className="text-right">
+                      <div className="text-2xl lg:text-3xl font-black text-texto tracking-tighter leading-none">{formatCurrency(order.total)}</div>
+                      <div className="text-[9px] lg:text-[10px] font-black text-rojo uppercase tracking-[0.2em] mt-1">{order.reasonLabel}</div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-gray-50 rounded-3xl border border-gray-100 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 lg:p-5 bg-gray-50 rounded-2xl lg:rounded-3xl border border-gray-100 mb-6 lg:mb-8">
                   <div className="space-y-1">
                     <div className="text-[10px] font-black text-gris uppercase tracking-wider">Límite Comprador</div>
                     <div className="text-sm font-black text-texto">{formatCurrency(order.userPurchaseLimit || 0)}</div>
@@ -464,43 +463,52 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
                   <button 
                     onClick={() => setSelectedOrder(order)}
-                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-gray-800 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-6 lg:px-8 py-3.5 lg:py-4 bg-gray-900 text-white rounded-xl lg:rounded-2xl font-black text-[11px] lg:text-xs uppercase tracking-[0.1em] lg:tracking-[0.15em] hover:bg-gray-800 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Eye size={18} /> Ver detalles
                   </button>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2 lg:gap-3">
                     {hasApprovalPermission && order.status === 'pendiente' && (
                       <>
                         <button 
                           onClick={() => handleOpenDecision(order, 'aprobado')}
-                          className="px-6 py-4 bg-green-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-green-700 transition-all flex items-center gap-2 shadow-lg shadow-green-600/20 cursor-pointer"
+                          className="flex-1 lg:flex-none px-4 lg:px-6 py-3.5 lg:py-4 bg-green-600 text-white rounded-xl lg:rounded-2xl font-black text-[11px] lg:text-xs uppercase tracking-[0.1em] lg:tracking-[0.15em] hover:bg-green-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/20 cursor-pointer"
                         >
-                          <CheckCircle2 size={18} /> Aprobar
+                          <CheckCircle2 size={16} lg:size={18} /> Aprobar
                         </button>
                         <button 
                           onClick={() => handleOpenDecision(order, 'rechazado')}
-                          className="px-6 py-4 bg-red-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-red-700 transition-all flex items-center gap-2 shadow-lg shadow-red-600/20 cursor-pointer"
+                          className="flex-1 lg:flex-none px-4 lg:px-6 py-3.5 lg:py-4 bg-red-600 text-white rounded-xl lg:rounded-2xl font-black text-[11px] lg:text-xs uppercase tracking-[0.1em] lg:tracking-[0.15em] hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/20 cursor-pointer"
                         >
-                          <XCircle size={18} /> Rechazar
+                          <XCircle size={16} lg:size={18} /> Rechazar
                         </button>
                         <button 
                           onClick={() => handleOpenDecision(order, 'devuelto')}
-                          className="px-6 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
+                          className="w-full lg:w-auto px-4 lg:px-6 py-3.5 lg:py-4 bg-blue-600 text-white rounded-xl lg:rounded-2xl font-black text-[11px] lg:text-xs uppercase tracking-[0.1em] lg:tracking-[0.15em] hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer"
                         >
-                          <Undo2 size={18} /> Devolver
+                          <Undo2 size={16} lg:size={18} /> Devolver
                         </button>
                       </>
                     )}
-                    <button 
-                      onClick={() => onGoAdvisorChat('pedido', { label: 'Aprobación', value: order.orderNumber })}
-                      className="p-4 bg-gray-100 text-gris hover:text-rojo hover:bg-rojo-suave rounded-2xl transition-all cursor-pointer"
-                    >
-                      <MessageSquare size={20} />
-                    </button>
+                    {!hasApprovalPermission || order.status !== 'pendiente' ? (
+                      <button 
+                        onClick={() => onGoAdvisorChat('pedido', { label: 'Aprobación', value: order.orderNumber })}
+                        className="w-full lg:w-auto p-3.5 lg:p-4 bg-gray-100 text-gris hover:text-rojo hover:bg-rojo-suave rounded-xl lg:rounded-2xl transition-all flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-widest cursor-pointer"
+                      >
+                        <MessageSquare size={18} /> Soporte TBS
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => onGoAdvisorChat('pedido', { label: 'Aprobación', value: order.orderNumber })}
+                        className="p-3.5 lg:p-4 bg-gray-100 text-gris hover:text-rojo hover:bg-rojo-suave rounded-xl lg:rounded-2xl transition-all cursor-pointer"
+                      >
+                        <MessageSquare size={20} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </motion.div>

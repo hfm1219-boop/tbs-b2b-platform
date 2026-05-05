@@ -1,32 +1,55 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  ArrowLeft, 
-  Search, 
-  Filter, 
-  CreditCard, 
-  Wallet, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  ChevronRight, 
-  FileText,
-  Info,
-  ExternalLink,
-  ChevronDown,
-  X,
-  CreditCard as CreditCardIcon,
-  MessageSquare,
+  ShieldCheck,
+  Zap,
+  Building2,
   TrendingUp,
-  Upload,
-  Calendar as CalendarIcon,
+  AlertTriangle,
+  History,
+  ArrowRight,
+  ChevronDown,
+  LayoutGrid,
+  Filter,
+  Check,
+  Search,
+  Download,
+  MoreVertical,
+  HelpCircle,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  ArrowLeft,
+  X,
+  Info,
   DollarSign,
+  ChevronRight,
+  MessageSquare,
+  ExternalLink,
+  Wallet,
+  Calendar as CalendarIcon,
   Hash,
-  WalletCards
+  WalletCards,
+  Upload
 } from 'lucide-react';
+import { 
+  Button,
+  StatusBadge as GlobalStatusBadge,
+  MetricCard,
+  TableShell,
+  AlertBox,
+  ModalShell,
+  FormField,
+  SectionHeader,
+  PageContainer,
+  PageHeader,
+  ModuleTabs
+} from './ui';
 import { User, Invoice, InvoiceStatus, PaymentRecord } from '../types';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { useToasts } from './ToastContext';
+import { ConfirmDialog } from './ui';
 
 interface PaymentsPageProps {
   currentUser: User | null;
@@ -58,7 +81,12 @@ const DUMMY_INVOICES: Invoice[] = [
     balance: 1250000,
     status: "por_vencer",
     orderNumber: "TBS-10245",
-    description: "Pedido de whisky, ron y ginebra"
+    description: "Pedido de whisky, ron y ginebra",
+    site: "Bocagrande",
+    city: "Cartagena",
+    daysUntilDue: 4,
+    allowsPartialPayment: true,
+    minimumPartialPayment: 500000
   },
   {
     id: "inv-002",
@@ -69,7 +97,10 @@ const DUMMY_INVOICES: Invoice[] = [
     balance: 780000,
     status: "pendiente",
     orderNumber: "TBS-10231",
-    description: "Pedido de vodka y tequila"
+    description: "Pedido de vodka y tequila",
+    site: "Centro Histórico",
+    city: "Cartagena",
+    daysUntilDue: 8
   },
   {
     id: "inv-003",
@@ -80,7 +111,44 @@ const DUMMY_INVOICES: Invoice[] = [
     balance: 1120000,
     status: "vencida",
     orderNumber: "TBS-10218",
-    description: "Pedido de aguardiente y ron"
+    description: "Pedido de aguardiente y ron",
+    site: "Bocagrande",
+    city: "Cartagena",
+    daysOverdue: 4,
+    allowsPartialPayment: true,
+    minimumPartialPayment: 300000
+  },
+  {
+    id: "inv-003b",
+    number: "FV-88150",
+    issueDate: "2026-03-28",
+    dueDate: "2026-04-20",
+    value: 2400000,
+    balance: 1280000,
+    status: "vencida",
+    orderNumber: "TBS-10205",
+    description: "Pedido de ron premium y tequila",
+    site: "Zona Rosa",
+    city: "Bogotá",
+    daysOverdue: 14,
+    allowsPartialPayment: true,
+    minimumPartialPayment: 500000,
+    paymentStatus: 'parcial'
+  },
+  {
+    id: "inv-003c",
+    number: "FV-88120",
+    issueDate: "2026-03-15",
+    dueDate: "2026-04-10",
+    value: 950000,
+    balance: 950000,
+    status: "vencida",
+    orderNumber: "TBS-10185",
+    description: "Pedido de cervezas importadas",
+    site: "Bocagrande",
+    city: "Cartagena",
+    daysOverdue: 24,
+    hasDispute: true
   },
   {
     id: "inv-004",
@@ -91,18 +159,10 @@ const DUMMY_INVOICES: Invoice[] = [
     balance: 0,
     status: "pagada",
     orderNumber: "TBS-10190",
-    description: "Pedido surtido para evento"
-  },
-  {
-    id: "inv-005",
-    number: "FV-87992",
-    issueDate: "2026-03-20",
-    dueDate: "2026-04-10",
-    value: 980000,
-    balance: 0,
-    status: "pagada",
-    orderNumber: "TBS-10172",
-    description: "Pedido de vinos y espumantes"
+    description: "Pedido surtido para evento",
+    site: "Centro Histórico",
+    city: "Cartagena",
+    paymentStatus: 'pagada'
   }
 ];
 
@@ -136,34 +196,56 @@ export function PaymentsPage({
   onClearHighlight
 }: PaymentsPageProps) {
   const analytics = useAnalytics(currentUser);
+  const toasts = useToasts();
   const isCash = currentUser?.commercialCondition === 'contado';
-  const [filter, setFilter] = useState<InvoiceStatus | 'todos'>('todos');
+  const [filter, setFilter] = useState<InvoiceStatus | 'todos' | 'vencimiento' | 'sede'>('todos');
   const [search, setSearch] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [franchise, setFranchise] = useState<string>('Visa');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
   const [showRegistrationMode, setShowRegistrationMode] = useState(false);
+  const [viewBy, setViewBy] = useState<'lista' | 'vencimiento' | 'sede'>('lista');
 
   const filteredInvoices = useMemo(() => {
     return DUMMY_INVOICES.filter(inv => {
-      const matchesFilter = filter === 'todos' || inv.status === filter;
       const matchesSearch = inv.number.toLowerCase().includes(search.toLowerCase()) || 
-                           (inv.orderNumber && inv.orderNumber.toLowerCase().includes(search.toLowerCase()));
-      return matchesFilter && matchesSearch;
+                           (inv.orderNumber && inv.orderNumber.toLowerCase().includes(search.toLowerCase())) ||
+                           (inv.site && inv.site.toLowerCase().includes(search.toLowerCase()));
+      return matchesSearch;
     });
-  }, [filter, search]);
+  }, [search]);
 
   const stats = useMemo(() => {
-    const pendingBalance = DUMMY_INVOICES.reduce((sum, inv) => sum + inv.balance, 0);
-    const overdueCount = DUMMY_INVOICES.filter(inv => inv.status === 'vencida').length;
+    const pendingInvoices = DUMMY_INVOICES.filter(inv => inv.balance > 0);
+    const pendingTotal = pendingInvoices.reduce((sum, inv) => sum + inv.balance, 0);
+    const overdueInvoices = pendingInvoices.filter(inv => inv.status === 'vencida');
+    const overdueTotal = overdueInvoices.reduce((sum, inv) => sum + inv.balance, 0);
+    const nextToExpireInvoices = pendingInvoices.filter(inv => inv.status === 'por_vencer');
+    const nextToExpireTotal = nextToExpireInvoices.reduce((sum, inv) => sum + inv.balance, 0);
+    
+    const maxOverdueDays = Math.max(0, ...overdueInvoices.map(inv => inv.daysOverdue || 0));
+
+    // Simple Risk logic
+    let risk: 'bajo' | 'atencion' | 'medio' | 'alto' | 'bloqueado' = 'bajo';
+    if (overdueInvoices.length > 5 || maxOverdueDays > 30) risk = 'bloqueado';
+    else if (overdueInvoices.length > 3 || maxOverdueDays > 15) risk = 'alto';
+    else if (overdueInvoices.length > 0) risk = 'medio';
+    else if (nextToExpireInvoices.length > 3) risk = 'atencion';
+
     return {
-      limit: currentUser?.creditLimit || (isCash ? 0 : 5000000),
-      available: currentUser?.availableCredit || (isCash ? 0 : 3250000),
-      pending: pendingBalance,
-      overdue: overdueCount
+      limit: currentUser?.creditLimit || (isCash ? 0 : 50000000),
+      available: currentUser?.availableCredit || (isCash ? 0 : 12500000),
+      pending: pendingTotal,
+      overdue: overdueTotal,
+      overdueCount: overdueInvoices.length,
+      nextToExpire: nextToExpireTotal,
+      nextToExpireCount: nextToExpireInvoices.length,
+      maxOverdueDays,
+      risk
     };
   }, [currentUser, isCash]);
 
@@ -209,8 +291,13 @@ export function PaymentsPage({
   };
 
   const handleSimulatePayment = () => {
-    if (selectedInvoices.length === 0 || !paymentMethod) return;
+    if (selectedInvoices.length === 0 || !paymentMethod) {
+      toasts.error("Selección requerida", "Debes seleccionar al menos una factura y un método de pago.");
+      return;
+    }
+    
     setIsProcessing(true);
+    setShowConfirmModal(false);
 
     analytics.track('payment_simulated', 'payments', {
       paymentValue: finalTotal,
@@ -225,6 +312,7 @@ export function PaymentsPage({
     setTimeout(() => {
       setIsProcessing(false);
       setShowConfirmation(true);
+      toasts.success("Pago registrado", "Hemos recibido tu reporte de pago correctamente.");
     }, 1500);
   };
 
@@ -323,210 +411,434 @@ export function PaymentsPage({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      {/* Header section */}
-      <div className="bg-white border-b border-borde pt-8 pb-10">
-        <div className="max-w-[1480px] mx-auto px-8">
-          <button 
-            onClick={onBackToAccount}
-            className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
-          >
-            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-            Volver a mi cuenta
-          </button>
-          
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto mb-2">
-                {isCash ? 'Pagos y comprobantes' : 'Cartera y pagos'}
-              </h1>
-              <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
-                {isCash 
-                  ? 'Gestiona tus pagos de contado, registra nuevos soportes y consulta tus comprobantes confirmados.'
-                  : 'Consulta tus facturas, vencimientos, cupo disponible y realiza pagos de forma centralizada.'
-                }
-              </p>
-            </div>
-            <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
-              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Negocio Registrado</div>
-              <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
-              <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">
-                {currentUser?.city} · {isCash ? 'Cliente Contado' : (currentUser?.customerType || 'Cliente B2B')}
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Executive Financial Header */}
+      <div className="bg-white border-b border-borde pt-12 pb-2">
+        <PageContainer variant="dashboard">
+          <PageHeader
+            eyebrow="Resumen Financiero"
+            title="Cartera y Pagos"
+            description="Consulta facturas, cupo disponible, vencimientos y pagos registrados. Tu salud financiera es nuestra prioridad."
+            secondaryAction={{
+              label: "Volver a mi cuenta",
+              onClick: onBackToAccount,
+              icon: ArrowLeft,
+              variant: 'ghost'
+            }}
+            metric={{
+              label: "Riesgo Financiero",
+              value: stats.risk === 'bajo' ? "Bajo Riesgo" : 
+                     stats.risk === 'atencion' ? "Atención" :
+                     stats.risk === 'medio' ? "Riesgo Medio" :
+                     stats.risk === 'bloqueado' ? "Restringida" : "Riesgo Alto"
+            }}
+            variant="dashboard"
+          />
+        </PageContainer>
       </div>
 
-      <div className="max-w-[1480px] mx-auto px-8 mt-10">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {!isCash && <StatCard title="Cupo asignado" value={formatCOP(stats.limit)} icon={Wallet} />}
-          {!isCash && <StatCard title="Cupo disponible" value={formatCOP(stats.available)} icon={CheckCircle2} color="text-green-600" />}
-          <StatCard title={isCash ? "Facturas pendientes" : "Saldo pendiente"} value={formatCOP(stats.pending)} icon={Clock} color="text-yellow-600" />
-          {!isCash && <StatCard title="Facturas vencidas" value={stats.overdue.toString()} icon={AlertCircle} color="text-red-600" />}
-          {isCash && <StatCard title="Pagos en validación" value="2" icon={Clock} color="text-orange-500" />}
-          {isCash && <StatCard title="Comprobantes" value="12" icon={FileText} color="text-blue-500" />}
-        </div>
+      <PageContainer variant="dashboard" className="mt-8">
+        {/* Main Dashboard Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
+           <div className="space-y-6">
+              {/* Core Metrics Grid */}
+              <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-4 pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
+                 {/* Cupo Card */}
+                 {!isCash && (
+                   <div className="min-w-[280px] lg:min-w-0 bg-white rounded-[32px] p-6 border border-borde shadow-sm relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50 rounded-full translate-x-12 -translate-y-12 transition-transform group-hover:scale-110" />
+                      <div className="relative">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center text-texto">
+                            <ShieldCheck size={20} />
+                          </div>
+                          <span className="text-[11px] font-black text-gris uppercase tracking-[0.1em]">Cupo B2B Aprobado</span>
+                        </div>
+                        <div className="text-3xl font-black text-texto mb-2">{formatCOP(stats.limit)}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                             <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${usedPercentage}%` }}
+                                className={`h-full ${usedPercentage > 85 ? 'bg-rojo' : 'bg-texto'}`} 
+                             />
+                          </div>
+                          <span className="text-[10px] font-black text-gris">{usedPercentage.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                   </div>
+                 )}
 
-        {/* Credit Usage Bar - Only for Credit Customers */}
-        {!isCash && (
-          <div className="bg-white p-8 rounded-3xl border border-borde tbs-shadow mb-10">
-            <div className="flex justify-between items-end mb-4">
-              <div>
-                <h3 className="text-sm font-black text-texto uppercase tracking-widest mb-1">Uso del cupo</h3>
-                <p className="text-gris-oscuro font-bold">Has usado <span className="text-texto font-black">{formatCOP(usedCredit)}</span> de {formatCOP(stats.limit)}</p>
+                 {/* Disponible Card */}
+                 {!isCash && (
+                   <div className="min-w-[280px] lg:min-w-0 bg-white rounded-[32px] p-6 border border-borde shadow-sm relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-full translate-x-12 -translate-y-12" />
+                      <div className="relative">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-2xl bg-green-100 flex items-center justify-center text-green-600">
+                            <TrendingUp size={20} />
+                          </div>
+                          <span className="text-[11px] font-black text-gris uppercase tracking-[0.1em]">Cupo Disponible</span>
+                        </div>
+                        <div className="text-3xl font-black text-green-600 mb-1">{formatCOP(stats.available)}</div>
+                        <p className="text-[10px] font-bold text-gris leading-tight">Valor habilitado para nuevos pedidos hoy.</p>
+                      </div>
+                   </div>
+                 )}
+
+                 {/* Pendiente Total */}
+                 <div className="min-w-[280px] lg:min-w-0 bg-white rounded-[32px] p-6 border border-borde shadow-sm relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full translate-x-12 -translate-y-12" />
+                    <div className="relative">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600">
+                          <History size={20} />
+                        </div>
+                        <span className="text-[11px] font-black text-gris uppercase tracking-[0.1em]">Cartera Total</span>
+                      </div>
+                      <div className="text-3xl font-black text-texto mb-1">{formatCOP(stats.pending)}</div>
+                      <p className="text-[10px] font-bold text-gris leading-tight">{DUMMY_INVOICES.filter(i => i.balance > 0).length} documentos pendientes.</p>
+                    </div>
+                 </div>
               </div>
-              <span className={`text-sm font-black ${usedPercentage > 80 ? 'text-rojo' : 'text-texto'}`}>{usedPercentage.toFixed(0)}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${usedPercentage}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className={`h-full ${progressColor()}`}
-              />
-            </div>
-          </div>
-        )}
 
-        {/* Banner Solicitud Crédito - Adapted for Cash */}
-        <div className={`rounded-3xl p-8 border mb-10 flex flex-col md:flex-row items-center justify-between gap-6 ${isCash ? 'bg-orange-50 border-orange-100' : 'bg-gradient-to-r from-rojo/10 to-rojo-suave/30 border-rojo/20'}`}>
-          <div className="flex items-center gap-6">
-            <div className={`w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm ${isCash ? 'text-orange-500' : 'text-rojo'}`}>
-              <TrendingUp size={32} />
-            </div>
-            <div>
-              <h3 className="text-xl font-black text-texto mb-1">
-                {isCash ? '¿Deseas comprar a crédito con TBS?' : '¿Necesitas un cupo de crédito mayor?'}
-              </h3>
-              <p className="text-gris-oscuro font-medium">
-                {isCash 
-                  ? 'Como cliente contado pagas antes de recibir. Solicita un análisis de crédito para obtener cupo y plazos de pago.'
-                  : 'Incrementa tu capacidad de compra o solicita un nuevo crédito 100% digital.'
-                }
-              </p>
-            </div>
-          </div>
-          <button 
-            onClick={onGoCreditRequest}
-            className={`px-8 py-4 text-white rounded-xl font-black transition-all shadow-lg whitespace-nowrap cursor-pointer ${isCash ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/20' : 'bg-rojo hover:bg-rojo-oscuro shadow-rojo/20'}`}
-          >
-            {isCash ? 'Solicitar estudio de crédito' : 'Solicitar aumento de cupo'}
-          </button>
+              {/* Sub Metrics (Overdue, Upcoming) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className={`p-6 rounded-[28px] border transition-all flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 ${stats.overdueCount > 0 ? 'bg-rojo/5 border-rojo/20' : 'bg-gray-50 border-borde'}`}>
+                    <div className="flex gap-4">
+                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${stats.overdueCount > 0 ? 'bg-rojo text-white shadow-lg shadow-rojo/20' : 'bg-white text-gris'}`}>
+                          <AlertCircle size={24} />
+                       </div>
+                       <div>
+                          <div className="text-[10px] font-black uppercase text-gris tracking-widest mb-1">Mora Activa</div>
+                          <div className={`text-2xl font-black ${stats.overdueCount > 0 ? 'text-rojo' : 'text-texto'}`}>{formatCOP(stats.overdue)}</div>
+                          <div className="text-xs font-bold text-gris mt-0.5">{stats.overdueCount} facturas presentan vencimiento</div>
+                       </div>
+                    </div>
+                    {stats.overdueCount > 0 && (
+                       <Button size="sm" variant="outline" className="w-full sm:w-auto border-rojo text-rojo hover:bg-rojo hover:text-white"
+                        onClick={() => {
+                          setFilter('vencida');
+                          setViewBy('lista');
+                        }}>
+                          Pagar Mora
+                       </Button>
+                    )}
+                 </div>
+
+                 <div className="p-6 rounded-[28px] border border-amber-200 bg-amber-50/50 flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                       <Zap size={24} fill="white" />
+                    </div>
+                    <div>
+                       <div className="text-[10px] font-black uppercase text-gris tracking-widest mb-1">Próximos Vencimientos</div>
+                       <div className="text-2xl font-black text-amber-600">{formatCOP(stats.nextToExpire)}</div>
+                       <div className="text-xs font-bold text-gris mt-0.5">{stats.nextToExpireCount} facturas vencen en los próximos 7 días</div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* Alerts Section */}
+              <div className="space-y-3">
+                 {stats.overdueCount > 0 && (
+                    <div className="bg-rojo text-white p-4 rounded-2xl flex items-center justify-between animate-pulse">
+                       <div className="flex items-center gap-3">
+                          <AlertTriangle size={20} />
+                          <p className="text-sm font-black tracking-tight">Tu cupo puede ser restringido debido a {stats.overdueCount} facturas en mora.</p>
+                       </div>
+                       <button className="text-[10px] font-black uppercase bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors">Ver ahora</button>
+                    </div>
+                 )}
+                 {stats.pending > 0 && usedPercentage > 80 && (
+                    <div className="bg-amber-100 text-amber-800 p-4 rounded-2xl flex items-center justify-between border border-amber-200">
+                       <div className="flex items-center gap-3">
+                          <Info size={20} />
+                          <p className="text-sm font-black tracking-tight">Cupo crítico: Has usado el {usedPercentage.toFixed(0)}% de tu límite de crédito.</p>
+                       </div>
+                       <Button variant="outline" size="sm" className="bg-white border-amber-200 text-amber-800"
+                        onClick={onGoCreditRequest}>
+                          Pedir Ampliación
+                       </Button>
+                    </div>
+                 )}
+              </div>
+           </div>
+
+           <div className="space-y-6">
+              {/* Account Profile Card */}
+              <div className="bg-texto text-white rounded-[32px] p-8 shadow-xl shadow-texto/20 relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+                 <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-6">
+                       <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                          <Building2 size={28} />
+                       </div>
+                       <div>
+                          <div className="text-[10px] font-black uppercase text-white/50 tracking-widest mb-1">Identidad B2B</div>
+                          <div className="text-xl font-black truncate max-w-[200px]">{currentUser?.businessName}</div>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4 mb-8">
+                       <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                          <span className="text-xs font-bold text-white/50 uppercase tracking-wider">NIT</span>
+                          <span className="text-sm font-black">900.552.124-8</span>
+                       </div>
+                       <div className="flex justify-between items-center pb-3 border-b border-white/10">
+                          <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Condición Comercial</span>
+                          <span className="text-sm font-black uppercase tracking-widest">{isCash ? 'Contado' : 'Crédito B2B'}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Plazo Pactado</span>
+                          <span className="text-sm font-black">15 Días Calendario</span>
+                       </div>
+                    </div>
+
+                    <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10"
+                      onClick={() => onGoAdvisorChat('cartera')}>
+                       Hablar con un ejecutivo
+                    </Button>
+                 </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-borde p-6 space-y-4">
+                 <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="text-green-500" size={18} />
+                    <h4 className="text-xs font-black uppercase tracking-widest text-texto">Acciones Rápidas</h4>
+                 </div>
+                 <button className="w-full text-left p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-rojo transition-all group">
+                    <div className="flex items-center justify-between mb-1">
+                       <span className="text-sm font-black text-texto">Cerrar Morosidad</span>
+                       <ArrowRight size={16} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <p className="text-[10px] font-bold text-gris uppercase">Paga automáticamente todas las facturas vencidas ({stats.overdueCount})</p>
+                 </button>
+                 <button className="w-full text-left p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-rojo transition-all group">
+                    <div className="flex items-center justify-between mb-1">
+                       <span className="text-sm font-black text-texto">Descargar Certificado</span>
+                       <Download size={16} className="text-gris group-hover:text-rojo transition-all" />
+                    </div>
+                    <p className="text-[10px] font-bold text-gris uppercase">Estado de cuenta oficial para proveedores</p>
+                 </button>
+              </div>
+           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-10">
+        <div className="flex flex-col lg:flex-row gap-10 mt-12">
           {/* Main List Area */}
           <div className="flex-1 min-w-0">
-            {/* Filters & Search */}
-            <div className="flex flex-col md:flex-row gap-6 mb-8">
-              <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 md:pb-0 scrollbar-hide flex-1">
-                {(['todos', 'pendiente', 'por_vencer', 'vencida', 'pagada'] as const).map(status => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      setFilter(status);
-                      setShowRegistrationMode(false);
-                    }}
-                    className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-                      filter === status && !showRegistrationMode
-                        ? 'bg-texto text-white shadow-lg' 
-                        : 'bg-white text-gris border border-borde hover:border-rojo/30 hover:text-rojo'
-                    }`}
-                  >
-                    {status === 'por_vencer' ? 'Por vencer' : status.replace('_', ' ')}
-                  </button>
-                ))}
-                {isCash && (
-                  <button
-                    onClick={() => setShowRegistrationMode(true)}
-                    className={`px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
-                      showRegistrationMode 
-                        ? 'bg-orange-500 text-white shadow-lg' 
-                        : 'bg-white text-orange-500 border border-orange-200 hover:bg-orange-50'
-                    }`}
-                  >
-                    Registrar soporte de pago
-                  </button>
-                )}
-              </div>
-              <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={20} />
-                <input 
-                  type="text" 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar por número de factura o pedido"
-                  className="w-full h-12 bg-white border border-borde rounded-xl pl-12 pr-6 font-semibold outline-none focus:border-rojo transition-colors"
-                />
-              </div>
+            {/* Control Bar */}
+            <div className="bg-white rounded-[28px] border border-borde p-4 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm overflow-hidden">
+               <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
+                  <ModuleTabs 
+                    tabs={[
+                      { id: 'lista', label: 'Lista' },
+                      { id: 'vencimiento', label: 'Vencimiento' },
+                      { id: 'sede', label: 'Sede' }
+                    ]}
+                    activeTab={viewBy}
+                    onChange={(id) => setViewBy(id as any)}
+                    variant="dashboard"
+                    className="w-full md:w-auto"
+                  />
+                  <div className="relative flex-1 md:w-80">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
+                    <input 
+                      type="text" 
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Buscar por factura o sede..."
+                      className="w-full h-10 bg-gray-50 border border-transparent rounded-xl pl-11 pr-6 text-sm font-bold outline-none focus:border-rojo focus:bg-white transition-all"
+                    />
+                  </div>
+               </div>
+
+               <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto scrollbar-hide">
+                  {(['todos', 'pendiente', 'vencida', 'pagada'] as const).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setFilter(status)}
+                      className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap border ${
+                        filter === status
+                          ? 'bg-rojo text-white border-rojo shadow-lg shadow-rojo/20' 
+                          : 'bg-white text-gris border-borde hover:border-rojo/30'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                  {isCash && (
+                    <button
+                      onClick={() => setShowRegistrationMode(true)}
+                      className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] bg-green-600 text-white shadow-lg shadow-green-200 border border-green-600 ml-2"
+                    >
+                      Reportar Pago
+                    </button>
+                  )}
+               </div>
             </div>
 
-            {/* Invoices List or Registration Mode */}
+            {/* Invoices Rendering Logic */}
             {showRegistrationMode ? (
               <PaymentRegistrationForm onCancel={() => setShowRegistrationMode(false)} onFinish={handleSimulatePayment} />
             ) : (
-              <div className="space-y-4">
-                {filteredInvoices.length > 0 ? (
-                  filteredInvoices.map(inv => (
-                    <InvoiceRow 
-                      key={inv.id} 
-                      invoice={inv} 
-                      selected={selectedInvoices.includes(inv.id)}
-                      onToggle={() => handleToggleInvoice(inv.id)}
-                      statusColor={getStatusColor(inv.status)}
-                      onShowDetail={() => setDetailInvoice(inv)}
-                      isHighlighted={highlightedInvoiceId === inv.number}
-                    />
-                  ))
-                ) : (
-                  <div className="bg-white rounded-3xl p-20 border border-dash border-borde text-center">
-                    <div className="w-16 h-16 bg-gray-50 text-gray-300 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FileText size={32} />
+              <div className="space-y-10">
+                 {viewBy === 'lista' ? (
+                    <TableShell
+                      isEmpty={filteredInvoices.length === 0}
+                      emptyProps={{
+                        variant: "success",
+                        title: stats.pending === 0 ? "No tienes facturas pendientes" : "Sin documentos",
+                        description: stats.pending === 0 
+                          ? "Tu cuenta no registra facturas pendientes de pago en este momento." 
+                          : "No hay facturas que coincidan con los criterios aplicados.",
+                        primaryActionLabel: stats.pending === 0 ? "Ver historial de pagos" : "Limpiar filtros",
+                        onPrimaryAction: stats.pending === 0 ? () => {} : () => setSearch(''),
+                        secondaryActionLabel: "Ir al catálogo",
+                        onSecondaryAction: onGoHome
+                      }}
+                    >
+                      <div className="divide-y divide-gray-100">
+                        {filteredInvoices
+                          .filter(inv => filter === 'todos' || inv.status === filter)
+                          .map(inv => (
+                          <InvoiceRow 
+                            key={inv.id} 
+                            invoice={inv} 
+                            selected={selectedInvoices.includes(inv.id)}
+                            onToggle={() => handleToggleInvoice(inv.id)}
+                            onShowDetail={() => setDetailInvoice(inv)}
+                            isHighlighted={highlightedInvoiceId === inv.number}
+                          />
+                        ))}
+                      </div>
+                    </TableShell>
+                 ) : viewBy === 'vencimiento' ? (
+                    <div className="space-y-12">
+                       {['vencida', 'por_vencer', 'pendiente', 'pagada'].map(statusGroup => {
+                          const groupInvoices = filteredInvoices.filter(inv => inv.status === statusGroup);
+                          if (groupInvoices.length === 0) return null;
+                          return (
+                             <div key={statusGroup} className="space-y-4">
+                                <div className="flex items-center gap-4 px-2">
+                                   <div className={`w-3 h-10 rounded-full ${
+                                      statusGroup === 'vencida' ? 'bg-rojo' :
+                                      statusGroup === 'por_vencer' ? 'bg-amber-500' :
+                                      statusGroup === 'pendiente' ? 'bg-blue-500' : 'bg-green-500'
+                                   }`} />
+                                   <div>
+                                      <h3 className="text-xl font-black text-texto capitalize tracking-tight">{statusGroup.replace('_', ' ')}</h3>
+                                      <p className="text-xs font-bold text-gris uppercase tracking-widest">{groupInvoices.length} {groupInvoices.length === 1 ? 'Factura' : 'Facturas'}</p>
+                                   </div>
+                                </div>
+                                <div className="bg-white rounded-[32px] border border-borde overflow-hidden shadow-sm divide-y divide-gray-50">
+                                   {groupInvoices.map(inv => (
+                                      <InvoiceRow 
+                                         key={inv.id} 
+                                         invoice={inv} 
+                                         selected={selectedInvoices.includes(inv.id)}
+                                         onToggle={() => handleToggleInvoice(inv.id)}
+                                         onShowDetail={() => setDetailInvoice(inv)}
+                                      />
+                                   ))}
+                                </div>
+                             </div>
+                          )
+                       })}
                     </div>
-                    <h3 className="text-xl font-black text-texto mb-2">No encontramos resultados</h3>
-                    <p className="text-gris font-medium">Intenta con otros filtros o términos de búsqueda.</p>
-                  </div>
-                )}
+                 ) : (
+                    <div className="space-y-12">
+                       {Array.from(new Set(filteredInvoices.map(inv => inv.site))).map(site => {
+                          const groupInvoices = filteredInvoices.filter(inv => inv.site === site);
+                          const siteBalance = groupInvoices.reduce((sum, i) => sum + i.balance, 0);
+                          return (
+                             <div key={site || 'Sin sede'} className="space-y-4">
+                                <div className="flex items-center justify-between px-2">
+                                   <div className="flex items-center gap-4">
+                                      <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center text-texto">
+                                         <Building2 size={20} />
+                                      </div>
+                                      <div>
+                                         <h3 className="text-xl font-black text-texto tracking-tight">{site || 'Sede no especificada'}</h3>
+                                         <p className="text-xs font-bold text-gris uppercase tracking-widest">{groupInvoices.length} documentos</p>
+                                      </div>
+                                   </div>
+                                   <div className="text-right">
+                                      <div className="text-[10px] font-black uppercase text-gris tracking-widest mb-1">Total Pendiente</div>
+                                      <div className="text-lg font-black text-texto">{formatCOP(siteBalance)}</div>
+                                   </div>
+                                </div>
+                                <div className="bg-white rounded-[32px] border border-borde overflow-hidden shadow-sm divide-y divide-gray-50">
+                                   {groupInvoices.map(inv => (
+                                      <InvoiceRow 
+                                         key={inv.id} 
+                                         invoice={inv} 
+                                         selected={selectedInvoices.includes(inv.id)}
+                                         onToggle={() => handleToggleInvoice(inv.id)}
+                                         onShowDetail={() => setDetailInvoice(inv)}
+                                      />
+                                   ))}
+                                </div>
+                             </div>
+                          )
+                       })}
+                    </div>
+                 )}
               </div>
             )}
           </div>
 
-          {/* Payment Panel (Sticky Sidebar) */}
-          <div className="lg:w-[400px] shrink-0">
-            <div className="sticky top-10">
-              <div className="bg-white rounded-3xl border border-borde tbs-shadow overflow-hidden">
-                <div className="p-8 bg-gray-50 border-b border-borde">
-                  <h2 className="text-2xl font-black tracking-tighter text-texto mb-2">Resumen de pago</h2>
-                  <p className="text-xs font-bold text-gris uppercase tracking-widest leading-relaxed">
-                    Selecciona facturas de la lista para gestionar tus pagos pendientes.
+          <div id="payment-sidebar" className="lg:w-[420px] shrink-0">
+            <div className="sticky top-8 bg-white rounded-[32px] border border-borde shadow-xl overflow-hidden">
+               <div className="bg-texto text-white p-8 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+                  <h2 className="text-2xl font-black tracking-tighter mb-2 relative z-10 font-sans">Resumen de liquidación</h2>
+                  <p className="text-xs font-bold text-white/50 uppercase tracking-widest leading-relaxed relative z-10">
+                    Selecciona facturas para liberar cupo B2B
                   </p>
-                </div>
-                
-                <div className="p-8 space-y-8">
+               </div>
+               
+               <div className="p-8 space-y-8">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gris font-bold">Facturas seleccionadas</span>
                       <span className="text-texto font-black">{selectedInvoices.length}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm border-t border-borde pt-4">
-                      <span className="text-gris font-bold">Subtotal</span>
+                      <span className="text-gris font-bold">Subtotal Cartera</span>
                       <span className="text-texto font-black">{formatCOP(totalToPay)}</span>
                     </div>
+                    
+                    {selectedInvoices.length > 0 && !isCash && (
+                       <div className="bg-green-50 p-4 rounded-2xl border border-green-100 flex items-center justify-between animate-in zoom-in-95 duration-300">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg bg-green-500 text-white flex items-center justify-center">
+                                <ShieldCheck size={16} />
+                             </div>
+                             <div>
+                                <div className="text-[10px] font-black uppercase text-green-700 leading-none mb-1">Cupo a liberar</div>
+                                <div className="text-sm font-black text-green-600">{formatCOP(totalToPay)}</div>
+                             </div>
+                          </div>
+                          <Zap size={20} className="text-green-500 animate-pulse" fill="currentColor" />
+                       </div>
+                    )}
+
                     {paymentMethod === 'card' && totalToPay > 0 && (
                       <div className="flex justify-between items-center text-sm text-rojo">
-                        <span className="font-bold uppercase tracking-tight text-[10px]">Comisión {franchise} ({commissionRate * 100}%)</span>
-                        <span className="font-black">{formatCOP(commissionValue)}</span>
+                        <span className="font-bold uppercase tracking-tight text-[10px]">Gestión Administrativa {franchise}</span>
+                        <span className="font-black">+{formatCOP(commissionValue)}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center border-t border-borde pt-4">
-                      <span className="text-gris font-black uppercase tracking-widest text-xs">Total a pagar</span>
-                      <span className="text-3xl font-black text-rojo">{formatCOP(finalTotal)}</span>
+                      <div>
+                        <span className="text-gris font-black uppercase tracking-widest text-[10px] block mb-1">Total a debitar</span>
+                        <span className="text-3xl font-black text-texto">{formatCOP(finalTotal)}</span>
+                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-gris border-b pb-2">Selecciona método de pago</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-gris border-b border-borde pb-2">Canal de Pago</h3>
                     <div className="grid grid-cols-2 gap-3">
                       <PaymentMethodBtn 
                         id="pse" 
@@ -549,7 +861,7 @@ export function PaymentsPage({
                       <div className="opacity-40 cursor-not-allowed">
                         <PaymentMethodBtn 
                           id="credit" 
-                          label="Crédito B2B" 
+                          label="B2B Credit" 
                           active={false} 
                           onClick={() => {}} 
                           disabled 
@@ -558,58 +870,50 @@ export function PaymentsPage({
                     </div>
                     
                     {paymentMethod === 'card' && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-borde animate-in fade-in slide-in-from-top-2">
-                        <label className="block text-[10px] font-black text-gris uppercase tracking-[0.1em] mb-3">Selecciona Franquicia</label>
+                      <div className="mt-4 p-5 bg-gray-50 rounded-2xl border border-borde animate-in fade-in slide-in-from-top-2">
+                        <label className="block text-[10px] font-black text-gris uppercase tracking-[0.1em] mb-3 font-sans">Red de Pago</label>
                         <div className="flex flex-wrap gap-2">
                           {['Visa', 'MasterCard', 'American Express'].map(f => (
                             <button
                               key={f}
                               onClick={() => setFranchise(f)}
-                              className={`flex-1 min-w-[80px] py-2 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                              className={`flex-1 min-w-[80px] py-3 rounded-xl text-[10px] font-black border transition-all cursor-pointer ${
                                 franchise === f 
-                                  ? 'bg-rojo text-white border-rojo' 
-                                  : 'bg-white text-gris border-borde hover:border-rojo/30'
+                                  ? 'bg-texto text-white border-texto shadow-md' 
+                                  : 'bg-white text-gris border-borde hover:border-texto/30'
                               }`}
                             >
                               {f}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] font-bold text-gris mt-3 italic leading-tight">
-                          * {franchise === 'American Express' ? 'Amex tiene un recargo del 3%' : 'Visa/MC tienen un recargo del 2%'} por gestión administrativa.
-                        </p>
                       </div>
                     )}
                   </div>
 
-                  <button 
-                    disabled={selectedInvoices.length === 0 || !paymentMethod || isProcessing}
-                    onClick={handleSimulatePayment}
-                    className="w-full py-6 rounded-[24px] bg-texto text-white font-black text-xl tbs-shadow hover:bg-rojo hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-3 cursor-pointer"
-                  >
-                    {isProcessing ? (
-                      <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Pagar ahora <ArrowLeft className="rotate-180" size={22} />
-                      </>
-                    )}
-                  </button>
-
-                  <div className="flex gap-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                    <Info size={20} className="text-blue-600 shrink-0" />
-                    <p className="text-[11px] font-bold text-blue-800 leading-normal">
-                      Tu pago será procesado y validado por nuestro equipo contable en un plazo de 24 a 48 horas hábiles.
-                    </p>
+                  <div className="space-y-3 pt-4">
+                    <Button 
+                      disabled={selectedInvoices.length === 0 || !paymentMethod}
+                      onClick={() => setShowConfirmModal(true)}
+                      isLoading={isProcessing}
+                      size="lg"
+                      className="w-full text-lg py-8 rounded-2xl shadow-xl shadow-rojo/20 uppercase tracking-tighter font-black"
+                    >
+                      Ejecutar Pago
+                    </Button>
+                    <div className="flex items-center justify-center gap-2">
+                       <ShieldCheck size={12} className="text-green-500" />
+                       <p className="text-[10px] font-bold text-gris text-center italic">
+                          Procesamiento seguro cifrado SSL 256-bit
+                       </p>
+                    </div>
                   </div>
-                </div>
-              </div>
+               </div>
             </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
 
-      {/* Invoice Detail Modal */}
       <AnimatePresence>
         {detailInvoice && (
           <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
@@ -618,91 +922,156 @@ export function PaymentsPage({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setDetailInvoice(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-texto/80 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[32px] overflow-hidden tbs-shadow"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-[40px] overflow-hidden shadow-2xl"
             >
-              <div className="p-8 border-b border-borde flex justify-between items-start">
+              <div className="p-10 border-b border-borde flex justify-between items-start bg-gray-50/50">
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-rojo mb-1">Detalle de documento</div>
-                  <h3 className="text-3xl font-black text-texto tracking-tighter">Factura {detailInvoice.number}</h3>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="px-3 py-1 bg-rojo text-white text-[10px] font-black rounded-full uppercase tracking-widest">Estado: {detailInvoice.status.replace('_', ' ')}</div>
+                    {detailInvoice.hasDispute && (
+                       <div className="px-3 py-1 bg-amber-500 text-white text-[10px] font-black rounded-full uppercase tracking-widest">En Disputa</div>
+                    )}
+                  </div>
+                  <h3 className="text-4xl font-black text-texto tracking-tighter">Factura {detailInvoice.number}</h3>
+                  <div className="flex items-center gap-2 mt-2">
+                     <Building2 size={16} className="text-gris" />
+                     <span className="text-sm font-bold text-gris">{detailInvoice.site} · {detailInvoice.city}</span>
+                  </div>
                 </div>
-                <button onClick={() => setDetailInvoice(null)} className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer">
-                  <X size={20} />
+                <button onClick={() => setDetailInvoice(null)} className="w-12 h-12 bg-white border border-borde rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer shadow-sm">
+                  <X size={24} />
                 </button>
               </div>
-              <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none">Pedido Relacionado</div>
-                    <div className="text-sm font-black text-texto">{detailInvoice.orderNumber}</div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none">Estado</div>
-                    <div className={`text-[10px] font-black px-2 py-0.5 rounded-full border inline-block uppercase tracking-wider ${getStatusColor(detailInvoice.status)}`}>
-                      {detailInvoice.status.replace('_', ' ')}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none">Emisión</div>
-                    <div className="text-sm font-black text-texto">{detailInvoice.issueDate}</div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none">Vencimiento</div>
-                    <div className="text-sm font-black text-texto">{detailInvoice.dueDate}</div>
-                  </div>
+              
+              <div className="p-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+                   <div className="space-y-1">
+                      <div className="text-[10px] font-black uppercase text-gris tracking-widest">Pedido Origen</div>
+                      <div className="text-lg font-black text-texto flex items-center gap-2">
+                         {detailInvoice.orderNumber}
+                         <button className="text-rojo hover:underline text-[10px]">Ver Pedido</button>
+                      </div>
+                   </div>
+                   <div className="space-y-1">
+                      <div className="text-[10px] font-black uppercase text-gris tracking-widest">Fecha Emisión</div>
+                      <div className="text-lg font-black text-texto">{detailInvoice.issueDate}</div>
+                   </div>
+                   <div className="space-y-1">
+                      <div className="text-[10px] font-black uppercase text-gris tracking-widest">Fecha Vencimiento</div>
+                      <div className="text-lg font-black text-rojo">{detailInvoice.dueDate}</div>
+                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-xl space-y-1">
-                  <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none">Descripción del pedido</div>
-                  <div className="text-sm font-bold text-texto-sec leading-relaxed">{detailInvoice.description}</div>
+                <div className="bg-[#F8FAFC] rounded-3xl p-6 border border-borde mb-8">
+                   <h4 className="text-[10px] font-black uppercase tracking-widest text-gris mb-4">Resumen de liquidación</h4>
+                   <div className="space-y-4">
+                      <div className="flex justify-between items-center text-sm">
+                         <span className="font-bold text-gris">Valor Bruto</span>
+                         <span className="font-black text-texto">{formatCOP(detailInvoice.value * 1.15)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                         <span className="font-bold text-gris">Descuentos Aplicados</span>
+                         <span className="font-black text-green-600">-{formatCOP(detailInvoice.value * 0.15)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm border-t border-dashed border-borde pt-4">
+                         <span className="font-bold text-texto">Valor Neto Fiscal</span>
+                         <span className="font-black text-texto">{formatCOP(detailInvoice.value)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                         <div>
+                            <span className="font-black text-texto text-xl">Saldo Pendiente</span>
+                            <p className="text-[10px] font-bold text-gris uppercase">Liquidación inmediata sugerida</p>
+                         </div>
+                         <span className="text-3xl font-black text-rojo tracking-tighter">{formatCOP(detailInvoice.balance)}</span>
+                      </div>
+                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-borde space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-gris">Valor Total</span>
-                    <span className="text-lg font-black text-texto">{formatCOP(detailInvoice.value)}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-sm font-bold text-gris">Saldo Pendiente</span>
-                    <span className="text-2xl font-black text-rojo">{formatCOP(detailInvoice.balance)}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 border border-[#F0D3D3] bg-rojo-suave rounded-2xl">
-                  <Info size={18} className="text-rojo shrink-0" />
-                  <p className="text-[11px] font-bold text-rojo-oscuro">
-                    Documento sujeto a validación contable y condiciones comerciales según contrato B2B.
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                   <button 
+                     onClick={() => {
+                       onGoAdvisorChat('cartera', { label: `Factura ${detailInvoice.number}`, type: 'factura' });
+                       setDetailInvoice(null);
+                     }}
+                     className="flex items-center justify-center gap-3 py-5 px-6 rounded-2xl border-2 border-rojo text-rojo font-black hover:bg-rojo/5 transition-all text-sm uppercase tracking-tight shadow-md shadow-rojo/5"
+                   >
+                     <MessageSquare size={18} /> Abrir Ticket Soporte
+                   </button>
+                   <button 
+                     onClick={() => {
+                        if (!selectedInvoices.includes(detailInvoice.id)) {
+                           handleToggleInvoice(detailInvoice.id);
+                        }
+                        setDetailInvoice(null);
+                     }}
+                     className="flex items-center justify-center gap-3 py-5 px-6 rounded-2xl bg-texto text-white font-black hover:bg-rojo transition-all text-sm uppercase tracking-tight shadow-lg shadow-texto/20"
+                   >
+                     <CheckCircle2 size={18} /> Seleccionar para Pago
+                   </button>
                 </div>
               </div>
-              <div className="px-8 pb-3">
-                <button 
-                  onClick={() => {
-                  onGoAdvisorChat('cartera', { label: `Factura ${detailInvoice.number}`, type: 'factura' });
-                    setDetailInvoice(null);
-                  }}
-                  className="w-full py-4 border-2 border-rojo text-rojo bg-white rounded-xl font-black hover:bg-rojo-suave transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <MessageSquare size={18} /> Consultar asesor por esta factura
-                </button>
-              </div>
-              <div className="px-8 pb-8">
-                <button 
-                  onClick={() => setDetailInvoice(null)}
-                  className="w-full py-4 bg-texto text-white rounded-xl font-black hover:bg-rojo transition-all cursor-pointer"
-                >
-                  Entendido
-                </button>
+
+              <div className="px-10 pb-10 flex justify-center">
+                 <button onClick={() => setDetailInvoice(null)} className="text-[10px] font-black uppercase text-gris tracking-[0.2em] hover:text-texto transition-colors">
+                    Cerrar Vista Detalle
+                 </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Sticky Payment CTA */}
+      <AnimatePresence>
+        {selectedInvoices.length > 0 && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-[90] shadow-[0_-8px_20px_rgba(0,0,0,0.05)]"
+          >
+            <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gris uppercase tracking-widest leading-none mb-1">{selectedInvoices.length} fact{selectedInvoices.length === 1 ? 'ura' : 'uras'}</span>
+                <span className="text-xl font-black text-rojo tracking-tighter">
+                  {formatCOP(finalTotal)}
+                </span>
+              </div>
+              <Button
+                onClick={() => {
+                  const sidebar = document.getElementById('payment-sidebar');
+                  if (sidebar) {
+                    sidebar.scrollIntoView({ behavior: 'smooth' });
+                  }
+                  setShowConfirmModal(true);
+                }}
+                className="flex-1 rounded-xl h-14 px-6 gap-3"
+                leftIcon={DollarSign}
+              >
+                Pagar Ahora
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleSimulatePayment}
+        title="¿Confirmar registro de pago?"
+        description={`Estás por registrar un pago de ${formatCOP(finalTotal)} para ${selectedInvoices.length} factura(s). Una vez confirmado, TBS validará el recaudo para liberar tu cupo.`}
+        confirmLabel="Sí, registrar pago"
+        cancelLabel="Revisar selección"
+        variant="financial"
+        isLoading={isProcessing}
+      />
     </div>
   );
 }
@@ -731,67 +1100,107 @@ interface InvoiceRowProps {
   isHighlighted?: boolean;
 }
 
-function InvoiceRow({ invoice, selected, onToggle, statusColor, onShowDetail, isHighlighted }: InvoiceRowProps) {
+function InvoiceRow({ invoice, selected, onToggle, onShowDetail, isHighlighted }: Omit<InvoiceRowProps, 'statusColor'>) {
   const isSelectable = invoice.balance > 0;
 
   return (
-    <div className={`relative group bg-white rounded-2xl border transition-all p-5 hover:tbs-shadow flex flex-col md:flex-row items-start md:items-center gap-6 ${isHighlighted ? 'border-rojo ring-2 ring-rojo ring-offset-4 animate-pulse' : selected ? 'border-rojo ring-1 ring-rojo/20' : 'border-borde'}`}>
-      {isHighlighted && (
-        <div className="absolute -top-3 left-6 px-2 py-0.5 bg-rojo text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-lg z-10">
-          Factura Notificada
-        </div>
-      )}
-      <div className="flex items-center gap-4 w-full md:w-auto">
+    <div className={`relative group transition-all px-8 py-6 flex flex-col md:flex-row items-start md:items-center gap-8 ${isHighlighted ? 'bg-rojo-suave/50 animate-pulse' : selected ? 'bg-rojo/5 shadow-inner' : 'bg-white hover:bg-gray-50/50'}`}>
+      <div className="flex items-center gap-6 w-full md:w-auto">
         <button 
           disabled={!isSelectable}
           onClick={onToggle}
-          className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
+          className={`w-10 h-10 rounded-2xl border-2 transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
             selected 
-              ? 'bg-rojo border-rojo text-white' 
+              ? 'bg-rojo border-rojo text-white shadow-lg shadow-rojo/20' 
               : 'border-borde bg-white hover:border-rojo/50'
           } ${!isSelectable ? 'opacity-20 bg-gray-50' : ''}`}
         >
-          {selected && <CheckCircle2 size={16} />}
+          {selected ? <Check size={20} strokeWidth={4} /> : <div className="w-2 h-2 rounded-full bg-gray-200" />}
         </button>
         
-        <div className="flex-1 md:w-32">
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Factura</div>
-          <div className="text-sm font-black text-texto">{invoice.number}</div>
+        <div className="flex-1 md:w-40 shrink-0">
+          <div className="flex items-center gap-2 mb-1">
+             <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none font-sans">Documento</div>
+             {invoice.hasDispute && (
+                <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded uppercase flex items-center gap-1">
+                   <AlertCircle size={8} /> Disputa
+                </div>
+             )}
+          </div>
+          <div className="text-base font-black text-texto tracking-tight flex items-center gap-2">
+            {invoice.number}
+            <button onClick={onShowDetail} className="text-gris/50 hover:text-rojo transition-colors cursor-pointer">
+               <Info size={14} />
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 mt-1">
+             <span className="text-[10px] font-bold text-gris-oscuro whitespace-nowrap">{invoice.site}</span>
+             <span className="w-1 h-1 rounded-full bg-gray-300" />
+             <span className="text-[10px] font-bold text-gris italic whitespace-nowrap">{invoice.city}</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-4 gap-6 w-full md:w-auto">
+      <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-4 gap-8 w-full md:w-auto">
         <div>
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Pedido</div>
-          <div className="text-sm font-bold text-texto-sec truncate">{invoice.orderNumber}</div>
+          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Vencimiento</div>
+          <div className="text-sm font-black text-texto mb-1">{invoice.dueDate}</div>
+          {invoice.status === 'vencida' ? (
+             <div className="text-[10px] font-black text-rojo uppercase flex items-center gap-1">
+                <AlertCircle size={10} /> {invoice.daysOverdue} días de mora
+             </div>
+          ) : invoice.status === 'por_vencer' ? (
+             <div className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-1">
+                <Clock size={10} /> Vence en {invoice.daysUntilDue} días
+             </div>
+          ) : invoice.status === 'pagada' ? (
+             <div className="text-[10px] font-black text-green-600 uppercase flex items-center gap-1">
+                <CheckCircle2 size={10} /> Conciliado
+             </div>
+          ) : (
+             <div className="text-[10px] font-black text-gris uppercase">Pendiente</div>
+          )}
         </div>
         <div className="hidden lg:block">
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Vencimiento</div>
-          <div className="text-sm font-bold text-texto-sec">{invoice.dueDate}</div>
+          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Pedido</div>
+          <div className="text-sm font-black text-texto flex items-center gap-1">
+             {invoice.orderNumber}
+             <ExternalLink size={12} className="text-gris/30" />
+          </div>
         </div>
         <div>
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Estado</div>
-          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border inline-block uppercase tracking-wider ${statusColor}`}>
-            {invoice.status.replace('_', ' ')}
-          </span>
+          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Estado Documento</div>
+          <InvoiceStatusBadge status={invoice.status} />
         </div>
-        <div className="text-right">
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Saldo</div>
-          <div className={`text-sm font-black ${invoice.balance > 0 ? 'text-rojo' : 'text-texto'}`}>{formatCOP(invoice.balance)}</div>
+        <div className="text-right lg:text-left">
+          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Saldo Pendiente</div>
+          <div className={`text-base font-black ${invoice.balance > 0 ? 'text-rojo' : 'text-green-600'} tracking-tight`}>{formatCOP(invoice.balance)}</div>
+          <div className="text-[10px] font-bold text-gris opacity-50">Total: {formatCOP(invoice.value)}</div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 w-full md:w-auto justify-end border-t md:border-t-0 pt-4 md:pt-0">
-        <div className="text-right hidden sm:block">
-          <div className="text-[10px] font-black uppercase text-gris leading-none mb-1">Valor Total</div>
-          <div className="text-xs font-black text-texto">{formatCOP(invoice.value)}</div>
+      <div className="flex items-center gap-4 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0">
+        <div className="flex gap-2">
+           {invoice.allowsPartialPayment && invoice.balance > 0 && (
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center cursor-help group/tip relative">
+                 <DollarSign size={20} />
+                 <div className="absolute bottom-full mb-3 right-0 bg-texto text-white text-[10px] p-3 rounded-xl shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity w-48 font-bold pointer-events-none z-20">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Zap size={10} className="text-blue-400" fill="currentColor" />
+                      <span>Pago Parcial Habilitado</span>
+                    </div>
+                    Esta factura permite abonos desde {formatCOP(invoice.minimumPartialPayment || 0)}. Al pagar liberas cupo proporcional.
+                    <div className="absolute top-full right-4 transform translate-y-[-50%] rotate-45 w-2 h-2 bg-texto" />
+                 </div>
+              </div>
+           )}
+           <button 
+             onClick={onShowDetail} 
+             className="w-10 h-10 bg-gray-50 text-gris hover:bg-texto hover:text-white rounded-full flex items-center justify-center transition-all cursor-pointer border border-transparent shadow-sm"
+           >
+              <ChevronRight size={20} />
+           </button>
         </div>
-        <button 
-          onClick={onShowDetail}
-          className="p-3 bg-gray-50 text-gris hover:bg-rojo-suave hover:text-rojo rounded-xl transition-all cursor-pointer"
-        >
-          <ExternalLink size={18} />
-        </button>
       </div>
     </div>
   );
@@ -964,4 +1373,36 @@ function PaymentRegistrationForm({ onCancel, onFinish }: { onCancel: () => void,
       </div>
     </motion.div>
   );
+}
+
+function InvoiceStatusBadge({ status }: { status: Invoice['status'] }) {
+  const getStatusConfig = (s: Invoice['status']) => {
+    switch(s) {
+      case 'pagada': return { label: 'Conciliado', class: 'bg-green-50 text-green-700 border-green-100', icon: CheckCircle2 };
+      case 'vencida': return { label: 'Vencido', class: 'bg-rojo-suave text-rojo border-rojo/10', icon: AlertCircle };
+      case 'por_vencer': return { label: 'Próximo', class: 'bg-amber-50 text-amber-700 border-amber-100', icon: Clock };
+      case 'pendiente': return { label: 'Pendiente', class: 'bg-blue-50 text-blue-700 border-blue-100', icon: Clock };
+      default: return { label: s, class: 'bg-gray-50 text-gris border-borde', icon: Info };
+    }
+  }
+
+  const config = getStatusConfig(status);
+  const Icon = config.icon;
+
+  return (
+    <div className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 w-fit ${config.class}`}>
+      <Icon size={10} strokeWidth={3} />
+      {config.label}
+    </div>
+  );
+}
+
+function getStatusColor(status: Invoice['status']) {
+  switch(status) {
+    case 'pagada': return 'text-green-600 bg-green-50 border-green-100';
+    case 'vencida': return 'text-rojo bg-rojo-suave border-rojo/10';
+    case 'por_vencer': return 'text-amber-600 bg-amber-50 border-amber-100';
+    case 'pendiente': return 'text-blue-600 bg-blue-50 border-blue-100';
+    default: return 'text-gris bg-gray-50 border-borde';
+  }
 }

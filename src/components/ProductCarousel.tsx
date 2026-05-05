@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Package, ShoppingCart, Plus, ArrowRight, Tag } from 'lucide-react';
+import { Button } from './ui';
 import { Product } from '../types';
 
 interface ProductCarouselProps {
@@ -75,21 +76,23 @@ export function ProductCarousel({
           <h2 className="text-3xl md:text-4xl font-black text-texto tracking-tighter">{title}</h2>
           <p className="text-gris font-medium text-sm md:text-base mt-2 max-w-xl">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button 
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="md"
             onClick={prevSlide}
             aria-label="Producto anterior"
-            className="w-12 h-12 rounded-full bg-white border border-borde flex items-center justify-center text-texto hover:border-rojo hover:text-rojo transition-all tbs-shadow cursor-pointer"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <button 
+            className="rounded-full bg-white transition-all tbs-shadow"
+            leftIcon={ChevronLeft}
+          />
+          <Button
+            variant="outline"
+            size="md"
             onClick={nextSlide}
             aria-label="Producto siguiente"
-            className="w-12 h-12 rounded-full bg-white border border-borde flex items-center justify-center text-texto hover:border-rojo hover:text-rojo transition-all tbs-shadow cursor-pointer"
-          >
-            <ChevronRight size={24} />
-          </button>
+            className="rounded-full bg-white transition-all tbs-shadow"
+            leftIcon={ChevronRight}
+          />
         </div>
       </div>
 
@@ -168,21 +171,23 @@ export function ProductCarousel({
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                       <button 
+                    <div className="flex gap-3">
+                       <Button
+                        variant="ghost"
+                        size="md"
                         onClick={() => onProductClick?.(product)}
-                        className="p-3 bg-gray-50 text-texto rounded-xl border border-borde hover:bg-texto hover:text-white hover:border-texto transition-all cursor-pointer group/btn"
+                        className="bg-gray-50 text-texto rounded-xl border border-borde hover:bg-texto hover:text-white"
+                        leftIcon={ArrowRight}
                         title="Ver producto"
-                      >
-                        <ArrowRight size={18} className="transition-transform group-hover/btn:translate-x-0.5" />
-                      </button>
-                      <button 
+                      />
+                      <Button
+                        variant="primary"
+                        size="md"
                         onClick={() => onAddToCart?.(product, 'carousel' as any)}
-                        className="p-3 bg-rojo text-white rounded-xl shadow-lg shadow-rojo/20 hover:bg-rojo-oscuro transition-all cursor-pointer group/btn flex items-center justify-center"
+                        className="rounded-xl tbs-shadow"
+                        leftIcon={Plus}
                         title="Agregar al carrito"
-                      >
-                        <Plus size={18} strokeWidth={3} className="transition-transform group-hover/btn:scale-110" />
-                      </button>
+                      />
                     </div>
                   </div>
                 </div>

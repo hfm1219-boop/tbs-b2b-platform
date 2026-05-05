@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { 
   ArrowLeft, ArrowRight, Truck, Zap, CreditCard, Repeat, BarChart3, 
-  Headset, MessageSquare, ShieldCheck, ShoppingBag
+  Headset, MessageSquare, ShieldCheck, ShoppingBag, MousePointer2
 } from 'lucide-react';
 import { Breadcrumbs } from './Breadcrumbs';
 
@@ -12,16 +12,19 @@ interface ServicesPageProps {
   onLogin: () => void;
   onGoAdvisorChat: () => void;
   onGoPage: (page: string) => void;
+  onGoAdvertising?: () => void;
 }
 
-export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin, onGoAdvisorChat, onGoPage }: ServicesPageProps) {
+export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin, onGoAdvisorChat, onGoPage, onGoAdvertising }: ServicesPageProps) {
   const allServices = [
     {
       category: 'Operación Comercial',
       items: [
         { icon: ShoppingBag, title: 'Abastecimiento B2B', desc: 'Acceso a un catálogo unificado de licores con inventario real y precios competitivos.' },
         { icon: BarChart3, title: 'Precios dinámicos', desc: 'Algoritmos que ajustan tarifas según tu volumen, historial y promociones de marca.' },
-        { icon: Zap, title: 'Activaciones comerciales', desc: 'Impulsa tus ventas con apoyo de marca directamente en tu negocio.' }
+        { icon: Zap, title: 'Activaciones comerciales', desc: 'Impulsa tus ventas con apoyo de marca directamente en tu negocio.' },
+        { icon: MessageSquare, title: 'Aliados Hospitality', desc: 'Modelo para Wedding Planners y administradores de eventos con comisiones y gestión.', isHighLight: true, onClick: () => onGoPage('hospitalityPartners') },
+        { icon: MousePointer2, title: 'Publicidad en TBS', desc: 'Soluciones de retail media B2B para destacar tu marca ante compradores profesionales.', isHighLight: true, onClick: onGoAdvertising }
       ]
     },
     {
@@ -90,19 +93,25 @@ export function ServicesPage({ onBack, onRequestAccess, onGoToCatalog, onLogin, 
                 {cat.category}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                {cat.items.map((item, itemIdx) => (
+                {cat.items.map((item: any, itemIdx) => (
                   <motion.div 
                     key={itemIdx}
                     initial={{ opacity: 0, scale: 0.95 }}
                     whileInView={{ opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
-                    className="p-10 border border-borde rounded-3xl group hover:bg-black hover:text-white transition-all duration-500"
+                    onClick={() => item.onClick?.()}
+                    className={`p-10 border rounded-3xl group transition-all duration-500 ${item.onClick ? 'cursor-pointer' : ''} ${item.isHighLight ? 'border-rojo/30 bg-rojo-suave/30 hover:border-rojo' : 'border-borde hover:bg-black hover:text-white'}`}
                   >
-                    <div className="w-16 h-16 bg-rojo-suave rounded-2xl flex items-center justify-center mb-10 group-hover:bg-rojo transition-colors group-hover:scale-110 duration-500">
-                      <item.icon size={32} className="text-rojo group-hover:text-white transition-colors" />
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-10 transition-colors transition-transform duration-500 group-hover:scale-110 ${item.isHighLight ? 'bg-rojo text-white' : 'bg-rojo-suave group-hover:bg-rojo'}`}>
+                      <item.icon size={32} className={`${item.isHighLight ? 'text-white' : 'text-rojo group-hover:text-white'}`} />
                     </div>
-                    <h3 className="text-2xl font-black mb-4">{item.title}</h3>
-                    <p className="text-texto-sec group-hover:text-white/70 font-medium leading-relaxed text-lg">{item.desc}</p>
+                    <h3 className={`text-2xl font-black mb-4 ${item.isHighLight ? 'text-rojo' : ''}`}>{item.title}</h3>
+                    <p className={`font-medium leading-relaxed text-lg ${item.isHighLight ? 'text-texto' : 'text-texto-sec group-hover:text-white/70'}`}>{item.desc}</p>
+                    {item.onClick && (
+                      <div className="mt-6 text-rojo font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2 group-hover:gap-3 transition-all">
+                        Solicitar <ArrowRight size={14} />
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>

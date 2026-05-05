@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, Plus, Check, ChevronRight, Search } from 'lucide-react';
 import { Product, ShoppingList, User } from '../types';
 import { useAnalytics } from '../hooks/useAnalytics';
+import { Button } from './ui';
+import { useToasts } from './ToastContext';
 
 interface SaveToListModalProps {
   product: Product;
@@ -24,8 +26,11 @@ export function SaveToListModal({
   currentUser
 }: SaveToListModalProps) {
   const analytics = useAnalytics(currentUser || null);
+  const toasts = useToasts();
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isSavingId, setIsSavingId] = useState<string | null>(null);
+  const [isCreatingLoading, setIsCreatingLoading] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListDesc, setNewListDesc] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -35,19 +40,23 @@ export function SaveToListModal({
     list.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateAndAdd = () => {
+  const handleCreateAndAdd = async () => {
     if (!newListName.trim()) return;
-    
-    // In a real app, we'd wait for the ID. 
-    // Here we'll simulate the creation and then add.
-    // But since state updates are async, we'll just use a workaround or 
-    // leave it to the user to wrap their head around it.
-    // Actually, App.tsx should handle this. 
-    // For now, let's just use an existing list for the demo of "save".
+    setIsCreatingLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    onCreateList(newListName, newListDesc);
+    setIsCreatingLoading(false);
+    setIsCreating(false);
+    setNewListName('');
+    setNewListDesc('');
+    toasts.success("Lista creada", `La lista "${newListName}" se ha creado correctamente.`);
   };
 
-  const handleSave = (listId: string, listName: string) => {
+  const handleSave = async (listId: string, listName: string) => {
+    setIsSavingId(listId);
+    await new Promise(resolve => setTimeout(resolve, 600));
     onAddToList(listId, product, quantity);
+    setIsSavingId(null);
     setSavedSuccess(listName);
     analytics.track('product_added_to_list', 'engagement', {
       productId: product.id,
@@ -139,14 +148,19 @@ export function SaveToListModal({
                       filteredLists.map(list => (
                         <button
                           key={list.id}
+                          disabled={isSavingId !== null}
                           onClick={() => handleSave(list.id, list.name)}
-                          className="w-full flex items-center justify-between p-4 border border-borde rounded-xl hover:border-rojo hover:bg-rojo-suave/30 transition-all group text-left cursor-pointer"
+                          className="w-full flex items-center justify-between p-4 border border-borde rounded-xl hover:border-rojo hover:bg-rojo-suave/30 transition-all group text-left cursor-pointer disabled:opacity-50"
                         >
                           <div>
                             <strong className="block text-sm font-black text-texto group-hover:text-rojo transition-colors">{list.name}</strong>
                             <span className="text-[11px] font-bold text-gris">{list.products.length} productos</span>
                           </div>
-                          <ChevronRight size={18} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
+                          {isSavingId === list.id ? (
+                            <div className="w-5 h-5 border-2 border-rojo border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <ChevronRight size={18} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
+                          )}
                         </button>
                       ))
                     ) : (
@@ -189,25 +203,20 @@ export function SaveToListModal({
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <button 
+                    <Button 
+                      variant="ghost"
                       onClick={() => setIsCreating(false)}
-                      className="flex-1 py-3.5 border border-borde text-gris rounded-xl font-black text-sm hover:bg-gray-50 cursor-pointer"
+                      className="flex-1 py-3.5"
                     >
                       Cancelar
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (newListName.trim()) {
-                          onCreateList(newListName, newListDesc);
-                          setIsCreating(false);
-                          setNewListName('');
-                          setNewListDesc('');
-                        }
-                      }}
-                      className="flex-1 py-3.5 bg-rojo text-white rounded-xl font-black text-sm shadow-lg shadow-rojo/20 hover:bg-rojo-oscuro cursor-pointer"
+                    </Button>
+                    <Button 
+                      onClick={handleCreateAndAdd}
+                      isLoading={isCreatingLoading}
+                      className="flex-1 py-3.5"
                     >
                       Crear lista
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

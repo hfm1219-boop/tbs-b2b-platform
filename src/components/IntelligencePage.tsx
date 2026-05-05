@@ -1,25 +1,13 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
-  ArrowLeft, 
-  TrendingUp, 
-  TrendingDown, 
-  Package, 
-  ShoppingCart, 
-  Calendar, 
-  BarChart3, 
-  PieChart, 
-  AlertCircle, 
-  CheckCircle2, 
-  ArrowRight, 
-  MessageSquare, 
-  Tag, 
-  Star,
-  Zap,
-  Clock,
-  ChevronRight,
-  Info
-} from 'lucide-react';
+  Button,
+  MetricCard,
+  AlertBox,
+  SectionHeader,
+  PageContainer,
+  PageHeader
+} from './ui';
 import { 
   User, 
   CustomerIntelligenceSummary, 
@@ -148,110 +136,68 @@ export function IntelligencePage({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-borde sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={onBackToAccount}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div>
-                <h1 className="text-xl font-black text-texto flex items-center gap-2">
-                  <BarChart3 className="text-rojo" /> Inteligencia B2B
-                </h1>
-                <p className="text-xs font-bold text-gris uppercase tracking-widest mt-0.5">
-                  {currentUser?.businessName} • {currentUser?.city}
-                </p>
-              </div>
+    <PageContainer variant="dashboard" className="pb-20">
+      <PageHeader
+        title="Inteligencia B2B"
+        eyebrow={`${currentUser?.businessName} • ${currentUser?.city}`}
+        icon={<BarChart3 className="text-rojo" />}
+        onBack={onBackToAccount}
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="hidden md:block bg-rojo-suave px-3 py-1.5 rounded-lg border border-rojo/10">
+              <span className="text-[10px] font-black text-rojo uppercase tracking-widest">Datos simulados para prototipo</span>
             </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="hidden md:block bg-rojo-suave px-3 py-1.5 rounded-lg border border-rojo/10">
-                <span className="text-[10px] font-black text-rojo uppercase tracking-widest">Datos simulados para prototipo</span>
-              </div>
-              <button 
-                onClick={() => onGoAdvisorChat('producto', 'Consulta sobre inteligencia B2B y recomendaciones de compra.')}
-                className="flex items-center gap-2 px-4 py-2 bg-texto text-white rounded-lg font-black text-xs uppercase tracking-widest hover:bg-black transition-all cursor-pointer"
-              >
-                <MessageSquare size={16} /> Hablar con asesor
-              </button>
-            </div>
+            <Button 
+              variant="primary"
+              size="sm"
+              icon={<MessageSquare size={16} />}
+              onClick={() => onGoAdvisorChat('producto', 'Consulta sobre inteligencia B2B y recomendaciones de compra.')}
+            >
+              Hablar con asesor
+            </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        <div className="mb-10">
-          <h2 className="text-2xl font-black text-texto">Resumen de operación</h2>
-          <p className="text-sm font-medium text-gris mt-1">Analiza tus métricas clave de este mes y compáralas con el periodo anterior.</p>
-        </div>
+      <div className="py-8">
+        <SectionHeader
+          title="Resumen de operación"
+          description="Analiza tus métricas clave de este mes y compáralas con el periodo anterior."
+          className="mb-8"
+        />
 
         {/* Top Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {[
-            { 
-              label: 'Compra del mes', 
-              value: formatCOP(summary.currentMonthTotal), 
-              sub: `${calculateGrowth()}% vs mes anterior`, 
-              icon: ShoppingCart, 
-              color: 'text-rojo', 
-              bg: 'bg-rojo-suave',
-              trend: 'up'
-            },
-            { 
-              label: 'Pedidos del mes', 
-              value: summary.currentMonthOrders, 
-              sub: `${summary.currentMonthUnits} unidades compradas`, 
-              icon: Package, 
-              color: 'text-blue-600', 
-              bg: 'bg-blue-50',
-              trend: 'none'
-            },
-            { 
-              label: 'Ticket promedio', 
-              value: formatCOP(summary.averageOrderValue), 
-              sub: 'Por cada pedido realizado', 
-              icon: TrendingUp, 
-              color: 'text-green-600', 
-              bg: 'bg-green-50',
-              trend: 'up'
-            },
-            { 
-              label: 'Ahorro estimado', 
-              value: formatCOP(summary.estimatedSavings), 
-              sub: 'Por promociones aplicadas', 
-              icon: Tag, 
-              color: 'text-amber-600', 
-              bg: 'bg-amber-50',
-              trend: 'up'
-            }
-          ].map((card, idx) => (
-            <motion.div 
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white p-6 rounded-2xl border border-borde shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
-                  <card.icon size={24} />
-                </div>
-                {card.trend === 'up' && <TrendingUp size={20} className="text-green-500" />}
-              </div>
-              <p className="text-xs font-black text-gris uppercase tracking-widest">{card.label}</p>
-              <h3 className="text-xl font-black text-texto mt-1">{card.value}</h3>
-              <p className="text-[11px] font-bold text-gris mt-2 flex items-center gap-1">
-                {card.trend === 'up' && <span className="text-green-600">▲</span>}
-                {card.sub}
-              </p>
-            </motion.div>
-          ))}
+          <MetricCard 
+            label="Compra del mes" 
+            value={formatCOP(summary.currentMonthTotal)} 
+            subtitle={`${calculateGrowth()}% vs mes anterior`} 
+            icon={<ShoppingCart size={24} />} 
+            trend="up"
+            color="red"
+          />
+          <MetricCard 
+            label="Pedidos del mes" 
+            value={summary.currentMonthOrders} 
+            subtitle={`${summary.currentMonthUnits} unidades compradas`} 
+            icon={<Package size={24} />} 
+          />
+          <MetricCard 
+            label="Ticket promedio" 
+            value={formatCOP(summary.averageOrderValue)} 
+            subtitle="Por cada pedido realizado" 
+            icon={<TrendingUp size={24} />} 
+            trend="up"
+            color="green"
+          />
+          <MetricCard 
+            label="Ahorro estimado" 
+            value={formatCOP(summary.estimatedSavings)} 
+            subtitle="Por promociones aplicadas" 
+            icon={<Tag size={24} />} 
+            trend="up"
+            color="amber"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -373,10 +319,11 @@ export function IntelligencePage({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {/* Insights List */}
           <div className="lg:col-span-2">
-            <div className="mb-6">
-              <h3 className="text-xl font-black text-texto">Recomendaciones para tu negocio</h3>
-              <p className="text-sm font-medium text-gris mt-1">Identificamos estas oportunidades basadas en tu comportamiento de compra.</p>
-            </div>
+            <SectionHeader
+              title="Recomendaciones para tu negocio"
+              description="Identificamos estas oportunidades basadas en tu comportamiento de compra."
+              className="mb-6"
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {insights.sort((a, b) => {
@@ -416,12 +363,16 @@ export function IntelligencePage({
                       </div>
                     )}
 
-                    <button 
+                    <Button 
+                      variant="secondary"
+                      size="sm"
+                      fullWidth
+                      className="mt-5"
+                      icon={<ArrowRight size={14} />}
                       onClick={() => handleInsightAction(insight.actionTarget)}
-                      className="mt-5 w-full py-2.5 bg-[#F1F3F5] hover:bg-rojo hover:text-white text-texto rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      {insight.actionLabel} <ArrowRight size={14} />
-                    </button>
+                      {insight.actionLabel}
+                    </Button>
                   </motion.div>
                 );
               })}
@@ -430,79 +381,51 @@ export function IntelligencePage({
 
           {/* Alertas Operativas */}
           <div className="space-y-6">
-            <div className="mb-6">
-              <h3 className="text-xl font-black text-texto">Alertas operativas</h3>
-              <p className="text-sm font-medium text-gris mt-1">Situaciones que requieren tu atención inmediata.</p>
-            </div>
+            <SectionHeader
+              title="Alertas operativas"
+              description="Situaciones que requieren tu atención inmediata."
+              className="mb-6"
+            />
 
             <div className="space-y-4">
-              {/* Alerta 1: Dependencia */}
-              <div className="p-5 bg-white border-l-4 border-l-rojo rounded-r-2xl border-y border-r border-borde shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-rojo-suave text-rojo rounded-lg shrink-0">
-                    <TrendingUp size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-texto">Alta dependencia de whisky</h4>
-                    <p className="text-xs font-medium text-gris mt-1.5 leading-relaxed">
-                      El whisky representa el {categoryConsumption.find(c => c.category === 'Whisky')?.percentage}% de tus compras. Revisa promociones por volumen para optimizar margen.
-                    </p>
-                    <button 
-                      onClick={onGoPromotions}
-                      className="mt-3 text-xs font-black text-rojo uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      Ver promociones <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AlertBox
+                type="info"
+                title="Alta dependencia de whisky"
+                description={`El whisky representa el ${categoryConsumption.find(c => c.category === 'Whisky')?.percentage}% de tus compras. Revisa promociones por volumen para optimizar margen.`}
+                icon={<TrendingUp size={20} />}
+                actions={
+                  <Button variant="ghost" size="xs" onClick={onGoPromotions} icon={<ChevronRight size={14} />}>
+                    Ver promociones
+                  </Button>
+                }
+              />
 
-              {/* Alerta 2: Cartera */}
-              <div className="p-5 bg-white border-l-4 border-l-amber-500 rounded-r-2xl border-y border-r border-borde shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-amber-50 text-amber-600 rounded-lg shrink-0">
-                    <AlertCircle size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-texto">
-                      {isCash ? 'Facturas por pagar' : 'Facturas por vencer'}
-                    </h4>
-                    <p className="text-xs font-medium text-gris mt-1.5 leading-relaxed">
-                      {isCash 
-                        ? `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus pagos para liberar pedidos y mantener tu operación.`
-                        : `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus abonos para desbloquear cupo adicional de crédito.`
-                      }
-                    </p>
-                    <button 
-                      onClick={onGoPayments}
-                      className="mt-3 text-xs font-black text-amber-600 uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      {isCash ? 'Ver facturas por pagar' : 'Ir a cartera'} <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AlertBox
+                type="warning"
+                title={isCash ? 'Facturas por pagar' : 'Facturas por vencer'}
+                description={isCash 
+                  ? `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus pagos para liberar pedidos y mantener tu operación.`
+                  : `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus abonos para desbloquear cupo adicional de crédito.`
+                }
+                icon={<AlertCircle size={20} />}
+                actions={
+                  <Button variant="ghost" size="xs" onClick={onGoPayments} icon={<ChevronRight size={14} />}>
+                    {isCash ? 'Ver facturas por pagar' : 'Ir a cartera'}
+                  </Button>
+                }
+              />
 
-              {/* Alerta 3: Pedidos Urgentes */}
-              <div className="p-5 bg-white border-l-4 border-l-blue-600 rounded-r-2xl border-y border-r border-borde shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-blue-50 text-blue-600 rounded-lg shrink-0">
-                    <Zap size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-texto">Uso de pedidos urgentes</h4>
-                    <p className="text-xs font-medium text-gris mt-1.5 leading-relaxed">
-                      Has solicitado {summary.urgentOrdersUsed} pedidos urgentes este mes. Programar tus compras recurrentes te ahorrará costos logísticos.
-                    </p>
-                    <button 
-                      onClick={onGoReorder}
-                      className="mt-3 text-xs font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      Planear recompra <ChevronRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <AlertBox
+                type="info"
+                title="Uso de pedidos urgentes"
+                description={`Has solicitado ${summary.urgentOrdersUsed} pedidos urgentes este mes. Programar tus compras recurrentes te ahorrará costos logísticos.`}
+                icon={<Zap size={20} />}
+                actions={
+                  <Button variant="ghost" size="xs" onClick={onGoReorder} icon={<ChevronRight size={14} />}>
+                    Planear recompra
+                  </Button>
+                }
+              />
             </div>
           </div>
         </div>
@@ -619,6 +542,6 @@ export function IntelligencePage({
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

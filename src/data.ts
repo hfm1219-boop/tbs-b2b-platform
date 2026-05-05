@@ -28,7 +28,8 @@ import {
   ManagedClient,
   ManagedEvent,
   HospitalityCommissionRule,
-  HospitalityCommission
+  HospitalityCommission,
+  ProviderPriceImportBatch
 } from './types';
 
 export const BRAND_AD_CAMPAIGNS: BrandAdCampaign[] = [
@@ -747,6 +748,51 @@ export const HOSPITALITY_COMMISSIONS: HospitalityCommission[] = [
     commissionAmount: 60000,
     status: "estimada",
     notes: "Pedido en preparación."
+  }
+];
+
+export const PROVIDER_PRICE_IMPORT_BATCHES: ProviderPriceImportBatch[] = [
+  {
+    id: "price-batch-001",
+    batchNumber: "IMP-PRE-1001",
+    providerId: "provider-001",
+    providerName: "Importadora Demo",
+    brandName: "Marca Premium Demo",
+    fileName: "precios-marca-demo.xlsx",
+    createdAt: "2026-05-03",
+    effectiveFrom: "2026-05-20",
+    status: "enviado",
+    totalRows: 3,
+    validRows: 3,
+    warningRows: 0,
+    errorRows: 0,
+    disclaimerAccepted: true,
+    submittedAt: "2026-05-03",
+    rows: [
+      {
+        id: "row-001",
+        rowNumber: 2,
+        productName: "Whisky Premium 750 ml",
+        internalSku: "WHS-750",
+        barcode: "7701234567890",
+        brandName: "Marca Premium Demo",
+        category: "Whisky",
+        presentation: "Botella 750 ml",
+        packaging: "Caja x12",
+        unitsPerPackage: 12,
+        baseCost: 75000,
+        taxRate: 19,
+        exciseTax: 0,
+        suggestedPrice: 95000,
+        minimumPrice: 88000,
+        currency: "COP",
+        effectiveFrom: "2026-05-20",
+        notes: "Precio sugerido para canal B2B.",
+        status: "valido",
+        errors: [],
+        warnings: []
+      }
+    ]
   }
 ];
 
@@ -1616,6 +1662,8 @@ export const PRODUCTS: Product[] = [
     description: "Un whisky escocés blend de malta y grado premium, conocido por su suavidad excepcional y notas ricas de miel, frutas y un toque de humo.",
     origin: "Escocia",
     subcategory: "Blended Scotch",
+    isUrgent: true,
+    stockStatus: 'low_stock',
     packagingOptions: [
       {
         id: "pkg-1-1",
@@ -1669,6 +1717,8 @@ export const PRODUCTS: Product[] = [
     description: "El referente de los whiskies escoceses de lujo. Una mezcla compleja de más de 40 whiskies, cada uno madurado por al menos 12 años.",
     origin: "Escocia",
     subcategory: "Blended Scotch",
+    previouslyPurchased: true,
+    stockStatus: 'available',
     packagingOptions: [
       {
         id: "pkg-2-1",
@@ -1712,6 +1762,8 @@ export const PRODUCTS: Product[] = [
     description: "Reconocido por su suavidad y perfil afrutado. Perfecto para disfrutar solo, con hielo o en coctelería premium.",
     origin: "Escocia",
     subcategory: "Blended Scotch",
+    isSponsored: true,
+    stockStatus: 'available',
     packagingOptions: [
       {
         id: "pkg-3-1",
@@ -1797,6 +1849,8 @@ export const PRODUCTS: Product[] = [
     description: "Considerado uno de los mejores rones del mundo. Mezcla de rones de 6 a 23 años, añejados bajo el sistema solera en las tierras altas de Guatemala.",
     origin: "Guatemala",
     subcategory: "Premium",
+    hasPromotion: true,
+    stockStatus: 'available',
     packagingOptions: [
       {
         id: "pkg-5-1",
@@ -1913,6 +1967,9 @@ export const PRODUCTS: Product[] = [
     description: "Tequila 100% de agave azul, añejado por ocho meses en barricas de roble blanco americano. Color ambarino y sabor rico y suave.",
     origin: "México",
     subcategory: "Reposado",
+    isUrgent: true,
+    hasPromotion: true,
+    stockStatus: 'low_stock',
     packagingOptions: [
       {
         id: "pkg-8-1",
@@ -2352,6 +2409,7 @@ export const B2B_PROMOTIONS: B2BPromotion[] = [
     category: "Coctelería",
     badge: "Combo B2B",
     priority: "alta",
+    image: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=600",
     products: [
       {
         productId: 6,
@@ -2399,6 +2457,7 @@ export const B2B_PROMOTIONS: B2BPromotion[] = [
     category: "Multicategoría",
     badge: "Recompra",
     priority: "media",
+    image: "https://images.unsplash.com/photo-1527281473222-f9e87be50519?auto=format&fit=crop&q=80&w=600",
     products: [
       {
         productId: 4,

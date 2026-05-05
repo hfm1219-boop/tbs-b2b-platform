@@ -18,8 +18,26 @@ import {
   Plus,
   Minus,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  ShieldCheck,
+  Activity,
+  Map,
+  ListChecks,
+  History,
+  TrendingUp,
+  Award
 } from 'lucide-react';
+import { 
+  Button,
+  StatusBadge,
+  MetricCard,
+  AlertBox,
+  EmptyState,
+  SectionHeader,
+  ActionCard,
+  ModalShell
+} from './ui';
 import { User, UrgentProduct, UrgentReason, UrgentOrderRequest } from '../types';
 import { useAnalytics } from '../hooks/useAnalytics';
 
@@ -31,6 +49,509 @@ interface UrgentOrderPageProps {
   onGoCatalog: () => void;
   onGoAdvisorChat: (topic?: any, context?: any) => void;
   onCreateNotification?: (notification: any) => void;
+}
+
+// --- New Subcomponents for HORECA Premium Experience ---
+
+function UrgentServiceConditions({ condition, onCityChange }: { condition: CityCondition, onCityChange: (city: string) => void }) {
+  return (
+    <div className="bg-white rounded-[32px] border border-borde p-8 mb-8 tbs-shadow-lg relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-rojo/5 rounded-full -mr-20 -mt-20 blur-3xl" />
+      
+      <div className="relative z-10">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 pb-8 border-b border-gray-100">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="px-3 py-1 bg-texto text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-full">
+                HORECA Premium
+              </div>
+            </div>
+            <h2 className="text-3xl font-black text-texto tracking-tight mb-2">Condiciones de pedido urgente hoy</h2>
+            <p className="text-gris font-medium">Consulta el estado operativo, horarios y SLA estimados para tu zona.</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+            <div className="w-full sm:w-auto space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-gris ml-2">Ciudad de operación</label>
+              <select 
+                value={condition.city}
+                onChange={(e) => onCityChange(e.target.value)}
+                className="w-full sm:w-64 h-12 bg-gray-50 border border-borde rounded-xl px-4 font-black text-texto outline-none focus:border-rojo appearance-none cursor-pointer"
+              >
+                {Object.keys(CITY_CONDITIONS).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 pt-8">
+          <ConditionItem 
+            icon={Clock} 
+            label="Horario Límite" 
+            value={condition.cutoffTime} 
+            description="Solicitudes hoy hasta esta hora" 
+          />
+          <ConditionItem 
+            icon={MapPin} 
+            label="Ventana Disponible" 
+            value={condition.availableWindow} 
+            description="Tiempo estimado de entrega" 
+          />
+          <ConditionItem 
+            icon={ShieldCheck} 
+            label="Nivel de Prioridad" 
+            value={condition.priorityLevel} 
+            description="Asignación en ruta logística" 
+            valueColor="text-rojo"
+          />
+          <ConditionItem 
+            icon={Zap} 
+            label="Atención Estimada" 
+            value={condition.estimatedSLA} 
+            description="Tiempo de validación técnica" 
+          />
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold text-gris uppercase tracking-wider">
+            <CheckCircle2 size={14} className="text-green-500" /> Sujeto a Inventario
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold text-gris uppercase tracking-wider">
+            <CheckCircle2 size={14} className="text-green-500" /> Sujeto a Cupo Cartera
+          </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold text-gris uppercase tracking-wider">
+            <CheckCircle2 size={14} className="text-green-500" /> Validación Logística
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConditionItem({ icon: Icon, label, value, description, valueColor = 'text-texto' }: any) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gris">
+          <Icon size={18} />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-widest text-gris">{label}</span>
+      </div>
+      <div>
+        <div className={`text-xl font-black ${valueColor} tracking-tight leading-none mb-1`}>{value}</div>
+        <p className="text-[10px] font-medium text-gris opacity-70">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function UrgentSLAWidget() {
+  const steps = [
+    { label: 'Solicitud', status: 'completed' },
+    { label: 'Validación', status: 'current' },
+    { label: 'Preparación', status: 'pending' },
+    { label: 'Ruta', status: 'pending' },
+    { label: 'Entrega', status: 'pending' },
+  ];
+
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-borde tbs-shadow mb-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-gris">SLA Operativo Estimado</div>
+        <div className="text-[10px] font-bold text-rojo bg-rojo/5 px-2 py-1 rounded-lg">Flujo prioritario</div>
+      </div>
+      <div className="relative flex justify-between">
+        <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-100 -z-0" />
+        {steps.map((step, idx) => (
+          <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
+            <div className={`w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-all ${
+              step.status === 'completed' ? 'bg-green-500' :
+              step.status === 'current' ? 'bg-rojo animate-pulse' : 'bg-gray-200'
+            }`}>
+              {step.status === 'completed' ? <CheckCircle2 size={12} className="text-white" /> : null}
+            </div>
+            <span className={`text-[9px] font-black uppercase tracking-widest ${
+              step.status === 'pending' ? 'text-gris' : 'text-texto'
+            }`}>{step.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 pt-4 border-t border-gray-100 grid grid-cols-2 gap-4">
+        <div>
+          <div className="text-[9px] font-black text-gris uppercase mb-1">Confirmación</div>
+          <div className="text-xs font-black text-texto">15-30 min</div>
+        </div>
+        <div>
+          <div className="text-[9px] font-black text-gris uppercase mb-1">Entrega total</div>
+          <div className="text-xs font-black text-texto">2-4 horas</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UrgentAdvisorContact() {
+  return (
+    <div className="bg-texto text-white p-8 rounded-[32px] tbs-shadow-lg relative overflow-hidden">
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-rojo/20 rounded-full -mr-10 -mb-10 blur-2xl" />
+      <div className="relative z-10">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/20">
+            <img 
+              src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?q=80&w=200&auto=format&fit=crop" 
+              alt="Asesor" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-500 text-[8px] font-black uppercase tracking-widest rounded-full mb-1">
+              <span className="w-1 h-1 bg-white rounded-full animate-ping" /> Disponible
+            </div>
+            <div className="text-lg font-black tracking-tight leading-tight">Laura Gómez</div>
+            <div className="text-xs text-white/60 font-bold uppercase tracking-wider">Asesor Urgent Care TBS</div>
+          </div>
+        </div>
+        <p className="text-sm font-medium text-white/70 mb-8 leading-relaxed">
+          "Hola, soy Laura. Estoy validando inventario y rutas ahora para los pedidos HORECA del día. Si tienes una ruptura crítica, escríbeme directamente."
+        </p>
+        <div className="space-y-3">
+          <button className="w-full py-4 bg-white text-texto rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rojo hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <MessageSquare size={16} /> Hablar por WhatsApp
+          </button>
+          <button className="w-full py-4 bg-white/10 text-white border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <Phone size={16} /> Solicitar llamada
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UrgentValidationPanel({ totals, isValid, onSubmit }: { totals: any, isValid: boolean, onSubmit: () => void }) {
+  const validations = [
+    { label: 'Cupo disponible', status: 'valid', icon: ShieldCheck },
+    { label: 'Cartera sin mora', status: 'valid', icon: ListChecks },
+    { label: 'Inventario local', status: 'warning', icon: AlertCircle },
+    { label: 'Ruta logística', status: 'valid', icon: Truck },
+    { label: 'Tarifa urgente', status: 'pending', icon: Zap },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-[32px] border border-borde tbs-shadow p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-rojo text-white rounded-xl flex items-center justify-center shadow-lg shadow-rojo/20">
+            <Zap size={20} />
+          </div>
+          <h4 className="text-xl font-black text-texto tracking-tight leading-none">Resumen Operativo</h4>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          {validations.map((v, i) => (
+            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div className="flex items-center gap-3">
+                <v.icon size={16} className={v.status === 'valid' ? 'text-green-500' : v.status === 'warning' ? 'text-orange-500' : 'text-gris'} />
+                <span className="text-[10px] font-black uppercase tracking-widest text-gris">{v.label}</span>
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${
+                v.status === 'valid' ? 'text-green-600' : 
+                v.status === 'warning' ? 'text-orange-600' : 'text-gris'
+              }`}>
+                {v.status === 'valid' ? 'Correcto' : v.status === 'warning' ? 'Validar' : 'Pendiente'}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="pt-6 border-t border-gray-100 space-y-4">
+          <div className="flex justify-between items-center text-xs font-black text-gris uppercase tracking-widest">
+            <span>Subtotal estimado</span>
+            <span className="text-texto">{totals.subtotal}</span>
+          </div>
+          <div className="flex justify-between items-center text-xs font-black text-rojo uppercase tracking-widest">
+            <span>Tarifa despacho urgente</span>
+            <span>+ {totals.fee}</span>
+          </div>
+          <div className="pt-4 flex justify-between items-end">
+            <div>
+              <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1">Total a validar</div>
+              <div className="text-3xl font-black text-texto tracking-tighter leading-none">{totals.total}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex gap-3">
+          <AlertCircle size={16} className="text-orange-600 shrink-0 mt-0.5" />
+          <p className="text-[10px] font-bold text-orange-800 leading-normal">
+            El pedido no se confirma automáticamente. TBS validará disponibilidad final y te contactará.
+          </p>
+        </div>
+
+        <button 
+          onClick={onSubmit}
+          disabled={!isValid}
+          className="w-full mt-8 py-5 bg-texto text-white rounded-2xl font-black hover:bg-rojo transition-all disabled:opacity-30 disabled:cursor-not-allowed tbs-shadow flex items-center justify-center gap-3 cursor-pointer group"
+        >
+          <div className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
+            <ShieldCheck size={20} className="text-rojo" />
+          </div>
+          Confirmar y enviar validación
+        </button>
+      </div>
+      
+      <UrgentAdvisorContact />
+    </div>
+  );
+}
+
+function UrgentRestrictionsBlock() {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div className="bg-gray-100 border border-gray-200 rounded-2xl overflow-hidden mt-8">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full p-4 flex items-center justify-between text-[10px] font-black text-gris uppercase tracking-widest hover:bg-gray-200 transition-colors"
+      >
+        <span>Condiciones y restricciones del servicio urgente</span>
+        <ChevronRight size={16} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="p-6 bg-white space-y-4 text-[10px] font-medium text-gris leading-relaxed border-t border-gray-200">
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>Servicio sujeto a disponibilidad de inventario en bodega local.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>La validación logística puede tomar entre 15 y 45 minutos.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>Se aplica tarifa operativa urgente que será confirmada por el asesor.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>No todos los productos del catálogo principal son elegibles para despacho urgente.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>Pedidos con novedad de cartera pueden requerir aprobación manual de gerencia.</p>
+          </div>
+          <div className="flex gap-2">
+            <div className="w-1.5 h-1.5 bg-rojo rounded-full mt-1 shrink-0" />
+            <p>Las ventanas de entrega son rangos estimados y pueden variar según tráfico o demanda.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UrgentProductEligibilityCard({ 
+  product, 
+  isSelected, 
+  onToggle, 
+  quantity, 
+  onUpdateQuantity,
+  onConsultAdvisor 
+}: any) {
+  const isEligible = product.availableForUrgent;
+  
+  return (
+    <div className={`bg-white rounded-2xl border transition-all p-5 relative flex flex-col tbs-shadow ${isSelected ? 'border-rojo ring-1 ring-rojo' : 'border-borde hover:border-rojo/20'}`}>
+      <div className="flex gap-4 mb-4">
+        <div className="w-20 h-24 bg-white rounded-xl p-2 flex items-center justify-center shrink-0 border border-gray-100 shadow-sm relative">
+          <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
+          <div className={`absolute -top-1 -right-1 w-6 h-6 rounded-lg flex items-center justify-center shadow-md ${isEligible ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>
+            {isEligible ? <Zap size={12} fill="currentColor" /> : <Clock size={12} />}
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="text-[9px] font-black uppercase text-gris tracking-[0.15em] mb-1 opacity-70">{product.category}</div>
+          <h4 className="text-sm font-black text-texto tracking-tight leading-[1.3] mb-1 line-clamp-2">{product.name}</h4>
+          <div className="text-xs font-black text-gris opacity-50 mb-2 uppercase tracking-tighter">{product.specs}</div>
+          <div className="text-base font-black text-rojo-oscuro mb-3">{formatCOP(product.estimatedPrice)}</div>
+          
+          <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${
+            isEligible ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isEligible ? 'bg-green-500' : 'bg-orange-500'}`} />
+            {isEligible ? 'Elegible Urgente' : 'Sujeto a Confirmación'}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-auto pt-5 border-t border-gray-50">
+        {isEligible ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-borde">
+              <button 
+                onClick={() => onUpdateQuantity(-1)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gris hover:text-rojo transition-colors"
+              >
+                <Minus size={14} />
+              </button>
+              <div className="w-8 text-center text-xs font-black text-texto">{quantity}</div>
+              <button 
+                onClick={() => onUpdateQuantity(1)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gris hover:text-rojo transition-colors"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            <button 
+              onClick={onToggle}
+              className={`flex-1 py-3 mt-0 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                isSelected 
+                  ? 'bg-texto text-white' 
+                  : 'bg-white border-2 border-texto text-texto hover:bg-texto hover:text-white'
+              }`}
+            >
+              {isSelected ? 'Agregado' : 'Añadir'}
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={onConsultAdvisor}
+            className="w-full py-3 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 font-black text-[10px] uppercase tracking-widest hover:bg-orange-100 transition-all flex items-center justify-center gap-2"
+          >
+            <HelpCircle size={14} />
+            Consultar disponibilidad
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function UrgentPrioritySelector({ selected, onSelect }: any) {
+  const priorities = [
+    { id: 'standard', label: 'Estandar', description: 'Reposición normal de inventario', color: 'bg-blue-50 text-blue-700 border-blue-100' },
+    { id: 'alta', label: 'Alta', description: 'Alta demanda inesperada', color: 'bg-orange-50 text-orange-700 border-orange-100' },
+    { id: 'critica', label: 'Crítica HORECA', description: 'Ruptura total de stock operativa', color: 'bg-rojo/5 text-rojo border-rojo/10' },
+    { id: 'evento', label: 'Evento hoy', description: 'Garantía para operación de evento', color: 'bg-texto text-white border-texto' },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-4">
+      {priorities.map(p => (
+        <button
+          key={p.id}
+          onClick={() => onSelect(p.id)}
+          className={`px-4 py-3 rounded-2xl border-2 transition-all text-left flex-1 min-w-[140px] ${
+            selected === p.id 
+              ? 'ring-2 ring-rojo ring-offset-2 border-transparent' 
+              : 'border-borde hover:border-rojo/30'
+          } ${selected === p.id && p.id === 'evento' ? 'bg-texto text-white' : ''}`}
+        >
+          <div className="text-[10px] font-black uppercase tracking-[0.1em] mb-1">{p.label}</div>
+          <div className="text-[10px] font-medium opacity-70 leading-tight">{p.description}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function UrgentRequestStatusBadge({ status }: { status: string }) {
+  const states: any = {
+    'recepcionada': { label: 'Recibida', color: 'bg-gray-100 text-gray-700' },
+    'en_validacion': { label: 'En Validación Operativa', color: 'bg-blue-50 text-blue-700 border-blue-100' },
+    'pendiente_inventario': { label: 'Pendiente Inventario', color: 'bg-orange-50 text-orange-700 border-orange-100' },
+    'confirmado': { label: 'Confirmado', color: 'bg-green-100 text-green-700 border-green-200' },
+  };
+  
+  const s = states[status] || { label: status, color: 'bg-gray-100' };
+  
+  return (
+    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${s.color}`}>
+      {s.label}
+    </span>
+  );
+}
+
+function UrgentConfirmationModal({ request, onBack, onReset, onTracking }: any) {
+  return (
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onReset} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="relative bg-white rounded-[40px] max-w-2xl w-full tbs-shadow-lg border-b-8 border-rojo overflow-hidden">
+        <div className="p-10">
+          <div className="text-center mb-10">
+            <div className="w-24 h-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+              <ShieldCheck size={48} />
+            </div>
+            <h3 className="text-4xl font-black text-texto mb-2 tracking-tighter">Solicitud enviada</h3>
+            <p className="text-gris font-medium text-lg leading-snug">
+              Tu solicitud urgente está siendo validada por el equipo de control logístico TBS.
+            </p>
+          </div>
+          
+          <div className="bg-gray-50 rounded-[32px] p-8 border border-gray-100 mb-10">
+            <div className="grid grid-cols-2 gap-8 mb-8 pb-8 border-b border-gray-200">
+              <div>
+                <div className="text-[10px] font-black uppercase text-gris tracking-widest mb-2">Número de Ticket</div>
+                <div className="text-2xl font-black text-rojo">{request.id}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase text-gris tracking-widest mb-2">Estado Inicial</div>
+                <UrgentRequestStatusBadge status={request.status} />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+              <SmallDetail label="Ciudad" value={request.city} />
+              <SmallDetail label="Ventana" value={request.deliveryWindow} />
+              <SmallDetail label="Tiempo Estimado" value="15-30 min respuesta" />
+              <SmallDetail label="Productos" value={`${request.products.length} Items seleccionados`} />
+            </div>
+          </div>
+
+          <div className="bg-rojo/5 border border-rojo/10 rounded-2xl p-6 mb-10 flex gap-4 items-start">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-rojo shrink-0 mt-1">
+              <TrendingUp size={20} />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1">Próximo paso</div>
+              <p className="text-sm font-bold text-texto leading-tight">
+                Recibirás una notificación en la app y un mensaje de tu asesor para confirmar inventario y hora final de entrega.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <button 
+              onClick={onTracking}
+              className="flex-1 py-5 bg-texto text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rojo transition-all tbs-shadow shadow-texto/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <History size={18} /> Ver seguimiento
+            </button>
+            <button 
+              onClick={onReset}
+              className="flex-1 py-5 bg-gray-100 text-texto rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Zap size={18} /> Nueva Solicitud
+            </button>
+          </div>
+
+          <button 
+            onClick={onBack}
+            className="w-full mt-6 text-xs font-black text-gris uppercase tracking-widest hover:text-rojo transition-colors"
+          >
+            Volver a mi cuenta
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function SmallDetail({ label, value }: { label: string, value: string }) {
+  return (
+    <div>
+      <div className="text-[9px] font-black uppercase text-gris tracking-widest mb-1">{label}</div>
+      <div className="text-sm font-black text-texto truncate">{value}</div>
+    </div>
+  );
 }
 
 const formatCOP = (value: number) => {
@@ -136,6 +657,108 @@ const DELIVERY_WINDOWS = [
 
 const CITIES = ['Cartagena', 'Barranquilla', 'Santa Marta', 'Montería', 'Sincelejo', 'Valledupar', 'Otra ciudad'];
 
+type ServiceStatusKey = 'disponible' | 'alta_demanda' | 'ventana_limitada' | 'cerrado' | 'sujeto_confirmacion' | 'no_disponible';
+
+interface CityCondition {
+  city: string;
+  status: ServiceStatusKey;
+  cutoffTime: string;
+  availableWindow: string;
+  estimatedSLA: string;
+  priorityLevel: 'Alta' | 'Media' | 'Crítica' | 'Baja';
+  urgentFee: number;
+  isHighDemand?: boolean;
+  restrictions?: string[];
+}
+
+const CITY_CONDITIONS: Record<string, CityCondition> = {
+  'Cartagena': {
+    city: 'Cartagena',
+    status: 'disponible',
+    cutoffTime: '4:00 p.m.',
+    availableWindow: '2 a 4 horas',
+    estimatedSLA: '15-30 min validación',
+    priorityLevel: 'Alta',
+    urgentFee: 25000,
+  },
+  'Barranquilla': {
+    city: 'Barranquilla',
+    status: 'alta_demanda',
+    cutoffTime: '3:00 p.m.',
+    availableWindow: '4 a 6 horas',
+    estimatedSLA: '30-45 min validación',
+    priorityLevel: 'Media',
+    urgentFee: 35000,
+    isHighDemand: true
+  },
+  'Santa Marta': {
+    city: 'Santa Marta',
+    status: 'ventana_limitada',
+    cutoffTime: '2:00 p.m.',
+    availableWindow: '2 horas restantes',
+    estimatedSLA: '20 min validación',
+    priorityLevel: 'Crítica',
+    urgentFee: 25000,
+  },
+  'Bogotá': {
+    city: 'Bogotá',
+    status: 'sujeto_confirmacion',
+    cutoffTime: '1:00 p.m.',
+    availableWindow: 'Validación manual',
+    estimatedSLA: 'Siguiente día o validación',
+    priorityLevel: 'Alta',
+    urgentFee: 45000,
+  },
+  'Medellín': {
+    city: 'Medellín',
+    status: 'cerrado',
+    cutoffTime: '12:00 p.m.',
+    availableWindow: 'Cerrado por hoy',
+    estimatedSLA: 'Validación mañana',
+    priorityLevel: 'Baja',
+    urgentFee: 0,
+  }
+};
+
+const OPERATIONAL_STATUSES: Record<ServiceStatusKey, { label: string; description: string; color: string; icon: any }> = {
+  disponible: {
+    label: 'Disponible',
+    description: 'Servicio urgente disponible para esta ciudad.',
+    color: 'text-green-600 bg-green-50 border-green-100',
+    icon: CheckCircle2
+  },
+  alta_demanda: {
+    label: 'Alta demanda',
+    description: 'Servicio disponible con tiempos extendidos por alta demanda.',
+    color: 'text-orange-600 bg-orange-50 border-orange-100',
+    icon: Activity
+  },
+  ventana_limitada: {
+    label: 'Ventana limitada',
+    description: 'Quedan pocas ventanas disponibles para hoy.',
+    color: 'text-yellow-600 bg-yellow-50 border-yellow-100',
+    icon: Clock
+  },
+  cerrado: {
+    label: 'Cerrado por horario',
+    description: 'El horario de solicitud urgente para hoy ya cerró.',
+    color: 'text-gray-600 bg-gray-50 border-gray-100',
+    icon: X
+  },
+  sujeto_confirmacion: {
+    label: 'Sujeto a confirmación',
+    description: 'La disponibilidad depende de inventario, cupo y logística.',
+    color: 'text-blue-600 bg-blue-50 border-blue-100',
+    icon: AlertCircle
+  },
+  no_disponible: {
+    label: 'No disponible',
+    description: 'Pedido urgente no disponible para esta ciudad.',
+    color: 'text-rojo bg-rojo/5 border-rojo/10',
+    icon: AlertTriangle
+  }
+};
+
 export function UrgentOrderPage({ 
   currentUser, 
   onBackToAccount, 
@@ -156,8 +779,11 @@ export function UrgentOrderPage({
   }, []);
 
   // Form State
+  const [selectedCity, setSelectedCity] = useState(currentUser?.city || 'Cartagena');
+  const cityCondition = CITY_CONDITIONS[selectedCity] || CITY_CONDITIONS['Cartagena'];
+  
   const [reason, setReason] = useState<UrgentReason | null>(null);
-  const city = currentUser?.city || 'Cartagena';
+  const city = selectedCity;
   const address = currentUser?.address || 'Dirección registrada en contrato B2B';
   const [deliveryWindow, setDeliveryWindow] = useState('asap');
   const [contactName, setContactName] = useState(currentUser?.name || '');
@@ -194,9 +820,13 @@ export function UrgentOrderPage({
   }, []);
 
   const logisticFee = useMemo(() => {
+    // Priority and city affect fee
+    let baseFee = cityCondition.urgentFee || 25000;
+    if (reason === 'cliente_vip') baseFee = baseFee * 0.8; // Discount for VIP? Or maybe more for critical
+    
     const window = DELIVERY_WINDOWS.find(w => w.label === deliveryWindow) || DELIVERY_WINDOWS.find(w => w.id === deliveryWindow);
-    return window?.fee || 20000;
-  }, [deliveryWindow]);
+    return window ? baseFee : 20000;
+  }, [deliveryWindow, cityCondition, reason]);
 
   const totals = useMemo(() => {
     const productsArray = Object.values(selectedProducts) as { product: UrgentProduct; quantity: number }[];
@@ -341,81 +971,38 @@ export function UrgentOrderPage({
       </div>
 
       <div className="max-w-[1480px] mx-auto px-8 mt-10">
-        {/* Warning Card */}
-        <div className="bg-texto text-white rounded-3xl p-8 mb-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-12 opacity-10">
-            <Zap size={140} />
-          </div>
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
-              <Info size={32} className="text-rojo" />
+        {/* Urgent Service Conditions Header Block */}
+        <UrgentServiceConditions 
+          condition={cityCondition} 
+          onCityChange={setSelectedCity}
+        />
+
+        {/* Operational Status Banner */}
+        <div className={`mb-10 p-6 rounded-3xl border flex items-center justify-between gap-6 ${OPERATIONAL_STATUSES[cityCondition.status].color}`}>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-current/10 flex items-center justify-center">
+              {React.createElement(OPERATIONAL_STATUSES[cityCondition.status].icon, { size: 24 })}
             </div>
             <div>
-              <h2 className="text-2xl font-black mb-2 tracking-tight">Antes de enviar un pedido urgente</h2>
-              <p className="text-white/70 font-medium mb-4 max-w-3xl">Un asesor TBS validará disponibilidad, ruta, horario, condiciones comerciales y tarifa logística antes de confirmar la entrega.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-bold">
-                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg border border-white/10">
-                  <CheckCircle2 size={14} className="text-rojo" /> Operación activa por ciudad
-                </div>
-                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg border border-white/10">
-                  <CheckCircle2 size={14} className="text-rojo" /> Tarifa logística adicional
-                </div>
-                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg border border-white/10">
-                  <CheckCircle2 size={14} className="text-rojo" /> No reemplaza el programado
-                </div>
-                <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg border border-white/10">
-                  <CheckCircle2 size={14} className="text-rojo" /> Sujeto a capacidad de ruta
-                </div>
-              </div>
+              <div className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-80">Estado operativo hoy</div>
+              <div className="text-xl font-black tracking-tight">{OPERATIONAL_STATUSES[cityCondition.status].label}</div>
             </div>
+          </div>
+          <div className="hidden md:block text-right">
+            <p className="text-xs font-bold leading-relaxed">{OPERATIONAL_STATUSES[cityCondition.status].description}</p>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          <UrgentStatCard title="Ciudad actual" value={city} icon={MapPin} />
-          <UrgentStatCard title="Ventanas disponibles" value="3" icon={Clock} color="text-rojo" />
-          <UrgentStatCard title="Abastecimiento urgente" value={URGENT_PRODUCTS_DATA.filter(p => p.availableForUrgent).length.toString()} icon={Zap} color="text-yellow-600" />
-          <UrgentStatCard title="Tiempo estimado" value="2 a 5 horas" icon={Truck} color="text-blue-600" />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* Main Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-12">
-            
-            {/* Section 1: Reason */}
+            {/* Section 1: Urgency Level */}
             <section className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-texto text-white flex items-center justify-center font-black text-xs">1</div>
-                <h3 className="text-xl font-black text-texto uppercase tracking-tight">Motivo de urgencia</h3>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {REASONS.map((r) => {
-                  const Icon = r.icon;
-                  const isSelected = reason === r.id;
-                  return (
-                    <button
-                      key={r.id}
-                      onClick={() => {
-                        setReason(r.id);
-                        analytics.track('urgent_order_reason_selected', 'checkout', { reason: r.id });
-                      }}
-                      className={`p-5 rounded-2xl border-2 transition-all flex flex-col items-center text-center gap-3 cursor-pointer ${
-                        isSelected 
-                          ? 'border-rojo bg-rojo/5' 
-                          : 'border-borde bg-white hover:border-rojo/30'
-                      }`}
-                    >
-                      <div className={`${isSelected ? 'text-rojo' : 'text-gris'} transition-colors`}>
-                        <Icon size={28} />
-                      </div>
-                      <span className={`text-xs font-black uppercase tracking-wider leading-tight ${isSelected ? 'text-rojo' : 'text-gris'}`}>
-                        {r.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
+              <SectionHeader 
+                eyebrow="Nivel de Prioridad"
+                title="¿Cuál es el motivo de la urgencia?"
+                description="Selecciona la prioridad para que nuestro equipo logístico asigne los recursos adecuados."
+              />
+              <UrgentPrioritySelector selected={reason} onSelect={setReason} />
             </section>
 
             {/* Section 2: Delivery */}
@@ -479,10 +1066,11 @@ export function UrgentOrderPage({
             {/* Section 3: Products */}
             <section className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-texto text-white flex items-center justify-center font-black text-xs">3</div>
-                  <h3 className="text-xl font-black text-texto uppercase tracking-tight">Productos urgentes</h3>
-                </div>
+                <SectionHeader
+                  eyebrow="Selección de inventario"
+                  title="Productos urgentes"
+                  description="Solo productos con disponibilidad para despacho inmediato."
+                />
               </div>
 
               <div className="bg-white p-6 rounded-3xl border border-borde tbs-shadow space-y-6">
@@ -514,17 +1102,33 @@ export function UrgentOrderPage({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {filteredProducts.map(p => (
-                    <UrgentProductCard 
+                  {filteredProducts.length > 0 ? filteredProducts.map(p => (
+                    <UrgentProductEligibilityCard 
                       key={p.id}
                       product={p}
                       isSelected={!!selectedProducts[p.id]}
                       onToggle={() => handleToggleProduct(p)}
                       quantity={quantities[p.id] || p.suggestedQuantity}
-                      onUpdateQuantity={(delta) => handleUpdateQuantity(p.id, delta)}
+                      onUpdateQuantity={(delta: number) => handleUpdateQuantity(p.id, delta)}
                       onConsultAdvisor={() => setShowAdvisorModal(p)}
                     />
-                  ))}
+                  )) : (
+                    <div className="col-span-full py-12">
+                      <EmptyState 
+                        variant="warning"
+                        title="No encontramos productos urgentes"
+                        description={`No hay resultados para "${search}" en la categoría ${activeCategory}.`}
+                        primaryActionLabel="Limpiar búsqueda"
+                        onPrimaryAction={() => {
+                          setSearch('');
+                          setActiveCategory('Todos');
+                        }}
+                        secondaryActionLabel="Hablar con asesor"
+                        onSecondaryAction={() => onGoAdvisorChat('producto', { label: 'Consulta disponibilidad urgente', type: 'soporte' })}
+                        compact
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -541,77 +1145,23 @@ export function UrgentOrderPage({
                 placeholder="Ej: pedido para evento esta noche, entregar por recepción, llamar antes de llegar, acceso por parqueadero, productos sustitutos permitidos, etc."
                 className="w-full h-32 bg-white border border-borde rounded-3xl p-6 font-semibold text-texto outline-none focus:border-rojo resize-none tbs-shadow"
               />
+              
+              <UrgentRestrictionsBlock />
             </section>
           </div>
 
           {/* Lateral Panel */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-[32px] border border-borde tbs-shadow p-8 sticky top-24">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 bg-rojo text-white rounded-xl flex items-center justify-center shadow-lg shadow-rojo/20">
-                  <Zap size={20} />
-                </div>
-                <h4 className="text-xl font-black text-texto tracking-tight leading-none">Solicitud urgente</h4>
-              </div>
-
-              <div className="space-y-6 mb-8">
-                {Object.keys(selectedProducts).length > 0 ? (
-                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                    {(Object.values(selectedProducts) as { product: UrgentProduct; quantity: number }[]).map((item) => (
-                      <div key={item.product.id} className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <div className="text-xs font-black text-texto line-clamp-1">{item.product.name}</div>
-                          <div className="text-[10px] font-bold text-gris uppercase tracking-wider">{item.quantity} x {item.product.specs}</div>
-                        </div>
-                        <div className="text-sm font-black text-texto shrink-0">{formatCOP(item.product.estimatedPrice * item.quantity)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-10 text-center border-2 border-dashed border-borde rounded-2xl bg-gray-50">
-                    <Package className="mx-auto mb-3 text-gris opacity-30" size={32} />
-                    <p className="text-xs font-black text-gris uppercase tracking-widest px-4">Selecciona productos urgentes para continuar</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4 pt-6 border-t border-gray-100">
-                <div className="flex justify-between items-center text-xs font-black text-gris uppercase tracking-widest">
-                  <span>Productos</span>
-                  <span className="text-texto">{totals.units} unidades</span>
-                </div>
-                <div className="flex justify-between items-center text-xs font-black text-gris uppercase tracking-widest">
-                  <span>Subtotal estimado</span>
-                  <span className="text-texto">{formatCOP(totals.subtotal)}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs font-black text-rojo uppercase tracking-widest">
-                  <span>Tarifa logística</span>
-                  <span>{formatCOP(logisticFee)}</span>
-                </div>
-                <div className="pt-4 flex justify-between items-end">
-                  <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1">Total Proyecto</div>
-                  <div className="text-3xl font-black text-texto tracking-tighter leading-none">{formatCOP(totals.total)}</div>
-                </div>
-              </div>
-
-              <div className="mt-8 bg-yellow-50 border border-yellow-100 rounded-2xl p-4 flex gap-3">
-                <Info size={16} className="text-yellow-600 shrink-0 mt-0.5" />
-                <p className="text-[10px] font-bold text-yellow-800 leading-normal">
-                  El total y la tarifa pueden cambiar después de validación logística y comercial por parte de TBS.
-                </p>
-              </div>
-
-              <button 
-                onClick={handleSubmit}
-                disabled={!isFormValid}
-                className="w-full mt-8 py-5 bg-texto text-white rounded-2xl font-black hover:bg-rojo transition-all disabled:opacity-30 disabled:cursor-not-allowed tbs-shadow flex items-center justify-center gap-3 cursor-pointer group"
-              >
-                <div className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
-                  <Zap size={20} className="text-rojo" />
-                </div>
-                Enviar solicitud urgente
-              </button>
-            </div>
+          <div className="lg:col-span-1 space-y-6">
+            <UrgentSLAWidget />
+            <UrgentValidationPanel 
+              totals={{
+                subtotal: formatCOP(totals.subtotal),
+                fee: formatCOP(logisticFee),
+                total: formatCOP(totals.total)
+              }} 
+              isValid={isFormValid} 
+              onSubmit={handleSubmit} 
+            />
           </div>
         </div>
       </div>
@@ -764,93 +1314,3 @@ export function UrgentOrderPage({
   );
 }
 
-function UrgentStatCard({ title, value, icon: Icon, color = 'text-texto' }: { title: string, value: string, icon: any, color?: string }) {
-  return (
-    <div className="bg-white p-6 rounded-[24px] border border-borde tbs-shadow flex items-start gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color.replace('text-', 'bg-').replace('600', '100')} ${color}`}>
-        <Icon size={24} />
-      </div>
-      <div>
-        <h3 className="text-[10px] font-black text-gris uppercase tracking-widest mb-1">{title}</h3>
-        <p className={`text-xl font-black ${color} tracking-tight`}>{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function UrgentProductCard({ 
-  product, 
-  isSelected, 
-  onToggle, 
-  quantity, 
-  onUpdateQuantity,
-  onConsultAdvisor 
-}: { 
-  key?: any;
-  product: UrgentProduct; 
-  isSelected: boolean; 
-  onToggle: () => void;
-  quantity: number;
-  onUpdateQuantity: (delta: number) => void;
-  onConsultAdvisor: () => void;
-}) {
-  return (
-    <div className={`bg-gray-50 rounded-2xl border transition-all p-4 relative flex flex-col ${isSelected ? 'border-rojo bg-rojo/5 shadow-lg shadow-rojo/5' : 'border-borde hover:border-rojo/20'}`}>
-      <div className="flex gap-4 mb-4">
-        <div className="w-16 h-20 bg-white rounded-xl p-2 flex items-center justify-center shrink-0 border border-borde">
-          <img src={product.image} alt={product.name} className="w-full h-full object-contain" />
-        </div>
-        <div className="flex-1">
-          <div className="text-[9px] font-black uppercase text-gris tracking-widest mb-0.5">{product.category}</div>
-          <h4 className="text-xs font-black text-texto leading-tight mb-1 line-clamp-2">{product.name}</h4>
-          <div className="text-sm font-black text-rojo-oscuro">{formatCOP(product.estimatedPrice)}</div>
-          <span className={`inline-block px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider mt-2 ${
-            product.availableForUrgent ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-          }`}>
-            {product.stockLabel}
-          </span>
-        </div>
-      </div>
-
-      {product.availableForUrgent ? (
-        <div className="flex items-center justify-between gap-4 pt-4 border-t border-borde/50">
-          <div className="flex items-center gap-1">
-            <button 
-              onClick={() => onUpdateQuantity(-1)}
-              className="w-8 h-8 rounded-lg border border-borde flex items-center justify-center text-gris hover:border-rojo hover:text-rojo transition-colors cursor-pointer"
-            >
-              <Minus size={14} />
-            </button>
-            <div className="w-10 text-center text-xs font-black text-texto">{quantity}</div>
-            <button 
-              onClick={() => onUpdateQuantity(1)}
-              className="w-8 h-8 rounded-lg border border-borde flex items-center justify-center text-gris hover:border-rojo hover:text-rojo transition-colors cursor-pointer"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-          <button 
-            onClick={onToggle}
-            className={`flex-1 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-              isSelected 
-                ? 'bg-rojo text-white shadow-md shadow-rojo/20' 
-                : 'bg-white border border-borde text-gris hover:border-rojo hover:text-rojo'
-            }`}
-          >
-            {isSelected ? 'Agregado' : 'Agregar'}
-          </button>
-        </div>
-      ) : (
-        <div className="pt-4 border-t border-borde/50">
-          <button 
-            onClick={onConsultAdvisor}
-            className="w-full py-2.5 rounded-xl border border-yellow-200 bg-yellow-50 text-yellow-700 font-black text-[10px] uppercase tracking-wider hover:bg-yellow-100 transition-all cursor-pointer flex items-center justify-center gap-2"
-          >
-            <MessageSquare size={14} />
-            Consultar asesor
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}

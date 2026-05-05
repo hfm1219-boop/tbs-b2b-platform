@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Star, MapPin, Truck, Zap, ShoppingCart, MessageSquare, ChevronRight } from 'lucide-react';
+import { ArrowRight, Star, MapPin, Truck, Zap, ShoppingCart, MessageSquare, ChevronRight, DollarSign, Calendar } from 'lucide-react';
 import { Breadcrumbs } from './Breadcrumbs';
 import { BrandAdCampaign, User } from '../types';
 import { BRAND_AD_CAMPAIGNS } from '../data';
@@ -21,13 +21,14 @@ interface PublicLandingPageProps {
   data: LandingData;
   onGoHome: () => void;
   onGoCatalog: () => void;
-  onGoAccessRequest: () => void;
+  onGoAccessRequest: (role: 'client' | 'provider') => void;
   onGoAdvisorChat: () => void;
+  onGoHospitalityPartners: () => void;
   onAdClick?: (campaign: BrandAdCampaign) => void;
   currentUser?: User | null;
 }
 
-export function PublicLandingPage({ data, onGoHome, onGoCatalog, onGoAccessRequest, onGoAdvisorChat, onAdClick, currentUser }: PublicLandingPageProps) {
+export function PublicLandingPage({ data, onGoHome, onGoCatalog, onGoAccessRequest, onGoAdvisorChat, onGoHospitalityPartners, onAdClick, currentUser }: PublicLandingPageProps) {
   return (
     <div className="min-h-screen bg-white font-sans">
       {/* City Hero */}
@@ -244,6 +245,65 @@ export function PublicLandingPage({ data, onGoHome, onGoCatalog, onGoAccessReque
                <div className="absolute -top-10 -right-10 w-64 h-64 bg-rojo/10 rounded-full blur-3xl" />
                <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-[#303844]/10 rounded-full blur-3xl" />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Hospitality Partners Mini Section */}
+      <section className="py-24 bg-white">
+        <div className="max-w-[1480px] mx-auto px-8">
+          <div className="bg-[#0F172A] rounded-[40px] text-white p-12 lg:p-20 relative overflow-hidden flex flex-col lg:flex-row gap-12 items-center">
+             <div className="absolute top-0 right-0 w-1/3 h-full bg-rojo/10 skew-x-12 transform translate-x-1/2 pointer-events-none" />
+             <div className="relative z-10 lg:w-3/5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-rojo text-white rounded-full text-[10px] font-black uppercase tracking-widest mb-6">
+                  Nuevo: Modelo para Wedding Planners
+                </div>
+                <h2 className="text-4xl lg:text-7xl font-black tracking-tighter mb-8 leading-none">
+                  ¿Eres Wedding Planner o administras Villas?
+                </h2>
+                <p className="text-xl text-white/70 font-medium mb-12 leading-relaxed max-w-2xl">
+                  TBS Hospitality te permite gestionar las compras de tus clientes, programar entregas en eventos y recibir comisiones por tu gestión comercial. Un modelo diseñado para aliados del sector eventos.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <button 
+                    onClick={onGoHospitalityPartners}
+                    className="px-8 py-4 bg-white text-[#0F172A] rounded-xl font-black text-sm uppercase tracking-widest hover:bg-rojo hover:text-white transition-all cursor-pointer"
+                  >
+                    Conocer modelo de aliados
+                  </button>
+                  <button 
+                    onClick={() => onGoAccessRequest('client')}
+                    className="px-8 py-4 border border-white/20 text-white rounded-xl font-black text-sm uppercase tracking-widest hover:bg-white hover:text-[#0F172A] transition-all cursor-pointer"
+                  >
+                    Solicitar acceso como partner
+                  </button>
+                </div>
+             </div>
+             <div className="lg:w-2/5 relative">
+                <div className="aspect-square bg-white/5 rounded-3xl border border-white/10 p-8 flex flex-col justify-center gap-6">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-rojo rounded-xl flex items-center justify-center"><ShoppingCart size={24} /></div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-white/50">Gestionas</p>
+                        <p className="text-lg font-black tracking-tight leading-none">Pedidos para Clientes</p>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-rojo rounded-xl flex items-center justify-center"><Calendar size={24} /></div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-white/50">Programas</p>
+                        <p className="text-lg font-black tracking-tight leading-none">Entregas en Eventos</p>
+                      </div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-rojo rounded-xl flex items-center justify-center"><DollarSign size={24} /></div>
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-widest text-white/50">Recibes</p>
+                        <p className="text-lg font-black tracking-tight leading-none">Comisión por Gestión</p>
+                      </div>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
       </section>

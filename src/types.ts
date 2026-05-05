@@ -118,6 +118,13 @@ export interface Product {
   subcategory?: string;
   packagingOptions?: ProductPackagingOption[];
   selectedPackaging?: ProductPackagingOption;
+  isUrgent?: boolean;
+  previouslyPurchased?: boolean;
+  isSponsored?: boolean;
+  hasPromotion?: boolean;
+  stockStatus?: 'available' | 'low_stock' | 'out_of_stock';
+  suggestedSubstituteId?: number;
+  requiresConfirmation?: boolean;
 }
 
 export interface CartItem {
@@ -126,6 +133,8 @@ export interface CartItem {
   packaging?: ProductPackagingOption;
   packageQuantity?: number;
   totalUnits?: number;
+  lineComment?: string;
+  isConfirmed?: boolean;
 }
 
 export type UserRole = 'cliente_b2b' | 'proveedor' | 'marca' | 'admin' | 'hospitality_partner';
@@ -384,7 +393,69 @@ export type AnalyticsEventName =
   | 'ad_click'
   | 'sponsored_product_viewed'
   | 'coupon_clicked'
-  | 'campaign_page_viewed';
+  | 'campaign_page_viewed'
+  | 'provider_price_template_downloaded'
+  | 'provider_price_file_uploaded'
+  | 'provider_price_import_validated'
+  | 'provider_price_import_submitted'
+  | 'provider_price_import_batch_viewed';
+
+export type ProviderPriceImportStatus =
+  | 'borrador'
+  | 'validando'
+  | 'listo_para_enviar'
+  | 'enviado'
+  | 'requiere_correccion'
+  | 'rechazado'
+  | 'aprobado';
+
+export type ProviderPriceImportRowStatus =
+  | 'valido'
+  | 'advertencia'
+  | 'error';
+
+export interface ProviderPriceImportRow {
+  id: string;
+  rowNumber: number;
+  productName: string;
+  internalSku?: string;
+  barcode: string;
+  brandName: string;
+  category: string;
+  presentation: string;
+  packaging: string;
+  unitsPerPackage: number;
+  baseCost: number;
+  taxRate: number;
+  exciseTax?: number;
+  suggestedPrice?: number;
+  minimumPrice?: number;
+  currency: 'COP' | 'USD';
+  effectiveFrom: string;
+  notes?: string;
+  status: ProviderPriceImportRowStatus;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ProviderPriceImportBatch {
+  id: string;
+  batchNumber: string;
+  providerId: string;
+  providerName: string;
+  brandName: string;
+  fileName: string;
+  createdAt: string;
+  effectiveFrom: string;
+  status: ProviderPriceImportStatus;
+  totalRows: number;
+  validRows: number;
+  warningRows: number;
+  errorRows: number;
+  rows: ProviderPriceImportRow[];
+  disclaimerAccepted: boolean;
+  submittedAt?: string;
+}
 
 export interface AnalyticsEventPayload {
   page?: string;
@@ -436,6 +507,8 @@ export interface User {
   providerType?: 'marca' | 'importadora' | 'fabricante' | 'distribuidor' | 'aliado_logistico';
   creditLimit?: number;
   availableCredit?: number;
+  creditRisk?: 'bajo' | 'atencion' | 'medio' | 'alto' | 'bloqueado';
+  creditRiskScore?: number;
   accountRole?: ClientAccountRole;
   companyAccountId?: string;
   assignedCityIds?: string[];
@@ -766,7 +839,7 @@ export interface BlogArticle {
   primaryCtaTarget?: 'accessRequest' | 'catalog' | 'faq' | 'providers' | 'clients' | 'services' | 'advisorChat';
 }
 
-export type ActivePage = 'home' | 'category' | 'about' | 'clients' | 'providers' | 'services' | 'request-access' | 'checkout' | 'account' | 'payments' | 'ordersTracking' | 'reorder' | 'urgentOrder' | 'advisorChat' | 'notifications' | 'shoppingLists' | 'promotions' | 'intelligence' | 'providerDashboard' | 'providerProducts' | 'providerCampaigns' | 'providerSettlements' | 'providerReports' | 'b2bAccountAdmin' | 'orderApprovals' | 'faq' | 'blogIndex' | 'blogArticle' | 'contact' | 'legalIndex' | 'legalPage' | 'publicLanding' | 'trust' | 'creditRequest' | 'campaignPage' | 'hospitalityPartnerDashboard';
+export type ActivePage = 'home' | 'category' | 'about' | 'clients' | 'providers' | 'services' | 'request-access' | 'checkout' | 'account' | 'payments' | 'ordersTracking' | 'reorder' | 'urgentOrder' | 'advisorChat' | 'notifications' | 'shoppingLists' | 'promotions' | 'intelligence' | 'providerDashboard' | 'providerProducts' | 'providerCampaigns' | 'providerSettlements' | 'providerReports' | 'b2bAccountAdmin' | 'orderApprovals' | 'faq' | 'blogIndex' | 'blogArticle' | 'contact' | 'legalIndex' | 'legalPage' | 'publicLanding' | 'trust' | 'creditRequest' | 'campaignPage' | 'hospitalityPartnerDashboard' | 'hospitalityPartners' | 'advertising';
 
 export type FAQAudience =
   | 'publico'
@@ -836,6 +909,14 @@ export interface Invoice {
   status: InvoiceStatus;
   orderNumber?: string;
   description?: string;
+  daysOverdue?: number;
+  daysUntilDue?: number;
+  site?: string;
+  city?: string;
+  allowsPartialPayment?: boolean;
+  minimumPartialPayment?: number;
+  hasDispute?: boolean;
+  paymentStatus?: 'pendiente' | 'en_validacion' | 'parcial' | 'pagada';
 }
 
 export interface PaymentRecord {
@@ -935,13 +1016,25 @@ export interface Conversation {
 }
 
 export type OrderStatus =
+  | 'recibido'
+  | 'validacion_cartera'
+  | 'en_preparacion'
+  | 'facturado'
+  | 'programado'
+  | 'programado_hoy'
+  | 'en_ruta'
+  | 'entregado'
+  | 'con_novedad'
+  | 'reprogramado'
+  | 'entrega_parcial'
+  | 'rechazado'
+  | 'cancelado'
+  | 'pendiente'
   | 'en_validacion'
   | 'aprobado'
   | 'preparando'
   | 'en_transito'
-  | 'entregado'
-  | 'novedad'
-  | 'cancelado';
+  | 'novedad';
 
 export interface OrderProduct {
   id: string;
@@ -950,12 +1043,18 @@ export interface OrderProduct {
   quantity: number;
   unitPrice: number;
   image?: string;
+  presentation?: string;
+  dispatchedQty?: number;
+  deliveredQty?: number;
+  pendingQty?: number;
+  lineStatus?: 'completo' | 'pendiente' | 'sustituido' | 'no_entregado' | 'entregado_parcial';
+  notes?: string;
 }
 
 export interface OrderTimelineEvent {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   date: string;
   time: string;
   completed: boolean;
@@ -982,12 +1081,22 @@ export interface CustomerOrder {
   estimatedDelivery: string;
   paymentMethod: string;
   advisorName: string;
-  advisorPhone: string;
+  advisorPhone?: string;
   transporter?: string;
   trackingCode?: string;
   documentNumber?: string;
   invoiceNumber?: string;
   deliveryDocumentNumber?: string;
+  nextStep?: string;
+  orderType?: 'normal' | 'urgente' | 'programado';
+  isUrgent?: boolean;
+  receivingContact?: string;
+  siteName?: string;
+  isRescheduled?: boolean;
+  hasPartialDelivery?: boolean;
+  requiresCustomerAction?: boolean;
+  hospitalityPartnerId?: string;
+  hospitalityPartnerName?: string;
   products: OrderProduct[];
   timeline: OrderTimelineEvent[];
   issues?: OrderIssue[];
@@ -1196,6 +1305,7 @@ export interface B2BPromotion {
   priority: 'alta' | 'media' | 'baja';
   products: PromotionProduct[];
   condition: PromotionCondition;
+  image?: string;
 }
 
 export interface AppliedPromotion {

@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
+  Button,
+  StatusBadge,
+  MetricCard,
+  AlertBox,
+  EmptyState,
+  SectionHeader,
+  ActionCard,
+  ModalShell,
+  TableShell,
+  PageHero,
+  PageContainer,
+  PageHeader,
+  ModuleTabs
+} from './ui';
+import { 
   Users, 
   Calendar, 
   ShoppingBag, 
@@ -22,7 +37,7 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
-  Truck
+  Truck as TruckIcon
 } from 'lucide-react';
 import { 
   User, 
@@ -318,88 +333,44 @@ export function HospitalityPartnerDashboardPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-10">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-        {/* Header */}
-        <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-sm border border-gray-100 mb-8 overflow-hidden relative">
-           <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-              <Users size={200} />
-           </div>
-           <div className="relative z-10">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="bg-rojo/10 text-rojo text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full">
-                      Perfil Gestión TBS
-                    </span>
-                    <span className="text-gris text-[10px] font-bold uppercase tracking-widest">
-                      Cartagena, Colombia
-                    </span>
-                  </div>
-                  <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-texto mb-2">
-                    {partnerProfile?.name || currentUser?.name}
-                  </h1>
-                  <p className="text-xl text-gris font-medium">
-                    {getPartnerTypeLabel(partnerProfile?.partnerType)} • {partnerProfile?.city}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <button 
-                    onClick={() => setShowCreateClientModal(true)}
-                    className="flex items-center gap-2 bg-texto text-white px-6 py-4 rounded-2xl font-black text-sm shadow-xl hover:bg-rojo transition-all group"
-                  >
-                    <Plus size={18} />
-                    Crear Cliente
-                  </button>
-                  <button 
-                    onClick={() => setShowCreateEventModal(true)}
-                    className="flex items-center gap-2 bg-white border border-borde text-texto px-6 py-4 rounded-2xl font-black text-sm hover:border-rojo hover:text-rojo transition-all shadow-sm"
-                  >
-                    <Calendar size={18} />
-                    Crear Evento
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-12 pt-8 border-t border-gray-100">
-                {stats.map((stat, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className={`${stat.bg} ${stat.color} p-4 rounded-2xl`}>
-                      <stat.icon size={24} />
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-gris font-black uppercase tracking-widest leading-none mb-1">{stat.label}</div>
-                      <div className="text-2xl font-black text-texto">{stat.value}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-           </div>
-        </div>
+    <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-12">
+      <PageContainer variant="dashboard">
+        <PageHeader
+          eyebrow="Perfil Gestión TBS"
+          title={partnerProfile?.name || currentUser?.name || 'Gestor Hospitality'}
+          description={`${getPartnerTypeLabel(partnerProfile?.partnerType)} • ${partnerProfile?.city || 'Colombia'}. Gestiona tus clientes y comisiones.`}
+          metric={{
+            label: "Operación Hospitality",
+            value: partnerProfile?.city || 'Cartagena, CO'
+          }}
+          primaryAction={{
+            label: "Crear Cliente",
+            onClick: () => setShowCreateClientModal(true),
+            icon: Plus
+          }}
+          secondaryAction={{
+            label: "Crear Evento",
+            onClick: () => setShowCreateEventModal(true),
+            icon: Calendar,
+            variant: 'outline'
+          }}
+          variant="dashboard"
+        />
 
         {/* Navigation Tabs */}
-        <div className="flex gap-1 overflow-x-auto pb-4 no-scrollbar mb-8">
-          {[
-            { id: 'resumen', label: 'Resumen', icon: Building2 },
-            { id: 'clientes', label: 'Clientes Gestionados', icon: Users },
-            { id: 'eventos', label: 'Eventos', icon: Calendar },
-            { id: 'comisiones', label: 'Comisiones', icon: DollarSign },
-            { id: 'documentos', label: 'Documentos y Reglas', icon: FileText }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-sm whitespace-nowrap transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-rojo text-white shadow-lg' 
-                  : 'bg-white text-gris hover:bg-gray-50 border border-borde'
-              }`}
-            >
-              <tab.icon size={16} />
-              {tab.label}
-            </button>
-          ))}
+        <div className="mb-10">
+          <ModuleTabs 
+            tabs={[
+              { id: 'resumen', label: 'Resumen', icon: Building2 },
+              { id: 'clientes', label: 'Clientes Gestionados', icon: Users },
+              { id: 'eventos', label: 'Eventos', icon: Calendar },
+              { id: 'comisiones', label: 'Comisiones', icon: DollarSign },
+              { id: 'documentos', label: 'Documentos y Reglas', icon: FileText }
+            ]}
+            activeTab={activeTab}
+            onChange={(id) => setActiveTab(id as any)}
+            variant="dashboard"
+          />
         </div>
 
         {/* Content Tabs */}
@@ -413,11 +384,12 @@ export function HospitalityPartnerDashboardPage({
 
                 {/* Recent Managed Clients */}
                 <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100">
-                   <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-2xl font-black tracking-tighter text-texto">Próximos Eventos</h3>
-                      <button onClick={() => setActiveTab('eventos')} className="text-rojo text-xs font-black uppercase tracking-widest hover:underline">Ver todos</button>
-                   </div>
-                   <div className="space-y-4">
+                   <SectionHeader
+                     title="Próximos Eventos"
+                     actionLabel="Ver todos"
+                     onAction={() => setActiveTab('eventos')}
+                   />
+                   <div className="space-y-4 mt-8">
                       {managedEvents.map((event) => (
                         <div key={event.id} className="flex items-center justify-between p-5 bg-[#F9FAFB] rounded-2xl border border-[#F1F3F5] group hover:border-rojo transition-all">
                            <div className="flex items-center gap-4">
@@ -559,44 +531,56 @@ export function HospitalityPartnerDashboardPage({
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                       {managedClients.map((client) => (
-                         <tr key={client.id} className="hover:bg-gray-50 transition-all cursor-pointer">
-                            <td className="px-8 py-6">
-                               {getStatusBadge(client.status)}
+                        {managedClients.length > 0 ? managedClients.map((client) => (
+                          <tr key={client.id} className="hover:bg-gray-50 transition-all cursor-pointer">
+                             <td className="px-8 py-6">
+                                {getStatusBadge(client.status)}
+                             </td>
+                             <td className="px-8 py-6">
+                                <div className="font-black text-texto text-base">{client.businessName}</div>
+                                <div className="text-xs text-gris font-bold">{client.nit || 'NIT no registrado'}</div>
+                             </td>
+                             <td className="px-8 py-6">
+                                <div className="text-sm font-bold text-texto">{client.contactName}</div>
+                                <div className="text-[11px] text-gris font-medium uppercase tracking-tight">{client.contactPhone}</div>
+                             </td>
+                             <td className="px-8 py-6 text-sm font-bold text-texto">
+                                {client.billingType === 'facturar_cliente_final' ? 'Factura Cliente' : 'Factura Gestor'}
+                             </td>
+                             <td className="px-8 py-6">
+                                <div className="flex items-center gap-2">
+                                   <button 
+                                     onClick={() => onStartPurchaseForClient(client.id)}
+                                     disabled={client.status === 'inactivo' || client.status === 'rechazado'}
+                                     className="p-3 bg-white border border-borde rounded-xl text-rojo hover:bg-rojo hover:text-white transition-all disabled:opacity-30 disabled:pointer-events-none"
+                                     title="Comprar para este cliente"
+                                   >
+                                     <ShoppingBag size={18} />
+                                   </button>
+                                   <button 
+                                     onClick={() => onGoAdvisorChat('otro', `Cliente: ${client.businessName}`)}
+                                     className="p-3 bg-white border border-borde rounded-xl text-gris hover:border-texto hover:text-texto transition-all"
+                                     title="Hablar con asesor"
+                                   >
+                                     <MessageSquare size={18} />
+                                   </button>
+                                </div>
+                             </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={5} className="px-8 py-20 text-center">
+                              <EmptyState 
+                                compact
+                                title="No tienes clientes registrados"
+                                description="Comienza a gestionar tus aliados para poder realizar compras a su nombre y ganar comisiones."
+                                primaryActionLabel="Registrar primer cliente"
+                                onPrimaryAction={() => setShowCreateClientModal(true)}
+                              />
                             </td>
-                            <td className="px-8 py-6">
-                               <div className="font-black text-texto text-base">{client.businessName}</div>
-                               <div className="text-xs text-gris font-bold">{client.nit || 'NIT no registrado'}</div>
-                            </td>
-                            <td className="px-8 py-6">
-                               <div className="text-sm font-bold text-texto">{client.contactName}</div>
-                               <div className="text-[11px] text-gris font-medium uppercase tracking-tight">{client.contactPhone}</div>
-                            </td>
-                            <td className="px-8 py-6 text-sm font-bold text-texto">
-                               {client.billingType === 'facturar_cliente_final' ? 'Factura Cliente' : 'Factura Gestor'}
-                            </td>
-                            <td className="px-8 py-6">
-                               <div className="flex items-center gap-2">
-                                  <button 
-                                    onClick={() => onStartPurchaseForClient(client.id)}
-                                    disabled={client.status === 'inactivo' || client.status === 'rechazado'}
-                                    className="p-3 bg-white border border-borde rounded-xl text-rojo hover:bg-rojo hover:text-white transition-all disabled:opacity-30 disabled:pointer-events-none"
-                                    title="Comprar para este cliente"
-                                  >
-                                    <ShoppingBag size={18} />
-                                  </button>
-                                  <button 
-                                    onClick={() => onGoAdvisorChat('otro', `Cliente: ${client.businessName}`)}
-                                    className="p-3 bg-white border border-borde rounded-xl text-gris hover:border-texto hover:text-texto transition-all"
-                                    title="Hablar con asesor"
-                                  >
-                                    <MessageSquare size={18} />
-                                  </button>
-                               </div>
-                            </td>
-                         </tr>
-                       ))}
-                    </tbody>
+                          </tr>
+                        )}
+                      </tbody>
                  </table>
                </div>
             </div>
@@ -607,7 +591,7 @@ export function HospitalityPartnerDashboardPage({
                <MonthlyCalendar events={managedEvents} />
                
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {managedEvents.map((event) => (
+                  {managedEvents.length > 0 ? managedEvents.map((event) => (
                  <div key={event.id} className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col h-full tarjeta-hover">
                     <div className="flex items-center justify-between mb-6">
                        <div className="p-4 bg-rojo/5 rounded-2xl text-rojo">
@@ -629,7 +613,7 @@ export function HospitalityPartnerDashboardPage({
                           {event.venueName}, {event.city}
                        </div>
                        <div className="flex items-center gap-3 text-sm text-gris-oscuro font-bold">
-                          <Truck size={16} className="text-rojo" />
+                          <TruckIllustration size={16} className="text-rojo" />
                           {event.deliveryWindow}
                        </div>
                     </div>
@@ -649,7 +633,17 @@ export function HospitalityPartnerDashboardPage({
                        </button>
                     </div>
                  </div>
-               ))}
+               )) : (
+                 <div className="lg:col-span-2">
+                   <EmptyState 
+                    title="No hay eventos programados"
+                    description="Crea tu primer evento para organizar la logística y los pedidos de tus clientes finales."
+                    primaryActionLabel="Programar primer evento"
+                    onPrimaryAction={() => setShowCreateEventModal(true)}
+                    compact
+                   />
+                 </div>
+               )}
 
                <button 
                  onClick={() => setShowCreateEventModal(true)}
@@ -734,7 +728,14 @@ export function HospitalityPartnerDashboardPage({
                             </tr>
                           )) : (
                             <tr>
-                              <td colSpan={6} className="px-8 py-20 text-center text-gris font-bold">No hay comisiones generadas aún.</td>
+                              <td colSpan={6} className="px-8 py-20">
+                                <EmptyState 
+                                  compact
+                                  title="No hay comisiones generadas aún"
+                                  description="Las comisiones aparecerán aquí una vez que tus clientes gestionados realicen pedidos efectivos."
+                                  contextLabel="Hospitality Partners"
+                                />
+                              </td>
                             </tr>
                           )}
                        </tbody>
@@ -805,7 +806,6 @@ export function HospitalityPartnerDashboardPage({
             </div>
           )}
         </div>
-      </div>
 
       {/* Modals */}
       <AnimatePresence>
@@ -1180,11 +1180,12 @@ export function HospitalityPartnerDashboardPage({
           </div>
         )}
       </AnimatePresence>
+      </PageContainer>
     </div>
   );
 }
 
-function Truck(props: any) {
+function TruckIllustration(props: any) {
   return (
     <svg
       {...props}

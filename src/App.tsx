@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Phone, 
   Headset, 
@@ -49,7 +49,9 @@ import {
   B2BUserActivity,
   PermissionKey,
   PendingApprovalOrder,
-  LegalPageKey
+  LegalPageKey,
+  HospitalityCommission,
+  ProviderPriceImportBatch
 } from './types';
 import { 
   PRODUCTS, 
@@ -78,7 +80,8 @@ import {
   MANAGED_CLIENTS,
   MANAGED_EVENTS,
   HOSPITALITY_COMMISSIONS,
-  HOSPITALITY_COMMISSION_RULES
+  HOSPITALITY_COMMISSION_RULES,
+  PROVIDER_PRICE_IMPORT_BATCHES
 } from './data';
 import { LEGAL_PAGES } from './data/legalData';
 import { BLOG_ARTICLES } from './data/blogData';
@@ -110,12 +113,15 @@ import { ShoppingListsPage } from './components/ShoppingListsPage';
 import { PromotionsPage } from './components/PromotionsPage';
 import { IntelligencePage } from './components/IntelligencePage';
 import { ProviderDashboardPage } from './components/ProviderDashboardPage';
+import { AdvertisingPage } from './components/AdvertisingPage';
 import { HospitalityPartnerDashboardPage } from './components/HospitalityPartnerDashboardPage';
+import { HospitalityPartnersPage } from './components/HospitalityPartnersPage';
 import { B2BAccountAdminPage } from './components/B2BAccountAdminPage';
 import OrderApprovalsPage from './components/OrderApprovalsPage';
 
 import { TrustPage } from './components/trust/TrustPage';
 import { PublicLandingPage } from './components/PublicLandingPage';
+import { AuthenticatedHome } from './components/AuthenticatedHome';
 import { PUBLIC_LANDINGS } from './data/publicLandingData';
 
 import { AccountDashboardPage } from './components/AccountDashboardPage';
@@ -150,6 +156,9 @@ import { CampaignPage } from './components/advertising/CampaignPage';
 import { BrandAdCampaign } from './types';
 
 // Helpers for customer conditions
+import { MobileMenuDrawer } from './components/MobileMenuDrawer';
+import { FloatingActionButton } from './components/ui';
+
 export function isCashCustomer(user: User | null) {
   return user?.role === 'cliente_b2b' && user?.commercialCondition === 'contado';
 }
@@ -178,6 +187,7 @@ export default function App() {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [requestAccessRole, setRequestAccessRole] = useState<'client' | 'provider'>('client');
   
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<TBSNotification[]>(NOTIFICATIONS);
 
   const [activeArticleSlug, setActiveArticleSlug] = useState<string | null>(null);
@@ -227,6 +237,20 @@ export default function App() {
         return {
           ...PUBLIC_PAGE_SEO.home,
           jsonLd: [buildOrganizationSchema(), buildWebsiteSchema(), buildLocalBusinessSchema()]
+        };
+      case 'advertising':
+        return {
+          title: "Publicidad B2B en TBS - Retail Media para Marcas",
+          description: "Descubre cómo potenciar tu marca y aumentar tus ventas en el canal profesional con las soluciones de publicidad segmentada de TBS.",
+          canonicalPath: "/publicidad",
+          jsonLd: [buildOrganizationSchema(), buildServiceSchema()]
+        };
+      case 'hospitalityPartners':
+        return {
+          title: "Aliados Hospitality y Wedding Planners | TBS B2B",
+          description: "Gestiona las compras de licores para tus eventos de forma profesional. Wedding planners, concierges y administradores de villas.",
+          canonicalPath: "/aliados-hospitality",
+          jsonLd: [buildOrganizationSchema(), buildServiceSchema()]
         };
       case 'about':
         return {
@@ -325,9 +349,17 @@ export default function App() {
   };
 
   const seo = getSEOContent();
-  const isPublicPage = ['home', 'about', 'clients', 'providers', 'services', 'catalog', 'faq', 'request-access', 'blogIndex', 'blogArticle', 'contact', 'legalIndex', 'legalPage'].includes(activePage);
+  const isPublicPage = ['home', 'about', 'clients', 'providers', 'services', 'catalog', 'faq', 'request-access', 'blogIndex', 'blogArticle', 'contact', 'legalIndex', 'legalPage', 'hospitalityPartners'].includes(activePage);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleGoHospitalityPartners = () => {
+    setActiveMenu(null);
+    setIsCheckoutOpen(false);
+    window.scrollTo(0, 0);
+    setActivePage('hospitalityPartners');
+  };
+
   const handleGoHospitalityDashboard = () => {
     if (!currentUser) {
       setLoginModalOpen(true);
@@ -403,6 +435,32 @@ export default function App() {
   const handleClearHospitalityPurchaseContext = () => {
     setHospitalityPurchaseContext(null);
     analytics.track('cta_click', 'navigation', { ctaLabel: 'Cancelar compra gestionada' });
+  };
+
+  const handleUpdateCartItemComment = (productId: number, comment: string) => {
+    setCartItems(prev => prev.map(item => 
+      item.product.id === productId ? { ...item, lineComment: comment } : item
+    ));
+  };
+
+  const handleReplaceCartItemWithSubstitute = (productId: number, substituteId: number) => {
+    const substituteProduct = PRODUCTS.find(p => p.id === substituteId);
+    if (!substituteProduct) return;
+
+    setCartItems(prev => {
+      const originalItem = prev.find(item => item.product.id === productId);
+      if (!originalItem) return prev;
+
+      // Create new item for substitute, using same quantity if possible
+      const newItem: CartItem = {
+        ...originalItem,
+        product: substituteProduct,
+        packaging: substituteProduct.packagingOptions?.[0], // Pick default or first packaging
+        isConfirmed: true
+      };
+
+      return prev.map(item => item.product.id === productId ? newItem : item);
+    });
   };
 
   const currentPartnerProfile = HOSPITALITY_PARTNER_PROFILES.find(p => p.userId === currentUser?.id) || HOSPITALITY_PARTNER_PROFILES[0];
@@ -1156,16 +1214,26 @@ export default function App() {
     }
   };
 
-  const handleGoAdvisorChat = (topic?: any, context?: any, conversationId?: string | null) => {
+  const handleClearAdvisorChatStates = useCallback(() => {
+    setSelectedTopic(null);
+    setSelectedContext(null);
+    setSelectedConversationId(null);
+  }, []);
+
+  const handleGoAdvisorChat = useCallback((topic?: any, context?: any, conversationId?: string | null) => {
     if (!currentUser) {
       setLoginModalOpen(true);
       return;
     }
-    setSelectedTopic(topic || null);
-    setSelectedContext(context || null);
-    setSelectedConversationId(conversationId || null);
+
+    // Check if topic is a React/DOM event (prevents crashes when passed directly to onClick)
+    const isEvent = topic && typeof topic === 'object' && ('nativeEvent' in topic || 'target' in topic || 'type' in topic);
+    
+    setSelectedTopic(isEvent ? null : (topic || null));
+    setSelectedContext(isEvent ? null : (context || null));
+    setSelectedConversationId(isEvent ? null : (conversationId || null));
     setActivePage('advisorChat');
-  };
+  }, [currentUser]);
 
   const handleFinishCheckout = () => {
     setIsCheckoutOpen(false);
@@ -1474,11 +1542,12 @@ export default function App() {
                     email: master.email,
                     businessName: companyAccount.businessName,
                     role: "cliente_b2b",
-                    city: "Cartagena",
-                    address: "Centro Histórico, Calle del Arsenal #10-20",
+                    city: "Bogotá",
+                    address: "Calle 93 # 12-45",
                     customerType: "Restaurante",
-                    creditLimit: master.purchaseLimit,
-                    availableCredit: 32500000,
+                    commercialCondition: "credito",
+                    creditLimit: 50000000,
+                    availableCredit: 12500000,
                     accountRole: master.role,
                     companyAccountId: companyAccount.id,
                     permissions: master.permissions,
@@ -1502,11 +1571,12 @@ export default function App() {
                     email: comprador.email,
                     businessName: companyAccount.businessName,
                     role: "cliente_b2b",
-                    city: "Cartagena",
-                    address: "Centro Histórico, Calle del Arsenal #10-20",
+                    city: "Bogotá",
+                    address: "Calle 93 # 12-45, Local 2",
                     customerType: "Restaurante",
-                    creditLimit: comprador.purchaseLimit,
-                    availableCredit: 2500000,
+                    commercialCondition: "credito",
+                    creditLimit: 5000000,
+                    availableCredit: 850000,
                     accountRole: comprador.role,
                     companyAccountId: companyAccount.id,
                     permissions: comprador.permissions,
@@ -1605,7 +1675,7 @@ export default function App() {
       </div>
 
       {/* Topbar */}
-      <div className="bg-rojo text-white text-[13px] font-bold">
+      <div className="bg-rojo text-white text-[13px] font-bold hidden md:block">
         <div className="max-w-[1480px] mx-auto px-8 py-2 flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-7">
             <span className="flex items-center gap-[7px]">
@@ -1627,20 +1697,32 @@ export default function App() {
       </div>
 
       {/* Header */}
-      <header className="bg-white border-b border-[#EFEFEF]">
-        <div className="max-w-[1480px] mx-auto px-8 py-6 flex items-center gap-8 flex-wrap lg:flex-nowrap">
-          <div className="min-w-[120px] leading-none cursor-pointer" onClick={resetToHome}>
-            <div className="text-[42px] font-black tracking-[-2px] text-rojo">TBS</div>
+      <header className="bg-white border-b border-[#EFEFEF] sticky top-0 z-[80] md:relative">
+        <div className="max-w-[1480px] mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center gap-4 sm:gap-8 flex-nowrap lg:flex-nowrap">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 md:hidden text-texto hover:text-rojo transition-colors"
+            id="mobile-menu-trigger"
+          >
+            <div className="w-6 h-5 flex flex-col justify-between">
+              <span className="w-full h-0.5 bg-current rounded-full" />
+              <span className="w-full h-0.5 bg-current rounded-full" />
+              <span className="w-full h-0.5 bg-current rounded-full" />
+            </div>
+          </button>
+
+          <div className="min-w-[80px] sm:min-w-[120px] leading-none cursor-pointer" onClick={resetToHome}>
+            <div className="text-[32px] sm:text-[42px] font-black tracking-[-2px] text-rojo">TBS</div>
           </div>
 
-          <div className="hidden md:flex items-center gap-3 min-w-[130px] text-[13px] text-gris leading-tight">
+          <div className="hidden lg:flex items-center gap-3 min-w-[130px] text-[13px] text-gris leading-tight">
             <MapPin size={22} className="text-texto" />
             <div>Cobertura<br /><strong className="text-texto">Nacional</strong></div>
           </div>
 
           <form 
             onSubmit={handleSearchTrigger}
-            className="relative flex-1 min-w-[280px]"
+            className="relative flex-1 hidden md:block"
           >
             <input 
               type="text" 
@@ -1657,7 +1739,13 @@ export default function App() {
             </button>
           </form>
 
-          <div className="flex items-center gap-[22px] text-sm font-bold">
+          <div className="flex items-center gap-4 sm:gap-[22px] text-sm font-bold ml-auto md:ml-0">
+            <button 
+              onClick={() => setActivePage('catalog')}
+              className="p-2 md:hidden text-gris hover:text-rojo transition-colors"
+            >
+              <Search size={22} />
+            </button>
             {!currentUser ? (
               <>
                 <button onClick={() => setLoginModalOpen(true)} className="hover:text-rojo cursor-pointer transition-colors">Iniciar sesión / Entrar</button>
@@ -1754,7 +1842,7 @@ export default function App() {
                               </span>
                             </button>
 
-                            {/* B2B Customer specific menu */}
+                              {/* B2B Customer specific menu */}
                             {currentUser.role === 'cliente_b2b' && (
                               <>
                                 <button 
@@ -1771,48 +1859,6 @@ export default function App() {
                                 </button>
                                 <button 
                                   onClick={() => {
-                                    handleGoIntelligence();
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                >
-                                  <BarChart3 size={18} className="text-gris" />
-                                  <span className="text-sm font-bold text-texto">Inteligencia B2B</span>
-                                </button>
-                                {currentUser.role === 'cliente_b2b' && currentUser?.commercialCondition !== 'contado' && (
-                                  <button 
-                                    onClick={() => {
-                                      handleGoPayments();
-                                      setActiveMenu(null);
-                                    }}
-                                    className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                  >
-                                    <Wallet size={18} className="text-gris" />
-                                    <span className="text-sm font-bold text-texto">Estado de Cartera</span>
-                                  </button>
-                                )}
-                                <button 
-                                  onClick={() => {
-                                    handleGoOrdersTracking();
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                >
-                                  <Package size={18} className="text-gris" />
-                                  <span className="text-sm font-bold text-texto">Seguimiento de Pedidos</span>
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    handleGoUrgentOrder();
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                >
-                                  <Zap size={18} className="text-gris" />
-                                  <span className="text-sm font-bold text-texto">Pedido urgente</span>
-                                </button>
-                                <button 
-                                  onClick={() => {
                                     handleGoShoppingLists();
                                     setActiveMenu(null);
                                   }}
@@ -1823,16 +1869,6 @@ export default function App() {
                                 </button>
                                 <button 
                                   onClick={() => {
-                                    handleGoPromotions();
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                >
-                                  <Tag size={18} className="text-gris" />
-                                  <span className="text-sm font-bold text-texto">Promociones B2B</span>
-                                </button>
-                                <button 
-                                  onClick={() => {
                                     handleGoCreditRequest();
                                     setActiveMenu(null);
                                   }}
@@ -1840,16 +1876,6 @@ export default function App() {
                                 >
                                   <CreditCard size={18} className="text-gris" />
                                   <span className="text-sm font-bold text-texto">Solicitud de crédito</span>
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    handleGoAdvisorChat();
-                                    setActiveMenu(null);
-                                  }}
-                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                                >
-                                  <MessageSquare size={18} className="text-gris" />
-                                  <span className="text-sm font-bold text-texto">Mi asesor</span>
                                 </button>
                               </>
                             )}
@@ -1912,17 +1938,6 @@ export default function App() {
 
                             <div className="h-px bg-gray-100 my-1" />
                             
-                            <button 
-                              onClick={() => {
-                                handleGoFAQ();
-                                setActiveMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
-                            >
-                              <HelpCircle size={18} className="text-gris" />
-                              <span className="text-sm font-bold text-texto">Centro de ayuda</span>
-                            </button>
-
                             {currentUser.role === 'cliente_b2b' && hasPermission('gestionar_usuarios') && (
                               <button 
                                 onClick={() => {
@@ -2181,13 +2196,26 @@ export default function App() {
                                 { title: 'Acceso al canal B2B', desc: 'Llega a bares, hoteles, licoreras y clientes especializados.' },
                                 { title: 'Logística y distribución', desc: 'Apóyate en la red operativa de TBS para despacho.' },
                                 { title: 'Visibilidad comercial', desc: 'Participa en campañas, vitrinas y activaciones.' },
+                                { title: 'Publicidad en TBS', desc: 'Soluciones de retail media B2B para potenciar tu marca.' },
                                 { title: 'Reportes de desempeño', desc: 'Consulta rotación, ventas y cumplimiento.' },
                                 { title: 'Activación en clientes', desc: 'Ejecuta marcas en punto de consumo con apoyo.' }
                               ].map((prov, i) => (
-                                <a key={i} href="#" className="proveedor-card group">
+                                <button 
+                                  key={i} 
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    if (prov.title === 'Publicidad en TBS') {
+                                      setActivePage('advertising');
+                                    } else {
+                                      setActivePage('providers');
+                                    }
+                                    setActiveMenu(null);
+                                  }}
+                                  className="proveedor-card group text-left w-full cursor-pointer outline-none bg-transparent"
+                                >
                                   <strong className="block text-[14px] font-black group-hover:text-rojo transition-colors">{prov.title}</strong>
                                   <span className="block text-[12px] text-gris font-semibold leading-tight">{prov.desc}</span>
-                                </a>
+                                </button>
                               ))}
                             </div>
                           </div>
@@ -2251,6 +2279,7 @@ export default function App() {
                                 { title: 'Cartera y pagos', desc: 'Consulta facturas, vencimientos y pagos pendientes.' },
                                 { title: 'Pedidos recurrentes', desc: 'Repite compras frecuentes y listas favoritas.' },
                                 { title: 'Activaciones comerciales', desc: 'Apoyo en campañas, temporadas y eventos.' },
+                                { title: 'Publicidad en TBS', desc: 'Soluciones de visibilidad y posicionamiento de marca.' },
                                 { title: 'Inteligencia comercial', desc: 'Información de rotación y comportamiento de compra.' }
                               ].map((serv, i) => (
                                 <button 
@@ -2258,12 +2287,14 @@ export default function App() {
                                   onClick={() => { 
                                     if (serv.title === 'Pedido urgente') {
                                       handleGoUrgentOrder();
+                                    } else if (serv.title === 'Publicidad en TBS') {
+                                      setActivePage('advertising');
                                     } else {
                                       setActivePage('services');
                                     }
                                     setActiveMenu(null); 
                                   }}
-                                  className="servicio-card group text-left w-full cursor-pointer"
+                                  className="servicio-card group text-left w-full cursor-pointer outline-none bg-transparent"
                                 >
                                   <strong className="block text-[14px] font-black group-hover:text-rojo transition-colors">{serv.title}</strong>
                                   <span className="block text-[12px] text-gris font-semibold leading-tight">{serv.desc}</span>
@@ -2307,6 +2338,15 @@ export default function App() {
                       </motion.div>
                     )}
                   </AnimatePresence>
+                </div>
+
+                <div className="relative">
+                  <button 
+                    onClick={handleGoHospitalityPartners} 
+                    className={`flex items-center gap-1.5 text-[13px] font-black text-[#303844] hover:text-rojo whitespace-nowrap py-2 cursor-pointer outline-none uppercase tracking-wider ${activePage === 'hospitalityPartners' ? 'text-rojo' : ''}`}
+                  >
+                    Hospitality
+                  </button>
                 </div>
 
                 <div className="relative">
@@ -2412,6 +2452,12 @@ export default function App() {
                 )}
                 {currentUser?.role === 'cliente_b2b' && (
                   <>
+                    <button 
+                      onClick={resetToHome} 
+                      className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'home' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                    >
+                      Dashboard
+                    </button>
                     <button onClick={handleGoReorder} className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'reorder' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}>Reordenar</button>
                     <button 
                       onClick={handleGoIntelligence} 
@@ -2580,6 +2626,7 @@ export default function App() {
               onRequestAccess={() => handleGoAccessRequest('provider')}
               onLogin={() => setLoginModalOpen(true)}
               onGoAdvisorChat={handleGoAdvisorChat}
+              onGoAdvertising={() => setActivePage('advertising')}
             />
             {isPublicPage && <PublicFooter onGoPage={(p) => setActivePage(p as any)} />}
           </motion.div>
@@ -2598,6 +2645,7 @@ export default function App() {
               onLogin={() => setLoginModalOpen(true)}
               onGoAdvisorChat={handleGoAdvisorChat}
               onGoPage={setActivePage as any}
+              onGoAdvertising={() => setActivePage('advertising')}
             />
             {isPublicPage && <PublicFooter onGoPage={(p) => setActivePage(p as any)} />}
           </motion.div>
@@ -2768,11 +2816,7 @@ export default function App() {
               initialTopic={selectedTopic}
               initialContext={selectedContext}
               initialConversationId={selectedConversationId}
-              onClearInitialStates={() => {
-                setSelectedTopic(null);
-                setSelectedContext(null);
-                setSelectedConversationId(null);
-              }}
+              onClearInitialStates={handleClearAdvisorChatStates}
               onCreateNotification={(n) => setNotifications(prev => [n, ...prev])}
             />
           </motion.div>
@@ -2818,6 +2862,40 @@ export default function App() {
               onGoAdvisorChat={handleGoAdvisorChat}
               onCreateNotification={handleCreateNotification}
             />
+          </motion.div>
+        ) : activePage === 'advertising' ? (
+          <motion.div
+            key="advertising"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AdvertisingPage 
+              onBack={resetToHome}
+              onRequestAccess={(role) => openAuth('request', role)}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              currentUser={currentUser}
+              products={PRODUCTS}
+              campaigns={BRAND_AD_CAMPAIGNS}
+            />
+          </motion.div>
+        ) : activePage === 'hospitalityPartners' ? (
+          <motion.div
+            key="hospitalityPartners"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.3 }}
+          >
+            <HospitalityPartnersPage 
+              currentUser={currentUser}
+              onGoAccessRequest={handleGoAccessRequest}
+              onGoHospitalityDashboard={handleGoHospitalityDashboard}
+              onGoAdvisorChat={handleGoAdvisorChat}
+              onBack={resetToHome}
+            />
+            {isPublicPage && <PublicFooter onGoPage={(p) => setActivePage(p as any)} />}
           </motion.div>
         ) : activePage === 'intelligence' ? (
           <motion.div
@@ -3066,6 +3144,7 @@ export default function App() {
                   onGoCatalog={() => goToCatalog(null)}
                   onGoAccessRequest={handleGoAccessRequest}
                   onGoAdvisorChat={handleGoAdvisorChat}
+                  onGoHospitalityPartners={handleGoHospitalityPartners}
                   onAdClick={handleAdClick}
                   currentUser={currentUser}
                 />
@@ -3126,12 +3205,14 @@ export default function App() {
               campaigns={PROVIDER_CAMPAIGNS}
               settlements={PROVIDER_SETTLEMENTS}
               insights={PROVIDER_INSIGHTS}
+              priceImportBatches={PROVIDER_PRICE_IMPORT_BATCHES}
               onGoHome={resetToHome}
               onGoAdvisorChat={handleGoAdvisorChat}
               onGoProviderProducts={() => setActivePage('providerProducts')}
               onGoProviderCampaigns={() => setActivePage('providerCampaigns')}
               onGoProviderSettlements={() => setActivePage('providerSettlements')}
               onGoProviderReports={() => setActivePage('providerReports')}
+              onGoAdvertising={() => setActivePage('advertising')}
               onCreateNotification={handleCreateNotification}
               onGoFAQ={handleGoFAQ}
               activeTab={providerDashboardTab}
@@ -3155,12 +3236,14 @@ export default function App() {
               campaigns={PROVIDER_CAMPAIGNS}
               settlements={PROVIDER_SETTLEMENTS}
               insights={PROVIDER_INSIGHTS}
+              priceImportBatches={PROVIDER_PRICE_IMPORT_BATCHES}
               onGoHome={resetToHome}
               onGoAdvisorChat={handleGoAdvisorChat}
               onGoProviderProducts={() => setActivePage('providerProducts')}
               onGoProviderCampaigns={() => setActivePage('providerCampaigns')}
               onGoProviderSettlements={() => setActivePage('providerSettlements')}
               onGoProviderReports={() => setActivePage('providerReports')}
+              onGoAdvertising={() => setActivePage('advertising')}
               onCreateNotification={handleCreateNotification}
               onGoFAQ={handleGoFAQ}
               activeTab={providerDashboardTab}
@@ -3175,6 +3258,27 @@ export default function App() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
+            {isCliente && currentUser?.role === 'cliente_b2b' ? (
+              <AuthenticatedHome 
+                currentUser={currentUser}
+                companyAccount={companyAccount}
+                notifications={notifications}
+                approvalOrders={approvalOrders}
+                frequentProducts={PRODUCTS.slice(0, 8)}
+                promotions={promotions}
+                onGoCatalog={goToCatalog}
+                onGoReorder={handleGoReorder}
+                onGoPayments={handleGoPayments}
+                onGoOrdersTracking={handleGoOrdersTracking}
+                onGoUrgentOrder={handleGoUrgentOrder}
+                onGoAdvisorChat={handleGoAdvisorChat}
+                onGoPromotions={handleGoPromotions}
+                onGoOrderApprovals={handleGoOrderApprovals}
+                onGoIntelligence={handleGoIntelligence}
+                onAddToCart={handleAddToCart}
+              />
+            ) : (
+              <>
             {/* Hero */}
             <section className="bg-[#FFFDFD]">
               <div className="max-w-[1480px] mx-auto px-8 py-10 lg:py-12 flex flex-col lg:flex-row gap-8">
@@ -3465,7 +3569,9 @@ export default function App() {
         <PerkCard icon={MapPin} title="Cobertura" desc="Principales ciudades de Colombia." />
       </section>
       {isPublicPage && <PublicFooter onGoPage={(p) => setActivePage(p as any)} />}
-    </motion.div>
+              </>
+            )}
+          </motion.div>
   )}
 </AnimatePresence>
 
@@ -3619,7 +3725,35 @@ export default function App() {
         onConfirm={handleConfirmAddToCart}
       />
 
+      <MobileMenuDrawer 
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        currentUser={currentUser}
+        activePage={activePage}
+        onNavigate={(page) => setActivePage(page)}
+        onLogout={handleLogout}
+        onLogin={() => setLoginModalOpen(true)}
+        onRequestAccess={() => openAuth('request')}
+        hasPermission={hasPermission}
+      />
 
+      <FloatingActionButton 
+        icon={ShoppingCart}
+        label="Carrito"
+        badgeCount={cartCount}
+        onClick={() => setIsCartOpen(true)}
+        show={isCliente && cartCount > 0 && !isCheckoutOpen}
+        color="rojo"
+      />
+
+      <FloatingActionButton 
+        icon={Zap}
+        label="Urgente"
+        onClick={handleGoUrgentOrder}
+        show={isCliente && currentUser?.role === 'cliente_b2b' && activePage !== 'urgentOrder' && !isCheckoutOpen}
+        position="bottom-left"
+        color="texto"
+      />
     </div>
   );
 }

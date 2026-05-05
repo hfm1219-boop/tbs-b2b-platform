@@ -37,6 +37,7 @@ export function PublicFooter({ onGoPage }: PublicFooterProps) {
               <li><button onClick={() => onGoPage('about')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Qué es TBS</button></li>
               <li><button onClick={() => onGoPage('clients')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Clientes B2B</button></li>
               <li><button onClick={() => onGoPage('providers')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Marcas</button></li>
+              <li><button onClick={() => onGoPage('hospitalityPartners')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Aliados Hospitality</button></li>
               <li><button onClick={() => onGoPage('services')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Servicios TBS</button></li>
               <li><button onClick={() => onGoPage('contact')} className="text-gray-400 hover:text-white transition-colors text-sm font-bold">Contacto y ubicación</button></li>
             </ul>

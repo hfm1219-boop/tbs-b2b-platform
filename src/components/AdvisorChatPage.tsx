@@ -195,6 +195,7 @@ export default function AdvisorChatPage({
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [newMessage, setNewMessage] = useState('');
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
   
   // New Conversation Form
   const [newConvTopic, setNewConvTopic] = useState<ConversationTopic | ''>('');
@@ -437,12 +438,21 @@ export default function AdvisorChatPage({
       <header className="bg-white border-b border-borde sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={onBackToAccount}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gris hover:bg-gray-100 transition-colors cursor-pointer"
-            >
-              <ArrowLeft size={20} />
-            </button>
+            {mobileView === 'chat' ? (
+              <button 
+                onClick={() => setMobileView('list')}
+                className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-gris hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            ) : (
+              <button 
+                onClick={onBackToAccount}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-gris hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-black text-texto">
@@ -463,10 +473,10 @@ export default function AdvisorChatPage({
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Advisor Card Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
+          {/* Advisor Card Sidebar - Hidden on mobile */}
+          <div className="hidden lg:block lg:col-span-1 space-y-6">
             <div className="bg-white rounded-3xl p-6 border border-borde panel-shadow">
               <div className="flex flex-col items-center text-center">
                 <div className="relative mb-4">
@@ -565,9 +575,9 @@ export default function AdvisorChatPage({
           </div>
 
           {/* Chat Interface */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 bg-white rounded-[32px] border border-borde panel-shadow overflow-hidden min-h-[700px]">
+          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 bg-white rounded-none lg:rounded-[32px] border-x-0 lg:border border-borde panel-shadow overflow-hidden min-h-[calc(100vh-80px)] lg:min-h-[700px]">
             {/* Conversations List */}
-            <div className="md:col-span-1 border-r border-borde flex flex-col h-full">
+            <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} md:col-span-1 border-r border-borde flex-col h-full bg-white`}>
               <div className="p-6 border-b border-borde flex flex-col gap-4">
                 <button 
                   onClick={() => setIsNewConvModalOpen(true)}
@@ -592,7 +602,10 @@ export default function AdvisorChatPage({
                 {filteredConversations.map(conv => (
                   <button 
                     key={conv.id}
-                    onClick={() => setActiveConvId(conv.id)}
+                    onClick={() => {
+                      setActiveConvId(conv.id);
+                      setMobileView('chat');
+                    }}
                     className={`w-full p-4 rounded-2xl border text-left transition-all ${
                       activeConvId === conv.id 
                         ? 'bg-rojo/5 border-rojo/20' 
@@ -621,7 +634,7 @@ export default function AdvisorChatPage({
             </div>
 
             {/* Chat Area */}
-            <div className="md:col-span-2 flex flex-col h-full bg-gray-50">
+            <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} md:col-span-2 flex-col h-full bg-gray-50`}>
               {activeConversation ? (
                 <>
                   {/* Chat Header */}

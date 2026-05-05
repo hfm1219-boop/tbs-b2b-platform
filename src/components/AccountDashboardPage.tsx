@@ -1,24 +1,13 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
-  User, 
-  Package, 
-  Wallet, 
-  Truck, 
-  MapPin, 
-  ChevronRight, 
-  LogOut, 
-  ShieldCheck, 
-  ArrowLeft,
-  ShoppingCart,
-  Zap,
-  Headset,
-  Star,
-  Tag,
-  BarChart3,
-  TrendingUp,
-  CreditCard
-} from 'lucide-react';
+  Button,
+  MetricCard,
+  PageContainer,
+  PageHeader,
+  SectionHeader,
+  AlertBox
+} from './ui';
 import { User as UserType, BrandAdCampaign } from '../types';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { AdSlot } from './advertising/AdSlot';
@@ -261,249 +250,216 @@ export function AccountDashboardPage({
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      {/* Header Contextual */}
-      <div className="bg-white border-b border-borde">
-        <div className="max-w-[1280px] mx-auto px-6 py-4 flex items-center justify-between">
-          <button 
-            onClick={onGoBack}
-            className="flex items-center gap-2 text-gris hover:text-texto font-black text-sm uppercase tracking-wider transition-colors cursor-pointer"
+    <PageContainer variant="dashboard" className="pb-24">
+      <PageHeader
+        title="Mi Cuenta"
+        eyebrow={user.businessName}
+        onBack={onGoBack}
+        actions={
+          <Button 
+            variant="secondary"
+            size="sm"
+            icon={<LogOut size={18} />}
+            onClick={onLogout}
           >
-           <ArrowLeft size={18} /> Volver
-          </button>
-          <div className="flex items-center gap-3">
-            <span className="text-[12px] font-black text-rojo uppercase tracking-widest bg-rojo/5 px-3 py-1 rounded-full">
-              {isProvider ? 'Panel de Marca' : 'Dashboard B2B'}
-            </span>
-          </div>
-        </div>
-      </div>
+            Cerrar sesión
+          </Button>
+        }
+      />
 
-      <main className="max-w-[1280px] mx-auto px-6 mt-10">
-        <div className="flex flex-col lg:flex-row gap-8">
-          
-          {/* Sidebar - Profile Card */}
-          <aside className="lg:w-[320px] shrink-0">
-            <div className="bg-white rounded-3xl border border-borde p-8 tbs-shadow text-center">
-              <div className="w-24 h-24 bg-rojo-suave border-4 border-white rounded-full flex items-center justify-center text-rojo mx-auto mb-6 shadow-xl shadow-rojo/5">
-                <User size={48} strokeWidth={2.5} />
+      <div className="py-8 flex flex-col lg:flex-row gap-10">
+        
+        {/* Sidebar - Profile Card */}
+        <aside className="lg:w-[320px] shrink-0">
+          <div className="bg-white rounded-3xl border border-borde p-8 tbs-shadow text-center">
+            <div className="flex lg:flex-col items-center gap-4 lg:gap-6 lg:text-center text-left">
+              <div className="w-20 h-20 lg:w-28 lg:h-28 bg-rojo-suave rounded-3xl flex items-center justify-center text-rojo shrink-0 shadow-xl shadow-rojo/5 group overflow-hidden relative">
+                <div className="absolute inset-0 bg-rojo opacity-0 group-hover:opacity-10 transition-opacity" />
+                <User className="w-10 h-10 lg:w-14 lg:h-14" strokeWidth={2.5} />
               </div>
-              <h1 className="text-2xl font-black text-texto tracking-tight mb-1">{user.name}</h1>
-              <p className="text-rojo font-black text-xs uppercase tracking-widest mb-4">{user.businessName}</p>
-              
-              {isCash && (
-                <div className="mb-4">
-                  <span className="bg-orange-500/10 text-orange-600 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full border border-orange-500/20">
-                    Cliente contado
-                  </span>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2 mt-6">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <span className="text-[11px] font-black text-gris uppercase tracking-tight">Ciudad</span>
-                  <span className="text-sm font-black text-texto">{user.city}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <span className="text-[11px] font-black text-gris uppercase tracking-tight">
-                    {isProvider ? 'Tipo de proveedor' : 'Tipo de negocio'}
-                  </span>
-                  <span className="text-sm font-black text-texto">
-                    {isProvider ? user.providerType : user.customerType}
-                  </span>
-                </div>
-                {!isProvider && (
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                    <span className="text-[11px] font-black text-gris uppercase tracking-tight">Condición</span>
-                    <span className="text-sm font-black text-texto capitalize">
-                      {user.commercialCondition || 'Crédito'}
-                    </span>
+              <div className="flex-1">
+                <h1 className="text-xl lg:text-3xl font-black text-texto tracking-tight mb-1">{user.name}</h1>
+                <p className="text-rojo font-black text-[10px] lg:text-xs uppercase tracking-widest mb-4">{user.businessName}</p>
+                {isCash && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 rounded-full border border-amber-200 text-[10px] font-black text-amber-600 uppercase tracking-wider">
+                    <Zap size={12} strokeWidth={3} /> Cliente Contado
                   </div>
                 )}
               </div>
-
-              <div className="mt-8 pt-6 border-t border-gray-100 italic text-[11px] text-gris font-medium">
-                {isProvider ? 'Marca aliada TBS' : 'Cliente TBS desde 2024'}
+            </div>
+            
+            <div className="mt-8 space-y-3">
+              <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-borde">
+                <span className="text-[11px] font-black text-gris uppercase tracking-tight">Ciudad</span>
+                <span className="text-sm font-black text-texto">{user.city}</span>
+              </div>
+              <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-borde">
+                <span className="text-[11px] font-black text-gris uppercase tracking-tight">
+                  {isProvider ? 'Tipo Proveedor' : 'Tipo Negocio'}
+                </span>
+                <span className="text-sm font-black text-texto">
+                  {isProvider ? user.providerType : user.customerType}
+                </span>
               </div>
             </div>
+          </div>
 
-            <button 
+          <div className="mt-8">
+            <Button
+              variant="ghost"
+              fullWidth
+              size="lg"
+              className="text-rojo hover:bg-rojo-suave"
+              icon={<LogOut size={20} />}
               onClick={onLogout}
-              className="w-full mt-6 flex items-center justify-center gap-3 p-5 bg-white border border-rojo/20 text-rojo rounded-2xl font-black hover:bg-rojo hover:text-white transition-all tbs-shadow-sm cursor-pointer"
             >
-              <LogOut size={20} /> Cerrar sesión segura
-            </button>
-          </aside>
+              Cerrar sesión segura
+            </Button>
+          </div>
+        </aside>
 
-          {/* Main Grid */}
-          <div className="flex-1">
-            <div className="mb-8">
-              <h2 className="text-3xl font-black tracking-tighter text-texto">Mi Cuenta</h2>
-              <p className="text-gris font-medium mt-1">Gestiona tu operación B2B, revisa tu cartera y solicita soporte.</p>
-            </div>
+        {/* Main Section */}
+        <div className="flex-1 min-w-0">
+          <SectionHeader
+            title="Resumen de Operación"
+            eyebrow="Panel de control B2B"
+            className="mb-8"
+          />
 
-            {/* Quick Stats Banner */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className={`rounded-3xl p-8 text-white tbs-shadow relative overflow-hidden group ${isCash ? 'bg-gradient-to-br from-[#303844] to-black' : 'bg-gradient-to-br from-rojo to-rojo-oscuro'}`}>
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl group-hover:scale-150 transition-transform duration-700" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-white/20 rounded-lg">
-                      <Wallet size={20} />
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest opacity-80">
-                      {isCash ? 'Condición Comercial' : 'Cupo de crédito disponible'}
-                    </span>
-                  </div>
-                  <div className="text-4xl font-black tracking-tighter mb-2">
-                    {isCash ? (
-                      'Contado'
-                    ) : (
-                      `$ ${user.availableCredit?.toLocaleString('es-CO')}`
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm font-bold opacity-90">
-                    <span className={`w-2 h-2 rounded-full animate-pulse ${isCash ? 'bg-orange-400' : 'bg-green-400'}`} /> 
-                    {isCash ? 'Pago anticipado o contra entrega' : 'Operando con normalidad'}
-                  </div>
-                  <button 
-                    onClick={onGoPayments}
-                    className={`mt-6 px-6 py-3 bg-white rounded-xl font-black text-sm hover:scale-105 transition-transform cursor-pointer ${isCash ? 'text-black' : 'text-rojo'}`}
-                  >
-                    {isCash ? 'Ver Pagos y Comprobantes' : 'Ver detalles de cartera'}
-                  </button>
-                  {isCash && (
-                    <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-white/50">
-                      Cupo de crédito: $0
-                    </p>
-                  )}
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+            <MetricCard 
+              label={isCash ? 'Condición Comercial' : 'Cupo de Crédito'}
+              value={isCash ? 'CONTADO' : `$ ${user.availableCredit?.toLocaleString('es-CO')}`}
+              icon={<Wallet className="text-white" size={24} />}
+              color={isCash ? 'gray' : 'red'}
+              size="lg"
+              trend={isCash ? undefined : { value: 'Operativo', isPositive: true }}
+              onClick={onGoPayments}
+              className={isCash ? 'bg-gradient-to-br from-gray-700 to-black text-white border-0' : 'bg-gradient-to-br from-rojo to-rojo-oscuro text-white border-0'}
+            />
+
+            <div className="bg-white rounded-3xl border border-borde p-6 lg:p-8 tbs-shadow flex flex-col justify-between group hover:border-rojo/30 transition-all overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                <Package size={80} />
               </div>
-
-              <div className="bg-white rounded-3xl border border-borde p-8 tbs-shadow flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-6 text-gris">
-                    <div className="p-2 bg-gray-100 rounded-lg">
-                      <Package size={20} />
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest">Último pedido</span>
-                  </div>
-                  <div className="text-2xl font-black tracking-tight text-texto mb-1">
-                    TBS-2024-8542
-                  </div>
-                  <p className="text-sm font-medium text-gris">Entregado el 15 Abr, 2024</p>
-                </div>
-                <button 
-                  onClick={onGoReorder}
-                  className="mt-6 px-6 py-3 border border-rojo text-rojo rounded-xl font-black text-sm hover:bg-rojo-suave transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <ShoppingCart size={18} /> Reordenar ahora
-                </button>
-              </div>
-            </div>
-
-            {/* Recommendations Section */}
-            <div className="mt-12 mb-8 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-black text-texto">Recomendaciones para hoy</h3>
-                <p className="text-sm font-medium text-gris">Basado en tu comportamiento de compra y tendencias de mercado.</p>
+                <SectionHeader 
+                  eyebrow="Último pedido" 
+                  title="TBS-2024-8542" 
+                  className="mb-2"
+                />
+                <p className="text-sm font-medium text-gris">Entregado el 15 Abr, 2024</p>
               </div>
-              <button 
-                onClick={onGoIntelligence}
-                className="text-xs font-black text-rojo uppercase tracking-widest hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                Ver inteligencia completa <ChevronRight size={14} />
-              </button>
+              <div className="mt-8">
+                <Button 
+                  variant="secondary"
+                  fullWidth
+                  icon={<ShoppingCart size={18} />}
+                  onClick={onGoReorder}
+                >
+                  Repetir pedido
+                </Button>
+              </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+          <div className="mb-12">
+            <SectionHeader
+              title="Recomendaciones sugeridas"
+              eyebrow="Asistente TBS Smart"
+              className="mb-6"
+              actions={
+                <Button variant="ghost" size="sm" onClick={onGoIntelligence}>
+                  Ver inteligencia completa
+                </Button>
+              }
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(isCash ? [
-                { title: 'Solicita crédito comercial', desc: 'Puedes enviar documentos para que TBS evalúe un cupo de crédito.', icon: CreditCard },
-                { title: 'Confirma pagos a tiempo', desc: 'Los pedidos contado avanzan más rápido cuando el pago queda validado.', icon: Zap },
-                { title: 'Programa tus pedidos', desc: 'Planificar recompra evita pedidos urgentes y validaciones de última hora.', icon: Package }
+                { title: 'Solicita crédito comercial', desc: 'Sube tus documentos para evaluar cupo.', icon: CreditCard },
+                { title: 'Confirma pagos a tiempo', desc: 'Validación rápida para tus facturas.', icon: Zap },
+                { title: 'Programa tus pedidos', desc: 'Evita quiebre de stock en temporada.', icon: Package }
               ] : [
-                { title: 'Recompra sugerida', desc: 'Sugerimos reponer Whisky antes del 13 de Mayo.', icon: TrendingUp },
-                { title: 'Promoción activa', desc: 'Combo coctelería con 7% de ahorro este mes.', icon: Tag },
-                { title: 'Alerta cartera', desc: 'Paga tus facturas para mantener tu cupo.', icon: ShieldCheck }
+                { title: 'Recompra sugerida', desc: ' Whisky antes del 13 de Mayo.', icon: TrendingUp },
+                { title: 'Promoción activa', desc: 'Combo coctelería con 7% de ahorro.', icon: Tag },
+                { title: 'Alerta cartera', desc: 'Paga a tiempo para mantener cupo.', icon: ShieldCheck }
               ]).map((rec, i) => (
-                <div key={i} className="p-5 bg-white border border-borde rounded-2xl shadow-sm flex flex-col">
-                  <div className="p-2 bg-rojo-suave text-rojo rounded-lg w-fit mb-4">
+                <div key={i} className="p-6 bg-white border border-borde rounded-2xl hover:shadow-md transition-all group">
+                  <div className="p-2.5 bg-rojo-suave text-rojo rounded-xl w-fit mb-4 group-hover:scale-110 transition-transform">
                     <rec.icon size={20} />
                   </div>
                   <h4 className="text-sm font-black text-texto">{rec.title}</h4>
-                  <p className="text-[12px] font-medium text-gris mt-1 leading-tight flex-1">{rec.desc}</p>
-                  <button 
-                    onClick={onGoIntelligence}
-                    className="mt-4 text-[10px] font-black text-rojo uppercase tracking-widest hover:underline text-left cursor-pointer"
-                  >
-                    Ver detalle
-                  </button>
+                  <p className="text-[12px] font-medium text-gris mt-2 leading-relaxed flex-1">{rec.desc}</p>
                 </div>
-              ))}
-            </div>
-
-            {/* Menu Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Ad Slot for dashboard */}
-              <div className="md:col-span-2 mb-4">
-                <AdSlot 
-                  placement="home_mid_banner"
-                  campaigns={BRAND_AD_CAMPAIGNS}
-                  currentUser={user}
-                  onAdClick={onAdClick || (() => {})}
-                  compact={true}
-                />
-              </div>
-
-              {isProvider && (
-                <div className="md:col-span-2 mb-4">
-                  <div 
-                    onClick={() => onGoAdvisorChat('publicidad', { label: 'Solicitud Visibilidad', type: 'marketing' })}
-                    className="bg-gradient-to-r from-rojo to-black text-white p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-6 cursor-pointer hover:scale-[1.01] transition-all group overflow-hidden relative"
-                  >
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                    <div className="relative z-10 flex items-center gap-6">
-                      <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center shrink-0">
-                        <Tag size={32} />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-black mb-1">Potencia la visibilidad de tu marca</h3>
-                        <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">Pauta en banners, productos patrocinados y campañas segmentadas</p>
-                      </div>
-                    </div>
-                    <button className="relative z-10 px-8 py-4 bg-white text-rojo rounded-xl font-black text-xs uppercase tracking-widest hover:bg-white group-hover:bg-rojo group-hover:text-white transition-all shadow-xl">
-                      Solicitar Plan de Pauta
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {menuItems.filter(item => !item.hidden).map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    analytics.trackCta(`account_menu_${item.id}`, 'account_dashboard');
-                    item.onClick && item.onClick();
-                  }}
-                  className={`flex items-start gap-4 p-6 bg-white border border-borde rounded-2xl hover:border-rojo/50 transition-all text-left group cursor-pointer ${item.highlight ? 'ring-2 ring-rojo/10 border-rojo/30' : ''}`}
-                >
-                  <div className={`p-4 rounded-xl flex-shrink-0 transition-colors ${item.highlight ? 'bg-rojo text-white' : 'bg-gray-50 text-gris group-hover:bg-rojo-suave group-hover:text-rojo'}`}>
-                    <item.icon size={24} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <strong className="text-base font-black text-texto tracking-tight group-hover:text-rojo transition-colors">{item.title}</strong>
-                      <ChevronRight size={18} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
-                    </div>
-                    <p className="text-[13px] font-medium text-gris mt-1 leading-tight">{item.desc}</p>
-                  </div>
-                </button>
               ))}
             </div>
           </div>
 
+          <SectionHeader
+            title="Gestión y Servicios"
+            eyebrow="Navegación personalizada"
+            className="mb-8"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <AdSlot 
+                placement="home_mid_banner"
+                campaigns={BRAND_AD_CAMPAIGNS}
+                currentUser={user}
+                onAdClick={onAdClick || (() => {})}
+                compact={true}
+              />
+            </div>
+
+            {isProvider && (
+              <div className="md:col-span-2">
+                <div 
+                  onClick={() => onGoAdvisorChat('publicidad', { label: 'Solicitud Visibilidad', type: 'marketing' })}
+                  className="bg-gradient-to-r from-rojo to-black text-white p-8 rounded-[32px] flex flex-col md:flex-row items-center justify-between gap-8 cursor-pointer group relative overflow-hidden ring-4 ring-white shadow-xl shadow-rojo/10"
+                >
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                  <div className="relative z-10 flex items-center gap-6">
+                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Tag size={32} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-black mb-1">Potencia tu visibilidad</h3>
+                      <p className="text-white/70 font-bold uppercase tracking-widest text-[10px]">Estrategias de pauta y productos destacados</p>
+                    </div>
+                  </div>
+                  <Button variant="primary" size="lg" className="bg-white text-rojo hover:bg-gray-100 relative z-10">
+                    Solicitar Plan de Pauta
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {menuItems.filter(item => !item.hidden).map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  analytics.trackCta(`account_menu_${item.id}`, 'account_dashboard');
+                  item.onClick && item.onClick();
+                }}
+                className={`flex items-start gap-4 p-6 bg-white border border-borde rounded-3xl hover:border-rojo/40 hover:shadow-lg transition-all text-left group cursor-pointer ${item.highlight ? 'ring-1 ring-rojo/10 bg-rojo-suave/5' : ''}`}
+              >
+                <div className={`p-4 rounded-2xl flex-shrink-0 transition-all group-hover:scale-110 ${item.highlight ? 'bg-rojo text-white' : 'bg-gray-50 text-gris group-hover:bg-rojo group-hover:text-white'}`}>
+                  <item.icon size={24} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-black text-texto tracking-tight group-hover:text-rojo transition-colors">{item.title}</span>
+                    <ChevronRight size={18} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
+                  </div>
+                  <p className="text-[13px] font-medium text-gris mt-1.5 leading-tight">{item.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </PageContainer>
   );
 }

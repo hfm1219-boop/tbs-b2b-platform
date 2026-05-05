@@ -10,9 +10,10 @@ interface ProvidersPageProps {
   onRequestAccess: () => void;
   onLogin: () => void;
   onGoAdvisorChat: () => void;
+  onGoAdvertising?: () => void;
 }
 
-export function ProvidersPage({ onBack, onRequestAccess, onLogin, onGoAdvisorChat }: ProvidersPageProps) {
+export function ProvidersPage({ onBack, onRequestAccess, onLogin, onGoAdvisorChat, onGoAdvertising }: ProvidersPageProps) {
   const models = [
     { title: 'Compra directa', desc: 'TBS compra tu inventario y gestiona la venta y distribución 100%.' },
     { title: 'Consignación', desc: 'Pagamos lo vendido. Tú mantienes la propiedad hasta la transacción final.' },
@@ -26,7 +27,19 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin, onGoAdvisorCha
     { icon: BarChart3, title: 'Precios personalizados', desc: 'Define condiciones dinámicas y precios personalizados para diferentes segmentos de clientes.' },
     { icon: Zap, title: 'Activaciones', desc: 'Ejecución de marca en el punto de consumo gestionada por expertos.' },
     { icon: ShieldCheck, title: 'Garantía de pago', desc: 'TBS asume el riesgo crediticio del cliente final en modelos seleccionados.' },
-    { icon: LineChart, title: 'Visibilidad comercial', desc: 'Posicionamiento privilegiado en el catálogo y comunicaciones.' }
+    { 
+      icon: LineChart, 
+      title: 'Publicidad en TBS', 
+      desc: 'Soluciones de retail media B2B para destacar tu marca ante compradores profesionales.',
+      isHighLight: true,
+      onClick: onGoAdvertising
+    },
+    { 
+      icon: MessageSquare, 
+      title: 'Canal Hospitality', 
+      desc: 'Conecta con Wedding Planners y eventos para posicionar tu marca en celebraciones premium.',
+      isHighLight: true
+    }
   ];
 
   return (
@@ -109,14 +122,23 @@ export function ProvidersPage({ onBack, onRequestAccess, onLogin, onGoAdvisorCha
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16">
-            {services.map((svc, i) => (
-              <div key={i} className="flex gap-8 group">
-                <div className="shrink-0 w-14 h-14 bg-gray-50 border border-borde rounded-2xl flex items-center justify-center group-hover:bg-rojo group-hover:text-white transition-all transform group-hover:-rotate-6">
+            {services.map((svc: any, i) => (
+              <div 
+                key={i} 
+                className={`flex gap-8 group ${svc.onClick ? 'cursor-pointer' : ''}`}
+                onClick={() => svc.onClick?.()}
+              >
+                <div className={`shrink-0 w-14 h-14 border border-borde rounded-2xl flex items-center justify-center transition-all transform group-hover:-rotate-6 ${svc.isHighLight ? 'bg-rojo text-white' : 'bg-gray-50 group-hover:bg-rojo group-hover:text-white'}`}>
                   <svc.icon size={28} />
                 </div>
                 <div>
-                  <h4 className="text-2xl font-black mb-3">{svc.title}</h4>
+                  <h4 className={`text-2xl font-black mb-3 ${svc.isHighLight ? 'text-rojo' : ''}`}>{svc.title}</h4>
                   <p className="text-texto-sec font-medium leading-relaxed text-lg">{svc.desc}</p>
+                  {svc.onClick && (
+                    <div className="mt-3 text-rojo font-black text-xs uppercase tracking-widest flex items-center gap-1 group-hover:gap-2 transition-all">
+                      Saber más <ArrowRight size={14} />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
