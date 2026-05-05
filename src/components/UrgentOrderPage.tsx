@@ -954,15 +954,16 @@ export function UrgentOrderPage({
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
+                <Zap className="text-rojo" size={24} fill="currentColor" />
                 <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Pedido urgente</h1>
                 <span className="bg-rojo text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">Servicio Premium</span>
               </div>
               <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
-                Solicita abastecimiento para operación inmediata. El servicio está sujeto a ciudad, inventario, horario y ventana logística.
+                ¿Tienes una ruptura crítica de stock? Solicita una atención prioritaria para asegurar tu operación HORECA.
               </p>
             </div>
             <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
-              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1">Operación B2B</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
               <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
               <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
             </div>

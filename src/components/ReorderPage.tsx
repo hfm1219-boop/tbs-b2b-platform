@@ -393,8 +393,8 @@ export function ReorderPage({
       <div className="max-w-[1480px] mx-auto px-8 mt-10">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Último pedido" value={stats.lastOrder} icon={Package} />
-          <StatCard title="Productos frecuentes" value={stats.frequentCount.toString()} icon={RefreshCw} color="text-rojo" />
+          <StatCard title="Último pedido" value={stats.lastOrder} icon={Package} color="text-slate-600" />
+          <StatCard title="Productos frecuentes" value={stats.frequentCount.toString()} icon={RefreshCw} color="text-rojo" bgColor="bg-rojo-suave" />
           <StatCard title="Recompra sugerida" value={stats.recommendedCount.toString()} icon={Star} color="text-yellow-600" />
           <StatCard title="Seleccionados" value={totals.count.toString()} icon={CheckSquare} color="text-blue-600" />
         </div>
@@ -673,10 +673,11 @@ export function ReorderPage({
   );
 }
 
-function StatCard({ title, value, icon: Icon, color = 'text-texto' }: { title: string, value: string, icon: any, color?: string }) {
+function StatCard({ title, value, icon: Icon, color = 'text-texto', bgColor }: { title: string, value: string, icon: any, color?: string, bgColor?: string }) {
+  const finalBgColor = bgColor || color.replace('text-', 'bg-').replace('600', '100');
   return (
     <div className="bg-white p-6 rounded-3xl border border-borde tbs-shadow flex items-start gap-4 hover:scale-[1.02] transition-transform">
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${color.replace('text-', 'bg-').replace('600', '100')} ${color}`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${finalBgColor} ${color}`}>
         <Icon size={24} />
       </div>
       <div>

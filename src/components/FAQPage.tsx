@@ -258,56 +258,101 @@ export const FAQPage: React.FC<FAQPageProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-      {/* Header section */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-4 flex items-center justify-between">
-          <Breadcrumbs 
-            onHomeClick={onGoHome}
-            items={[{ label: 'Centro de ayuda', current: true }]}
-          />
-          <div className="flex items-center gap-2 text-rojo font-black text-xl tracking-tighter">
-            TBS Help Center
+      {currentUser ? (
+        <div className="bg-white border-b border-borde pt-8 pb-10 mb-8">
+          <div className="max-w-[1480px] mx-auto px-8">
+            <button 
+              onClick={onGoAccount}
+              className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+              Volver a mi cuenta
+            </button>
+            
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <HelpCircle className="text-rojo" size={24} />
+                  <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Centro de Ayuda</h1>
+                </div>
+                <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
+                  Resuelve tus dudas sobre pedidos, pagos y el ecosistema B2B de TBS o contacta con soporte.
+                </p>
+              </div>
+              <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
+                <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
+                <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
+                <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
+              </div>
+            </div>
+
+            {/* Search as a floating or integrated bar */}
+            <div className="relative max-w-2xl mt-10 group">
+              <input 
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Busca respuestas sobre pedidos, pagos, usuarios..."
+                className="w-full bg-gray-50 text-texto h-14 pl-12 pr-6 rounded-xl border border-borde focus:outline-none focus:border-rojo focus:ring-1 focus:ring-rojo/20 transition-all font-bold"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris group-focus-within:text-rojo" size={20} />
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Hero / Search section */}
-      <div className="bg-rojo py-16 px-4 md:px-8 text-white relative overflow-hidden">
-        <HelpCircle className="absolute -right-12 -bottom-12 w-96 h-96 text-white/5 rotate-12" />
-        <div className="max-w-4xl mx-auto relative z-10 text-center">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de ayuda TBS</h1>
-          <p className="text-lg opacity-90 mb-10 max-w-2xl mx-auto">
-            Preguntas frecuentes sobre abastecimiento B2B de licores, pedidos, cartera, pagos, seguimiento, marcas y soporte.
-          </p>
-
-          <div className="relative max-w-2xl mx-auto group">
-            <input 
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por palabra clave, pedidos, pagos, usuarios, promociones..."
-              className="w-full bg-white text-texto h-16 pl-14 pr-6 rounded-2xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/20 transition-all font-medium text-lg"
-            />
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gris group-focus-within:text-rojo transition-colors" size={24} />
+      ) : (
+        <>
+          {/* Public Header section */}
+          <div className="bg-white border-b border-gray-100">
+            <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-4 flex items-center justify-between">
+              <Breadcrumbs 
+                onHomeClick={onGoHome}
+                items={[{ label: 'Centro de ayuda', current: true }]}
+              />
+              <div className="flex items-center gap-2 text-rojo font-black text-xl tracking-tighter">
+                TBS Help Center
+              </div>
+            </div>
           </div>
 
-          {/* Popular Search Tags */}
-          <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
-            <span className="text-xs font-black uppercase tracking-widest text-white/60 mr-2">Populares:</span>
-            {['Pedidos', 'Acceso B2B', 'Cobertura', 'Pagos', 'Crédito', 'Urgente'].map(tag => (
-              <button 
-                key={tag}
-                onClick={() => setSearch(tag)}
-                className="text-xs font-bold px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+          {/* Public Hero / Search section */}
+          <div className="bg-rojo py-16 px-4 md:px-8 text-white relative overflow-hidden">
+            <HelpCircle className="absolute -right-12 -bottom-12 w-96 h-96 text-white/5 rotate-12" />
+            <div className="max-w-4xl mx-auto relative z-10 text-center">
+              <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">Centro de ayuda TBS</h1>
+              <p className="text-lg opacity-90 mb-10 max-w-2xl mx-auto">
+                Preguntas frecuentes sobre abastecimiento B2B de licores, pedidos, cartera, pagos, seguimiento, marcas y soporte.
+              </p>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 -mt-8 relative z-20">
+              <div className="relative max-w-2xl mx-auto group">
+                <input 
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por palabra clave, pedidos, pagos, usuarios, promociones..."
+                  className="w-full bg-white text-texto h-16 pl-14 pr-6 rounded-2xl shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/20 transition-all font-medium text-lg"
+                />
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gris group-focus-within:text-rojo transition-colors" size={24} />
+              </div>
+
+              {/* Popular Search Tags */}
+              <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
+                <span className="text-xs font-black uppercase tracking-widest text-white/60 mr-2">Populares:</span>
+                {['Pedidos', 'Acceso B2B', 'Cobertura', 'Pagos', 'Crédito', 'Urgente'].map(tag => (
+                  <button 
+                    key={tag}
+                    onClick={() => setSearch(tag)}
+                    className="text-xs font-bold px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <main className={`max-w-7xl mx-auto px-4 md:px-8 ${currentUser ? 'pt-2' : '-mt-8'} relative z-20`}>
         
         {/* Popular Questions Section (NEW) */}
         {!search && categoryFilter === 'todas' && audienceFilter === 'todas' && (

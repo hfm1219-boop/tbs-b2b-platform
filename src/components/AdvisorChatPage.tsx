@@ -37,6 +37,10 @@ interface AdvisorChatPageProps {
   initialConversationId?: string | null;
   onClearInitialStates?: () => void;
   onCreateNotification?: (notification: any) => void;
+  conversations: Conversation[];
+  setConversations: React.Dispatch<React.SetStateAction<Conversation[]>>;
+  activeConvIdProp: string | null;
+  setActiveConvIdProp: (id: string | null) => void;
 }
 
 const ADVISOR_DATA_CLIENTE: Advisor = {
@@ -61,7 +65,7 @@ const ADVISOR_DATA_PROVIDER: Advisor = {
   avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop"
 };
 
-const INITIAL_CONVERSATIONS: Conversation[] = [
+export const INITIAL_CONVERSATIONS: Conversation[] = [
   {
     id: "conv-001",
     topic: "pedido",
@@ -181,7 +185,11 @@ export default function AdvisorChatPage({
   initialContext,
   initialConversationId,
   onClearInitialStates,
-  onCreateNotification
+  onCreateNotification,
+  conversations,
+  setConversations,
+  activeConvIdProp,
+  setActiveConvIdProp
 }: AdvisorChatPageProps) {
   const analytics = useAnalytics(currentUser);
   const isProvider = currentUser?.role === 'marca' || currentUser?.role === 'proveedor';
@@ -189,8 +197,9 @@ export default function AdvisorChatPage({
   const topicLabels = isProvider ? TOPIC_LABELS_PROVIDER : TOPIC_LABELS_CLIENTE;
   const contextOptions = isProvider ? CONTEXT_OPTIONS_PROVIDER : CONTEXT_OPTIONS_CLIENTE;
   
-  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
-  const [activeConvId, setActiveConvId] = useState<string | null>(INITIAL_CONVERSATIONS[0].id);
+  const activeConvId = activeConvIdProp || (conversations.length > 0 ? conversations[0].id : null);
+  const setActiveConvId = setActiveConvIdProp;
+
   const [isNewConvModalOpen, setIsNewConvModalOpen] = useState(false);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -483,46 +492,37 @@ export default function AdvisorChatPage({
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <header className="bg-white border-b border-borde sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {mobileView === 'chat' ? (
-              <button 
-                onClick={() => setMobileView('list')}
-                className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-gris hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            ) : (
-              <button 
-                onClick={onBackToAccount}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-gris hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            )}
+      {/* Header section */}
+      <div className="bg-white border-b border-borde pt-8 pb-10">
+        <div className="max-w-[1480px] mx-auto px-8">
+          <button 
+            onClick={onBackToAccount}
+            className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            Volver a mi cuenta
+          </button>
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-texto">
-                  {currentUser?.role === 'marca' || currentUser?.role === 'proveedor' ? 'Mi ejecutivo TBS' : 'Mi asesor'}
-                </h1>
-                <span className="px-2 py-0.5 bg-rojo/10 text-rojo text-[10px] font-black rounded uppercase tracking-wider">Chat interno TBS</span>
+              <div className="flex items-center gap-3 mb-2">
+                <MessageSquare className="text-rojo" size={24} />
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Mi Asesor TBS</h1>
               </div>
-              <p className="text-xs text-gris font-medium">Comunícate con tu {currentUser?.role === 'marca' || currentUser?.role === 'proveedor' ? 'ejecutivo' : 'asesor'} TBS desde la plataforma, sin salir de la página.</p>
+              <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
+                ¿Necesitas ayuda? Chatea con tu asesor comercial asignado y resuelve dudas sobre pedidos, cartera o productos.
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
+              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
+              <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
+              <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
             </div>
           </div>
-          
-          {currentUser && (
-            <div className="hidden md:flex flex-col items-end">
-              <span className="text-xs font-black text-texto">{currentUser.businessName}</span>
-              <span className="text-[10px] font-bold text-gris uppercase tracking-widest">{currentUser.city}</span>
-            </div>
-          )}
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-8">
+      <main className="max-w-[1480px] mx-auto px-8 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Advisor Card Sidebar - Hidden on mobile */}
           <div className="hidden lg:block lg:col-span-1 space-y-6">

@@ -16,7 +16,8 @@ import {
   Calendar,
   MessageSquare,
   CheckCircle2,
-  Wallet
+  Wallet,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   Button,
@@ -176,28 +177,49 @@ export function PromotionsPage({
   };
 
   return (
-    <PageContainer variant="dashboard" className="pb-24">
-      <PageHeader
-        title="Promociones B2B"
-        eyebrow={`${currentUser?.businessName} • ${currentUser?.city}`}
-        icon={<Tag className="text-rojo" size={28} />}
-        onBack={onBackToAccount}
-        description={
-          <p className="text-gris font-medium mt-1 max-w-2xl leading-relaxed">
-            Consulta descuentos, combos y condiciones comerciales exclusivas para <span className="text-rojo font-bold">{currentUser?.businessName}</span> en <span className="font-bold">{currentUser?.city}</span>.
-          </p>
-        }
-        actions={
-          <Button 
-            variant="secondary"
-            size="sm"
-            icon={<Package size={18} />}
-            onClick={onGoCatalog}
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Header section */}
+      <div className="bg-white border-b border-borde pt-8 pb-10">
+        <div className="max-w-[1480px] mx-auto px-8">
+          <button 
+            onClick={onBackToAccount}
+            className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
           >
-            Ir al catálogo
-          </Button>
-        }
-      />
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            Volver a mi cuenta
+          </button>
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Tag className="text-rojo" size={24} />
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Promociones B2B</h1>
+              </div>
+              <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
+                Consulta descuentos, combos y condiciones comerciales exclusivas para abastecer tu negocio al mejor precio.
+              </p>
+            </div>
+            <div className="flex items-center gap-6">
+              <Button 
+                variant="primary"
+                size="md"
+                leftIcon={Package}
+                onClick={onGoCatalog}
+                className="hidden lg:flex"
+              >
+                Ir al catálogo
+              </Button>
+              <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
+                <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
+                <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
+                <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[1480px] mx-auto px-8 pb-24 pt-10">
 
       <div className="py-8">
         {/* Brand Coupons Section */}
@@ -658,6 +680,7 @@ export function PromotionsPage({
           </div>
         )}
       </ModalShell>
-    </PageContainer>
+      </div>
+    </div>
   );
 }

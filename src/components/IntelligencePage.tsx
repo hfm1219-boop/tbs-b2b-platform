@@ -16,7 +16,8 @@ import {
   Info,
   ArrowRight,
   TrendingDown,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   Button,
@@ -154,28 +155,49 @@ export function IntelligencePage({
   };
 
   return (
-    <PageContainer variant="dashboard" className="pb-20">
-      <PageHeader
-        title="Inteligencia B2B"
-        eyebrow={`${currentUser?.businessName} • ${currentUser?.city}`}
-        icon={<BarChart3 className="text-rojo" />}
-        onBack={onBackToAccount}
-        actions={
-          <div className="flex items-center gap-3">
-            <div className="hidden md:block bg-rojo-suave px-3 py-1.5 rounded-lg border border-rojo/10">
-              <span className="text-[10px] font-black text-rojo uppercase tracking-widest">Datos simulados para prototipo</span>
+    <div className="min-h-screen bg-[#F8FAFC]">
+      {/* Header section */}
+      <div className="bg-white border-b border-borde pt-8 pb-10">
+        <div className="max-w-[1480px] mx-auto px-8">
+          <button 
+            onClick={onBackToAccount}
+            className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            Volver a mi cuenta
+          </button>
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <BarChart3 className="text-rojo" size={24} />
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Inteligencia B2B</h1>
+              </div>
+              <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
+                Analiza tus hábitos de consumo, optimiza tus compras y recibe recomendaciones personalizadas para tu negocio.
+              </p>
             </div>
-            <Button 
-              variant="primary"
-              size="sm"
-              leftIcon={MessageSquare}
-              onClick={() => onGoAdvisorChat('producto', 'Consulta sobre inteligencia B2B y recomendaciones de compra.')}
-            >
-              Hablar con asesor
-            </Button>
+            <div className="flex items-center gap-6">
+              <Button 
+                variant="primary"
+                size="md"
+                leftIcon={MessageSquare}
+                onClick={() => onGoAdvisorChat('producto', 'Consulta sobre inteligencia B2B y recomendaciones de compra.')}
+                className="hidden lg:flex"
+              >
+                Hablar con asesor
+              </Button>
+              <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
+                <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
+                <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
+                <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
+              </div>
+            </div>
           </div>
-        }
-      />
+        </div>
+      </div>
+
+      <div className="max-w-[1480px] mx-auto px-8 pb-20 pt-10">
 
       <div className="py-8">
         <SectionHeader
@@ -563,6 +585,7 @@ export function IntelligencePage({
           </div>
         </div>
       </div>
-    </PageContainer>
+      </div>
+    </div>
   );
 }

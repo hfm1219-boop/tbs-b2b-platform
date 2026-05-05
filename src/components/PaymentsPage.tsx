@@ -60,7 +60,9 @@ interface PaymentsPageProps {
   onGoAdvisorChat: (topic?: any, context?: any) => void;
   onGoCreditRequest?: () => void;
   highlightedInvoiceId?: string | null;
-  onClearHighlight?: () => void;
+  onClearHighlight: () => void;
+  invoices: Invoice[];
+  setInvoices: React.Dispatch<React.SetStateAction<Invoice[]>>;
 }
 
 const formatCOP = (value: number) => {
@@ -72,7 +74,7 @@ const formatCOP = (value: number) => {
   }).format(value).replace('COP', '$');
 };
 
-const DUMMY_INVOICES: Invoice[] = [
+export const DUMMY_INVOICES: Invoice[] = [
   {
     id: "inv-001",
     number: "FV-88321",
@@ -194,12 +196,13 @@ export function PaymentsPage({
   onGoAdvisorChat,
   onGoCreditRequest,
   highlightedInvoiceId,
-  onClearHighlight
+  onClearHighlight,
+  invoices,
+  setInvoices
 }: PaymentsPageProps) {
   const analytics = useAnalytics(currentUser);
   const toasts = useToasts();
   const isCash = currentUser?.commercialCondition === 'contado';
-  const [invoices, setInvoices] = useState<Invoice[]>(DUMMY_INVOICES);
   const [filter, setFilter] = useState<InvoiceStatus | 'todos' | 'vencimiento' | 'sede'>('todos');
   const [search, setSearch] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
@@ -1224,14 +1227,12 @@ function InvoiceRow({ invoice, selected, onToggle, onShowDetail, onReportDispute
       </div>
       
       {/* Col 2: Basic Info (Number/Site) */}
-      <div className="w-44 shrink-0">
+      <div className="w-48 shrink-0">
         <div className="flex items-center gap-2 mb-1">
-           <div className="text-[9px] font-black uppercase text-gris tracking-tight leading-none">Documento</div>
-           {invoice.hasDispute ? (
-              <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded uppercase flex items-center gap-1">
-                 <AlertCircle size={8} /> Disputa
-              </div>
-           ) : (
+           <div className={`text-[9px] font-black uppercase tracking-tight leading-none ${invoice.hasDispute ? 'text-amber-600' : 'text-gris'}`}>
+              {invoice.hasDispute ? 'Disputa Comercial' : 'Documento'}
+           </div>
+           {!invoice.hasDispute && (
              <button 
                onClick={(e) => { e.stopPropagation(); onReportDispute(invoice); }}
                className="px-1.5 py-0.5 bg-gray-50 text-gris/60 text-[8px] font-black rounded uppercase flex items-center gap-1 hover:bg-amber-50 hover:text-amber-700 transition-colors border border-transparent hover:border-amber-200"
@@ -1241,7 +1242,7 @@ function InvoiceRow({ invoice, selected, onToggle, onShowDetail, onReportDispute
            )}
         </div>
         <div className="text-sm font-black text-texto tracking-tight flex items-center gap-1.5">
-          {invoice.number}
+          {invoice.hasDispute && <span className="text-amber-600 text-[10px] bg-amber-50 px-1 rounded border border-amber-200">DISPUTA</span>} {invoice.number}
           <button onClick={onShowDetail} className="text-gris/40 hover:text-rojo transition-colors cursor-pointer">
              <Info size={12} />
           </button>
@@ -1279,7 +1280,7 @@ function InvoiceRow({ invoice, selected, onToggle, onShowDetail, onReportDispute
 
         {/* Estado Badge */}
         <div className="min-w-0">
-           <InvoiceStatusBadge status={invoice.status} />
+           <InvoiceStatusBadge status={invoice.status} hasDispute={invoice.hasDispute} />
         </div>
 
         {/* Saldo Pendiente */}
@@ -1490,8 +1491,16 @@ function PaymentRegistrationForm({ onCancel, onFinish }: { onCancel: () => void,
   );
 }
 
-function InvoiceStatusBadge({ status }: { status: Invoice['status'] }) {
-  const getStatusConfig = (s: Invoice['status']) => {
+function InvoiceStatusBadge({ status, hasDispute }: { status: Invoice['status'], hasDispute?: boolean }) {
+  const getStatusConfig = (s: Invoice['status'], dispute?: boolean) => {
+    if (dispute) {
+      return { 
+        label: 'En Disputa', 
+        class: 'bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200', 
+        icon: AlertCircle 
+      };
+    }
+
     switch(s) {
       case 'pagada': return { label: 'Conciliado', class: 'bg-green-50 text-green-700 border-green-100', icon: CheckCircle2 };
       case 'vencida': return { label: 'Vencido', class: 'bg-rojo-suave text-rojo border-rojo/10', icon: AlertCircle };
@@ -1501,7 +1510,7 @@ function InvoiceStatusBadge({ status }: { status: Invoice['status'] }) {
     }
   }
 
-  const config = getStatusConfig(status);
+  const config = getStatusConfig(status, hasDispute);
   const Icon = config.icon;
 
   return (

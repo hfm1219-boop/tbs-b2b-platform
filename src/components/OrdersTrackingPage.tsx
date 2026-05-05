@@ -53,13 +53,15 @@ import {
   ReturnRequestStatus, 
   ReturnRequestLine, 
   ReturnRequest, 
-  ProductOrderMatch 
+  ProductOrderMatch,
+  Invoice
 } from '../types';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useToasts } from './ToastContext';
 
 interface OrdersTrackingPageProps {
   currentUser: User | null;
+  invoices?: Invoice[];
   onBackToAccount: () => void;
   onGoHome: () => void;
   onGoCatalog: (category?: string | null) => void;
@@ -320,6 +322,7 @@ const DUMMY_ORDERS: CustomerOrder[] = [
 
 export function OrdersTrackingPage({ 
   currentUser, 
+  invoices = [],
   onBackToAccount, 
   onGoHome, 
   onGoCatalog,
@@ -528,18 +531,37 @@ export function OrdersTrackingPage({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      <PageHeader
-        title="Seguimiento B2B"
-        eyebrow="Trazabilidad Logística"
-        description="Consulta el estado de tus pedidos, entregas programadas, novedades y trazabilidad de logística inversa (devoluciones)."
-        onBack={onBackToAccount}
-        metric={{
-          label: "Empresa",
-          value: currentUser?.businessName || 'Cargando...'
-        }}
-      />
+      {/* Header section */}
+      <div className="bg-white border-b border-borde pt-8 pb-10">
+        <div className="max-w-[1480px] mx-auto px-8">
+          <button 
+            onClick={onBackToAccount}
+            className="flex items-center gap-2 text-gris hover:text-rojo font-black text-xs uppercase tracking-wider mb-6 group transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+            Volver a mi cuenta
+          </button>
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Truck className="text-rojo" size={24} />
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-texto">Seguimiento B2B</h1>
+              </div>
+              <p className="text-gris font-medium text-lg leading-relaxed max-w-2xl">
+                Consulta el estado de tus pedidos, entregas programadas, novedades y trazabilidad de logística inversa (devoluciones).
+              </p>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 rounded-2xl border border-borde">
+              <div className="text-[10px] font-black uppercase tracking-widest text-rojo mb-1 tracking-tighter">Operación B2B</div>
+              <div className="text-lg font-black text-texto">{currentUser?.businessName || 'Cargando...'}</div>
+              <div className="text-xs font-extrabold text-gris mt-1 uppercase tracking-tight">{currentUser?.city}</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <PageContainer variant="dashboard" className="pt-8">
+      <div className="max-w-[1480px] mx-auto px-8 mt-10">
         {/* View Selector Tabs */}
         <div className="mb-8">
           <ModuleTabs 
@@ -708,6 +730,7 @@ export function OrdersTrackingPage({
               <OrderCard 
                 key={order.id} 
                 order={order} 
+                invoices={invoices}
                 onShowDetail={() => {
                   setSelectedOrder(order);
                   analytics.track('order_detail_viewed', 'orders', {
@@ -921,6 +944,7 @@ export function OrdersTrackingPage({
           {selectedOrder && (
               <OrderDetailModal 
                 order={selectedOrder} 
+                invoices={invoices}
                 onClose={() => setSelectedOrder(null)} 
                 onReorder={() => handleReorder(selectedOrder)}
                 onContactAdvisor={() => {
@@ -1010,6 +1034,7 @@ export function OrdersTrackingPage({
           {isReturnModalOpen && selectedReturnOrder && (
             <ReturnRequestModal 
               order={selectedReturnOrder}
+              invoices={invoices}
               preselectedProductId={preselectedProductId}
               onClose={() => {
                 setIsReturnModalOpen(false);
@@ -1062,7 +1087,7 @@ export function OrdersTrackingPage({
             />
           )}
         </AnimatePresence>
-      </PageContainer>
+      </div>
     </div>
   );
 }
@@ -1090,6 +1115,7 @@ interface OrderCardProps {
   onContactAdvisor: () => void;
   statusLabel: string;
   isHighlighted?: boolean;
+  invoices?: Invoice[];
 }
 
 function OrderMiniProgress({ status, hasNovedad }: { status: OrderStatus, hasNovedad?: boolean }) {
@@ -1144,10 +1170,13 @@ function OrderMiniProgress({ status, hasNovedad }: { status: OrderStatus, hasNov
   );
 }
 
-function OrderCard({ order, onShowDetail, onReorder, onReturn, onContactAdvisor, statusLabel, isHighlighted }: OrderCardProps) {
+function OrderCard({ order, onShowDetail, onReorder, onReturn, onContactAdvisor, statusLabel, isHighlighted, invoices = [] }: OrderCardProps) {
   const canReturn = ['entregado', 'entrega_parcial', 'con_novedad'].includes(order.status);
   const hasNovedad = order.status === 'con_novedad' || order.issues && order.issues.length > 0;
   const isUrgent = order.orderType === 'urgente' || order.isUrgent;
+  
+  const relatedInvoice = invoices.find(inv => inv.number === order.invoiceNumber || inv.orderNumber === order.number);
+  const hasDispute = relatedInvoice?.hasDispute;
 
   return (
     <div className={`group bg-white rounded-[24px] border transition-all hover:panel-shadow overflow-hidden flex flex-col ${isHighlighted ? 'border-rojo ring-2 ring-rojo ring-offset-4' : 'border-borde shadow-sm'}`}>
@@ -1155,14 +1184,14 @@ function OrderCard({ order, onShowDetail, onReorder, onReturn, onContactAdvisor,
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-6 mb-6 lg:mb-8">
           <div className="flex items-center gap-4 lg:gap-6 w-full">
             <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gray-50 rounded-[15px] lg:rounded-[20px] flex flex-col items-center justify-center text-gris shrink-0 border border-gray-100 shadow-inner group-hover:bg-rojo group-hover:text-white transition-colors">
-              <span className="text-[8px] font-black leading-none">TBS</span>
+              <span className="text-[8px] font-black leading-none">{hasDispute ? 'DISP' : 'TBS'}</span>
               <Package size={16} className="mt-1 lg:hidden" />
               <Package size={20} className="mt-1 hidden lg:block" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2 lg:mb-3">
                 <h3 className="text-lg lg:text-xl font-black text-texto tracking-tight leading-none truncate">{order.number}</h3>
-                <StatusBadge status={order.status} label={statusLabel} />
+                <StatusBadge status={hasDispute ? 'disputa' : order.status} label={hasDispute ? 'FACTURA EN DISPUTA' : statusLabel} />
                 {isUrgent && (
                   <span className="px-2 py-0.5 bg-rojo text-white text-[8px] lg:text-[9px] font-black uppercase rounded shadow-sm">Urgente</span>
                 )}
@@ -1238,8 +1267,12 @@ function OrderCard({ order, onShowDetail, onReorder, onReturn, onContactAdvisor,
               <div className="flex gap-3">
                 <FileText size={18} className="text-rojo shrink-0" />
                 <div>
-                  <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1 font-sans">Documento Contable</div>
-                  <div className="text-sm font-black text-rojo uppercase leading-none">{order.documentNumber}</div>
+                  <div className={`text-[10px] font-black uppercase tracking-widest leading-none mb-1 font-sans ${hasDispute ? 'text-amber-600' : 'text-gris'}`}>
+                     {hasDispute ? 'Disputa Comercial' : 'Documento Contable'}
+                  </div>
+                  <div className={`text-sm font-black uppercase leading-none ${hasDispute ? 'text-amber-600' : 'text-rojo'}`}>
+                     {order.documentNumber}
+                  </div>
                 </div>
               </div>
             )}
@@ -1390,9 +1423,12 @@ function LogisticsTimelineItem({ event, isCompleted, isNext, isCash }: any) {
   );
 }
 
-function OrderDetailModal({ order, onClose, onReorder, onContactAdvisor, getStatusLabel, getStatusColor, isCash }: any) {
+function OrderDetailModal({ order, onClose, onReorder, onContactAdvisor, getStatusLabel, getStatusColor, isCash, invoices = [] }: any) {
   const hasNovedad = order.status === 'con_novedad' || order.issues?.length > 0;
   
+  const relatedInvoice = invoices.find((inv: any) => inv.number === order.invoiceNumber || inv.orderNumber === order.number);
+  const hasDispute = relatedInvoice?.hasDispute;
+
   const timelineSteps = order.timeline.map((t: any) => ({
     title: t.title,
     status: t.completed ? 'completed' : (order.status === t.id ? 'current' : 'pending'),
@@ -1416,7 +1452,7 @@ function OrderDetailModal({ order, onClose, onReorder, onContactAdvisor, getStat
              <div>
               <div className="flex items-center gap-4 mb-2">
                 <h3 className="text-3xl font-black text-texto tracking-tighter">Pedido {order.number}</h3>
-                <StatusBadge status={order.status} label={getStatusLabel(order.status)} />
+                <StatusBadge status={hasDispute ? 'disputa' : order.status} label={hasDispute ? 'FACTURA EN DISPUTA' : getStatusLabel(order.status)} />
               </div>
               <p className="text-gris font-black text-sm uppercase tracking-widest">
                 Registrado el {order.date} · <span className="text-rojo">{order.units} unidades</span>
@@ -1654,7 +1690,10 @@ function InfoChip({ label, val }: any) {
   );
 }
 
-function ReturnRequestModal({ order, preselectedProductId, onClose, onSubmit, onGoAdvisor }: any) {
+function ReturnRequestModal({ order, preselectedProductId, onClose, onSubmit, onGoAdvisor, invoices = [] }: any) {
+  const relatedInvoice = invoices.find((inv: any) => inv.number === order.invoiceNumber || inv.orderNumber === order.number);
+  const hasDispute = relatedInvoice?.hasDispute;
+
   const [selectedLines, setSelectedLines] = useState<Record<string, boolean>>(
     preselectedProductId ? { [preselectedProductId]: true } : {}
   );
@@ -1771,7 +1810,9 @@ function ReturnRequestModal({ order, preselectedProductId, onClose, onSubmit, on
             </div>
             <div>
               <h3 className="text-3xl font-black text-texto tracking-tighter">Solicitar devolución</h3>
-              <p className="text-gris font-bold text-sm">Pedido {order.number} · Factura {order.documentNumber || 'N/A'}</p>
+              <p className={`text-sm font-bold ${hasDispute ? 'text-amber-600' : 'text-gris'}`}>
+                Pedido {order.number} · {hasDispute ? 'Disputa Comercial' : 'Factura'} {order.documentNumber || 'N/A'}
+              </p>
             </div>
           </div>
           <Button

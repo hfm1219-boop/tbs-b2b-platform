@@ -43,7 +43,8 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   vencido: { color: 'bg-red-50 text-red-700 border-red-100', label: 'Factura vencida' },
   pagado: { color: 'bg-green-50 text-green-700 border-green-100', label: 'Pagado' },
   pago_pendiente: { color: 'bg-slate-50 text-slate-700 border-slate-100', label: 'Pago pendiente' },
-  en_disputa: { color: 'bg-orange-50 text-orange-700 border-orange-100', label: 'En disputa' },
+  en_disputa: { color: 'bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200', label: 'En disputa' },
+  disputa: { color: 'bg-amber-500 text-white border-amber-600 shadow-sm shadow-amber-200', label: 'En disputa' },
   pago_rechazado: { color: 'bg-red-50 text-red-700 border-red-100', label: 'Pago rechazado' },
 
   // Productos

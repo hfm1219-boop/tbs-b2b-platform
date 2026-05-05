@@ -51,7 +51,9 @@ import {
   PendingApprovalOrder,
   LegalPageKey,
   HospitalityCommission,
-  ProviderPriceImportBatch
+  ProviderPriceImportBatch,
+  Conversation,
+  Invoice
 } from './types';
 import { 
   PRODUCTS, 
@@ -103,7 +105,7 @@ import { BlogArticlePage } from './components/BlogArticlePage';
 import ContactPage from './components/ContactPage';
 import { AuthModal } from './components/AuthModal';
 import { LoginModal } from './components/LoginModal';
-import { PaymentsPage } from './components/PaymentsPage';
+import { PaymentsPage, DUMMY_INVOICES } from './components/PaymentsPage';
 import { OrdersTrackingPage } from './components/OrdersTrackingPage';
 import { ReorderPage } from './components/ReorderPage';
 import { UrgentOrderPage } from './components/UrgentOrderPage';
@@ -125,7 +127,7 @@ import { AuthenticatedHome } from './components/AuthenticatedHome';
 import { PUBLIC_LANDINGS } from './data/publicLandingData';
 
 import { AccountDashboardPage } from './components/AccountDashboardPage';
-import AdvisorChatPage from './components/AdvisorChatPage';
+import AdvisorChatPage, { INITIAL_CONVERSATIONS } from './components/AdvisorChatPage';
 import { NotificationsPanel } from './components/NotificationsPanel';
 import { NotificationsPage } from './components/NotificationsPage';
 import { LegalIndexPage } from './components/legal/LegalIndexPage';
@@ -178,6 +180,9 @@ export default function App() {
   const [selectedContext, setSelectedContext] = useState<any>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [highlightedOrderId, setHighlightedOrderId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>(INITIAL_CONVERSATIONS);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>(DUMMY_INVOICES);
   const [highlightedInvoiceId, setHighlightedInvoiceId] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -1479,11 +1484,20 @@ export default function App() {
     }
   };
 
-  const resetToHome = () => {
+  const resetToHome = (userOverride?: User | null) => {
     setSelectedCategory(null);
     setSearchQuery('');
     setSearchInput('');
-    setActivePage('home');
+    const user = userOverride !== undefined ? userOverride : currentUser;
+    if (user?.role === 'cliente_b2b') {
+      setActivePage('account');
+    } else if (user?.role === 'proveedor' || user?.role === 'marca') {
+      setActivePage('providerDashboard');
+    } else if (user?.role === 'hospitality_partner') {
+      setActivePage('hospitalityPartnerDashboard');
+    } else {
+      setActivePage('home');
+    }
     setActiveMenu(null);
   };
 
@@ -2473,7 +2487,7 @@ export default function App() {
                   <>
                     <button 
                       onClick={resetToHome} 
-                      className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'home' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                      className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'account' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                     >
                       Dashboard
                     </button>
@@ -2747,6 +2761,8 @@ export default function App() {
           >
             <PaymentsPage 
               currentUser={currentUser}
+              invoices={invoices}
+              setInvoices={setInvoices}
               onBackToAccount={() => setActivePage('account')}
               onGoHome={resetToHome}
               onGoAccount={() => setActivePage('account')}
@@ -2766,6 +2782,7 @@ export default function App() {
           >
             <OrdersTrackingPage 
               currentUser={currentUser}
+              invoices={invoices}
               onBackToAccount={() => setActivePage('account')}
               onGoHome={resetToHome}
               onGoCatalog={() => goToCatalog('Whisky')}
@@ -2826,6 +2843,10 @@ export default function App() {
           >
             <AdvisorChatPage 
               currentUser={currentUser}
+              conversations={conversations}
+              setConversations={setConversations}
+              activeConvIdProp={activeConvId}
+              setActiveConvIdProp={setActiveConvId}
               onBackToAccount={() => setActivePage('account')}
               onGoHome={resetToHome}
               onGoOrdersTracking={handleGoOrdersTracking}
@@ -3600,11 +3621,12 @@ export default function App() {
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
         onLogin={(user) => {
+          let loggedUser = user;
           // Special handling for B2B Demo Login
           if (user.role === 'cliente_b2b') {
             const masterUser = companyAccount.users.find(u => u.email === user.email);
             if (masterUser) {
-              setCurrentUser({
+              loggedUser = {
                 ...user,
                 accountRole: masterUser.role,
                 companyAccountId: companyAccount.id,
@@ -3614,19 +3636,21 @@ export default function App() {
                 assignedPointOfSaleIds: masterUser.assignedPointOfSaleIds,
                 purchaseLimit: masterUser.purchaseLimit,
                 requiresApprovalAbove: masterUser.requiresApprovalAbove
-              });
+              };
+              setCurrentUser(loggedUser);
             } else {
               setCurrentUser(user);
             }
           } else {
             setCurrentUser(user);
           }
-          if (user.role === 'proveedor' || user.role === 'marca') {
+          
+          if (loggedUser.role === 'proveedor' || loggedUser.role === 'marca') {
             setActivePage('providerDashboard');
-          } else if (user.role === 'hospitality_partner') {
+          } else if (loggedUser.role === 'hospitality_partner') {
             setActivePage('hospitalityPartnerDashboard');
           } else {
-            resetToHome();
+            resetToHome(loggedUser);
           }
         }}
         onRequestAccess={() => {
