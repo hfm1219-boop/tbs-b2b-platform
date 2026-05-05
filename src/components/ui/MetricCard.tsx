@@ -3,14 +3,16 @@ import { LucideIcon, TrendingUp, TrendingDown, Divide as LucideDivide } from 'lu
 import { motion } from 'motion/react';
 
 interface MetricCardProps {
-  title: string;
+  title?: string;
+  label?: string; // Alias for title used in some pages
   value: string | number;
   subtitle?: string;
-  icon?: LucideIcon;
+  icon?: any; // Can be LucideIcon or ReactNode
   trend?: {
-    value: number;
+    value: number | string;
     isPositive: boolean;
-  };
+  } | 'up' | 'down';
+  trendValue?: string | number;
   badge?: string;
   cta?: {
     label: string;
@@ -21,20 +23,49 @@ interface MetricCardProps {
     total: number;
     color?: string;
   };
+  color?: 'red' | 'green' | 'amber' | 'blue' | 'gray';
   className?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
+  label,
   value,
   subtitle,
   icon: Icon,
   trend,
+  trendValue,
   badge,
   cta,
   progress,
+  color,
   className = ''
 }) => {
+  const displayTitle = title || label;
+
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (React.isValidElement(Icon)) return Icon;
+    
+    const IconComp = Icon as any;
+    return <IconComp size={24} />;
+  };
+
+  const trendData = typeof trend === 'object' ? trend : 
+                    trend === 'up' ? { value: trendValue || '', isPositive: true } :
+                    trend === 'down' ? { value: trendValue || '', isPositive: false } :
+                    null;
+
+  const colorClasses = {
+    red: 'bg-rojo-suave text-rojo',
+    green: 'bg-green-50 text-green-600',
+    amber: 'bg-amber-50 text-amber-600',
+    blue: 'bg-blue-50 text-blue-600',
+    gray: 'bg-gray-50 text-texto'
+  };
+
+  const iconColorClass = color ? colorClasses[color] : 'bg-gray-50 text-texto';
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -43,20 +74,20 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     >
       <div className="flex items-start justify-between mb-4">
         <div>
-          <p className="text-[11px] font-black text-gris uppercase tracking-widest mb-1">{title}</p>
+          <p className="text-[11px] font-black text-gris uppercase tracking-widest mb-1">{displayTitle}</p>
           <div className="flex items-baseline gap-2">
             <h3 className="text-2xl font-black text-texto tracking-tighter">{value}</h3>
-            {trend && (
-              <span className={`flex items-center text-[10px] font-bold ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                {trend.isPositive ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
-                {trend.value}%
+            {trendData && (
+              <span className={`flex items-center text-[10px] font-bold ${trendData.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                {trendData.isPositive ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
+                {trendData.value && `${trendData.value}%`}
               </span>
             )}
           </div>
         </div>
         {Icon && (
-          <div className="p-3 bg-gray-50 rounded-2xl text-texto">
-            <Icon size={24} />
+          <div className={`p-3 rounded-2xl ${iconColorClass}`}>
+            {renderIcon()}
           </div>
         )}
       </div>

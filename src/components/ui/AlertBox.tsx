@@ -5,14 +5,16 @@ type AlertVariant = 'info' | 'success' | 'warning' | 'danger' | 'neutral';
 
 interface AlertBoxProps {
   variant?: AlertVariant;
+  type?: AlertVariant; // Alias for variant
   title?: string;
   description: string;
-  icon?: LucideIcon;
+  icon?: any; // Can be LucideIcon or ReactNode
   onClose?: () => void;
   cta?: {
     label: string;
     onClick: () => void;
   };
+  actions?: React.ReactNode; // New prop for additional actions
   className?: string;
 }
 
@@ -55,32 +57,48 @@ const variantConfig: Record<AlertVariant, { icon: LucideIcon; bg: string; border
 };
 
 export const AlertBox: React.FC<AlertBoxProps> = ({
-  variant = 'info',
+  variant,
+  type,
   title,
   description,
   icon: CustomIcon,
   onClose,
   cta,
+  actions,
   className = ''
 }) => {
-  const config = variantConfig[variant];
-  const Icon = CustomIcon || config.icon;
+  const activeVariant = variant || type || 'info';
+  const config = variantConfig[activeVariant];
+  
+  const renderIcon = () => {
+    const Icon = CustomIcon || config.icon;
+    if (!Icon) return null;
+    if (React.isValidElement(Icon)) return Icon;
+    
+    const IconComp = Icon as any;
+    return <IconComp size={20} className={`${config.iconColor} shrink-0 mt-0.5`} />;
+  };
 
   return (
     <div className={`flex gap-3 p-4 rounded-2xl border ${config.bg} ${config.border} ${config.text} ${className}`}>
-      <Icon size={20} className={`${config.iconColor} shrink-0 mt-0.5`} />
+      {renderIcon()}
       
       <div className="flex-1">
         {title && <h4 className="text-sm font-black mb-1">{title}</h4>}
         <p className="text-xs leading-relaxed opacity-90">{description}</p>
         
-        {cta && (
-          <button 
-            onClick={cta.onClick}
-            className="mt-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4"
-          >
-            {cta.label}
-          </button>
+        {(cta || actions) && (
+          <div className="mt-3 flex items-center gap-3">
+            {cta && (
+              <button 
+                onClick={cta.onClick}
+                className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1 hover:underline underline-offset-4"
+              >
+                {cta.label}
+              </button>
+            )}
+            {actions}
+          </div>
         )}
       </div>
 

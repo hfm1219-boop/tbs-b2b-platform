@@ -1,5 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import {
+  Tag,
+  Package,
+  Star,
+  Info,
+  Users,
+  TrendingDown,
+  MapPin,
+  AlertCircle,
+  Search,
+  Filter,
+  ChevronRight,
+  ShoppingCart,
+  Calendar,
+  MessageSquare,
+  CheckCircle2,
+  Wallet
+} from 'lucide-react';
 import { 
   Button,
   MetricCard,
@@ -242,24 +260,24 @@ export function PromotionsPage({
           <MetricCard 
             label="Promociones activas" 
             value={promotions.length} 
-            icon={<Tag size={20} />} 
+            icon={Tag} 
             color="red"
           />
           <MetricCard 
             label="Para tu ciudad" 
             value={promotions.filter(p => p.condition.cities?.includes(currentUser?.city || '')).length} 
-            icon={<MapPin size={20} />} 
+            icon={MapPin} 
           />
           <MetricCard 
             label="Requieren validación" 
             value={promotions.filter(p => p.condition.requiresApproval).length} 
-            icon={<AlertCircle size={20} />} 
+            icon={AlertCircle} 
             color="amber"
           />
           <MetricCard 
             label="Ahorro potencial" 
             value="Hasta 12%" 
-            icon={<TrendingDown size={20} />} 
+            icon={TrendingDown} 
             color="green"
           />
         </div>

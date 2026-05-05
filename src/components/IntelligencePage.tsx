@@ -1,6 +1,24 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
+  BarChart3,
+  MessageSquare,
+  ShoppingCart,
+  Package,
+  TrendingUp,
+  Tag,
+  Calendar,
+  Clock,
+  AlertCircle,
+  PieChart,
+  Zap,
+  Star,
+  Info,
+  ArrowRight,
+  TrendingDown,
+  ChevronRight
+} from 'lucide-react';
+import { 
   Button,
   MetricCard,
   AlertBox,
@@ -150,7 +168,7 @@ export function IntelligencePage({
             <Button 
               variant="primary"
               size="sm"
-              icon={<MessageSquare size={16} />}
+              leftIcon={MessageSquare}
               onClick={() => onGoAdvisorChat('producto', 'Consulta sobre inteligencia B2B y recomendaciones de compra.')}
             >
               Hablar con asesor
@@ -172,30 +190,33 @@ export function IntelligencePage({
             label="Compra del mes" 
             value={formatCOP(summary.currentMonthTotal)} 
             subtitle={`${calculateGrowth()}% vs mes anterior`} 
-            icon={<ShoppingCart size={24} />} 
-            trend="up"
+            icon={ShoppingCart} 
+            trend={Number(calculateGrowth()) >= 0 ? 'up' : 'down'}
+            trendValue={Math.abs(Number(calculateGrowth()))}
             color="red"
           />
           <MetricCard 
             label="Pedidos del mes" 
             value={summary.currentMonthOrders} 
             subtitle={`${summary.currentMonthUnits} unidades compradas`} 
-            icon={<Package size={24} />} 
+            icon={Package} 
           />
           <MetricCard 
             label="Ticket promedio" 
             value={formatCOP(summary.averageOrderValue)} 
             subtitle="Por cada pedido realizado" 
-            icon={<TrendingUp size={24} />} 
+            icon={TrendingUp} 
             trend="up"
+            trendValue={5.2}
             color="green"
           />
           <MetricCard 
             label="Ahorro estimado" 
             value={formatCOP(summary.estimatedSavings)} 
             subtitle="Por promociones aplicadas" 
-            icon={<Tag size={24} />} 
+            icon={Tag} 
             trend="up"
+            trendValue={12.5}
             color="amber"
           />
         </div>
@@ -389,39 +410,39 @@ export function IntelligencePage({
 
             <div className="space-y-4">
               <AlertBox
-                type="info"
+                variant="info"
                 title="Alta dependencia de whisky"
                 description={`El whisky representa el ${categoryConsumption.find(c => c.category === 'Whisky')?.percentage}% de tus compras. Revisa promociones por volumen para optimizar margen.`}
-                icon={<TrendingUp size={20} />}
+                icon={TrendingUp}
                 actions={
-                  <Button variant="ghost" size="xs" onClick={onGoPromotions} icon={<ChevronRight size={14} />}>
+                  <Button variant="ghost" size="sm" onClick={onGoPromotions} rightIcon={ChevronRight}>
                     Ver promociones
                   </Button>
                 }
               />
 
               <AlertBox
-                type="warning"
+                variant="warning"
                 title={isCash ? 'Facturas por pagar' : 'Facturas por vencer'}
                 description={isCash 
                   ? `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus pagos para liberar pedidos y mantener tu operación.`
                   : `Tienes ${summary.pendingInvoices} facturas pendientes de pago. Realiza tus abonos para desbloquear cupo adicional de crédito.`
                 }
-                icon={<AlertCircle size={20} />}
+                icon={AlertCircle}
                 actions={
-                  <Button variant="ghost" size="xs" onClick={onGoPayments} icon={<ChevronRight size={14} />}>
+                  <Button variant="ghost" size="sm" onClick={onGoPayments} rightIcon={ChevronRight}>
                     {isCash ? 'Ver facturas por pagar' : 'Ir a cartera'}
                   </Button>
                 }
               />
 
               <AlertBox
-                type="info"
+                variant="info"
                 title="Uso de pedidos urgentes"
                 description={`Has solicitado ${summary.urgentOrdersUsed} pedidos urgentes este mes. Programar tus compras recurrentes te ahorrará costos logísticos.`}
-                icon={<Zap size={20} />}
+                icon={Zap}
                 actions={
-                  <Button variant="ghost" size="xs" onClick={onGoReorder} icon={<ChevronRight size={14} />}>
+                  <Button variant="ghost" size="sm" onClick={onGoReorder} rightIcon={ChevronRight}>
                     Planear recompra
                   </Button>
                 }

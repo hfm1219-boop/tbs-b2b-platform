@@ -26,6 +26,7 @@ import {
   DollarSign,
   ChevronRight,
   MessageSquare,
+  MessageSquareText,
   ExternalLink,
   Wallet,
   Calendar as CalendarIcon,
@@ -198,6 +199,7 @@ export function PaymentsPage({
   const analytics = useAnalytics(currentUser);
   const toasts = useToasts();
   const isCash = currentUser?.commercialCondition === 'contado';
+  const [invoices, setInvoices] = useState<Invoice[]>(DUMMY_INVOICES);
   const [filter, setFilter] = useState<InvoiceStatus | 'todos' | 'vencimiento' | 'sede'>('todos');
   const [search, setSearch] = useState('');
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
@@ -209,18 +211,21 @@ export function PaymentsPage({
   const [detailInvoice, setDetailInvoice] = useState<Invoice | null>(null);
   const [showRegistrationMode, setShowRegistrationMode] = useState(false);
   const [viewBy, setViewBy] = useState<'lista' | 'vencimiento' | 'sede'>('lista');
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeInvoice, setDisputeInvoice] = useState<Invoice | null>(null);
+  const [disputeReason, setDisputeReason] = useState('');
 
   const filteredInvoices = useMemo(() => {
-    return DUMMY_INVOICES.filter(inv => {
+    return invoices.filter(inv => {
       const matchesSearch = inv.number.toLowerCase().includes(search.toLowerCase()) || 
                            (inv.orderNumber && inv.orderNumber.toLowerCase().includes(search.toLowerCase())) ||
                            (inv.site && inv.site.toLowerCase().includes(search.toLowerCase()));
       return matchesSearch;
     });
-  }, [search]);
+  }, [search, invoices]);
 
   const stats = useMemo(() => {
-    const pendingInvoices = DUMMY_INVOICES.filter(inv => inv.balance > 0);
+    const pendingInvoices = invoices.filter(inv => inv.balance > 0);
     const pendingTotal = pendingInvoices.reduce((sum, inv) => sum + inv.balance, 0);
     const overdueInvoices = pendingInvoices.filter(inv => inv.status === 'vencida');
     const overdueTotal = overdueInvoices.reduce((sum, inv) => sum + inv.balance, 0);
@@ -247,7 +252,7 @@ export function PaymentsPage({
       maxOverdueDays,
       risk
     };
-  }, [currentUser, isCash]);
+  }, [currentUser, isCash, invoices]);
 
   const usedCredit = stats.limit - stats.available;
   const usedPercentage = stats.limit > 0 ? (usedCredit / stats.limit) * 100 : 0;
@@ -261,7 +266,7 @@ export function PaymentsPage({
   }, []);
 
   const totalToPay = selectedInvoices.reduce((sum, id) => {
-    const inv = DUMMY_INVOICES.find(i => i.id === id);
+    const inv = invoices.find(i => i.id === id);
     return sum + (inv?.balance || 0);
   }, 0);
 
@@ -282,7 +287,7 @@ export function PaymentsPage({
     );
 
     if (isSelecting) {
-      const inv = DUMMY_INVOICES.find(i => i.id === id);
+      const inv = invoices.find(i => i.id === id);
       analytics.track('invoice_selected', 'payments', {
         productId: inv?.id,
         metadata: { invoiceNumber: inv?.number, balance: inv?.balance }
@@ -314,6 +319,48 @@ export function PaymentsPage({
       setShowConfirmation(true);
       toasts.success("Pago registrado", "Hemos recibido tu reporte de pago correctamente.");
     }, 1500);
+  };
+
+  const handleReportDispute = (inv: Invoice) => {
+    setDisputeInvoice(inv);
+    setDisputeReason('');
+    setShowDisputeModal(true);
+  };
+
+  const submitDispute = () => {
+    if (!disputeReason.trim()) {
+      toasts.error("Motivo requerido", "Por favor escribe los motivos de la disputa.");
+      return;
+    }
+
+    toasts.success("Disputa reportada", `Has iniciado una solicitud de disputa para la factura ${disputeInvoice?.number}. Un asesor se contactará contigo.`);
+    analytics.track('invoice_dispute_reported', 'payments', {
+      invoiceNumber: disputeInvoice?.number,
+      invoiceValue: disputeInvoice?.value,
+      reason: disputeReason
+    });
+    
+    // Send message to advisor chat
+    if (onGoAdvisorChat) {
+      onGoAdvisorChat('cartera', `Hola, quiero reportar una disputa para la factura ${disputeInvoice?.number}. Motivo: ${disputeReason}`);
+    }
+
+    // Update invoice state to show dispute label
+    if (disputeInvoice) {
+      // Mock persistent update for the session
+      const index = DUMMY_INVOICES.findIndex(i => i.id === disputeInvoice.id);
+      if (index !== -1) {
+        DUMMY_INVOICES[index].hasDispute = true;
+      }
+
+      setInvoices(prev => prev.map(inv => 
+        inv.id === disputeInvoice.id ? { ...inv, hasDispute: true } : inv
+      ));
+    }
+    
+    setShowDisputeModal(false);
+    setDisputeInvoice(null);
+    setDisputeReason('');
   };
 
   const getStatusColor = (status: InvoiceStatus) => {
@@ -374,7 +421,7 @@ export function PaymentsPage({
               <span className="text-gris font-bold text-xs uppercase tracking-wider block mb-2">Facturas pagadas</span>
               <div className="flex flex-wrap gap-2">
                 {selectedInvoices.map(id => {
-                  const inv = DUMMY_INVOICES.find(i => i.id === id);
+                  const inv = invoices.find(i => i.id === id);
                   return (
                     <span key={id} className="bg-white px-3 py-1 rounded-full border border-borde text-xs font-black text-texto">
                       {inv?.number}
@@ -440,6 +487,23 @@ export function PaymentsPage({
         {/* Main Dashboard Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
            <div className="space-y-6">
+              {/* Urgent Restriction Alert */}
+              {stats.overdueCount > 0 && (
+                 <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-rojo text-white p-4 rounded-2xl flex items-center justify-between shadow-lg shadow-rojo/10 animate-pulse border-2 border-white/10"
+                 >
+                    <div className="flex items-center gap-3">
+                       <AlertTriangle size={20} />
+                       <p className="text-sm font-black tracking-tight flex items-center gap-2">
+                          Tu cupo puede ser restringido debido a {stats.overdueCount} facturas en mora.
+                       </p>
+                    </div>
+                    <button className="text-[10px] font-black uppercase bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all font-sans whitespace-nowrap">Ver ahora</button>
+                 </motion.div>
+              )}
+
               {/* Core Metrics Grid */}
               <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-4 pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
                  {/* Cupo Card */}
@@ -496,7 +560,7 @@ export function PaymentsPage({
                         <span className="text-[11px] font-black text-gris uppercase tracking-[0.1em]">Cartera Total</span>
                       </div>
                       <div className="text-3xl font-black text-texto mb-1">{formatCOP(stats.pending)}</div>
-                      <p className="text-[10px] font-bold text-gris leading-tight">{DUMMY_INVOICES.filter(i => i.balance > 0).length} documentos pendientes.</p>
+                      <p className="text-[10px] font-bold text-gris leading-tight">{invoices.filter(i => i.balance > 0).length} documentos pendientes.</p>
                     </div>
                  </div>
               </div>
@@ -537,17 +601,8 @@ export function PaymentsPage({
                  </div>
               </div>
 
-              {/* Alerts Section */}
+              {/* Secondary Alerts Section */}
               <div className="space-y-3">
-                 {stats.overdueCount > 0 && (
-                    <div className="bg-rojo text-white p-4 rounded-2xl flex items-center justify-between animate-pulse">
-                       <div className="flex items-center gap-3">
-                          <AlertTriangle size={20} />
-                          <p className="text-sm font-black tracking-tight">Tu cupo puede ser restringido debido a {stats.overdueCount} facturas en mora.</p>
-                       </div>
-                       <button className="text-[10px] font-black uppercase bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-colors">Ver ahora</button>
-                    </div>
-                 )}
                  {stats.pending > 0 && usedPercentage > 80 && (
                     <div className="bg-amber-100 text-amber-800 p-4 rounded-2xl flex items-center justify-between border border-amber-200">
                        <div className="flex items-center gap-3">
@@ -599,83 +654,65 @@ export function PaymentsPage({
                     </Button>
                  </div>
               </div>
+           </div>
+        </div>
 
-              <div className="bg-white rounded-3xl border border-borde p-6 space-y-4">
-                 <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="text-green-500" size={18} />
-                    <h4 className="text-xs font-black uppercase tracking-widest text-texto">Acciones Rápidas</h4>
-                 </div>
-                 <button className="w-full text-left p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-rojo transition-all group">
-                    <div className="flex items-center justify-between mb-1">
-                       <span className="text-sm font-black text-texto">Cerrar Morosidad</span>
-                       <ArrowRight size={16} className="text-gris group-hover:text-rojo group-hover:translate-x-1 transition-all" />
-                    </div>
-                    <p className="text-[10px] font-bold text-gris uppercase">Paga automáticamente todas las facturas vencidas ({stats.overdueCount})</p>
-                 </button>
-                 <button className="w-full text-left p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:border-rojo transition-all group">
-                    <div className="flex items-center justify-between mb-1">
-                       <span className="text-sm font-black text-texto">Descargar Certificado</span>
-                       <Download size={16} className="text-gris group-hover:text-rojo transition-all" />
-                    </div>
-                    <p className="text-[10px] font-bold text-gris uppercase">Estado de cuenta oficial para proveedores</p>
-                 </button>
+        {/* Control Bar (Extended) */}
+        <div className="bg-white rounded-[32px] border border-borde p-3 mt-6 mb-8 shadow-sm">
+           <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
+              <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
+                <ModuleTabs 
+                  tabs={[
+                    { id: 'lista', label: 'Lista' },
+                    { id: 'vencimiento', label: 'Vencimiento' },
+                    { id: 'sede', label: 'Sede' }
+                  ]}
+                  activeTab={viewBy}
+                  onChange={(id) => setViewBy(id as any)}
+                  variant="dashboard"
+                  className="w-full md:w-auto shrink-0"
+                />
+                <div className="relative w-full md:w-72 shrink-0">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={16} />
+                  <input 
+                    type="text" 
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar factura o sede..."
+                    className="w-full h-10 bg-gray-50 border border-transparent rounded-xl pl-10 pr-4 text-xs font-bold outline-none focus:border-rojo focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full xl:w-auto overflow-x-auto scrollbar-hide no-scrollbar">
+                {(['todos', 'pendiente', 'vencida', 'pagada'] as const).map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setFilter(status)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.05em] transition-all whitespace-nowrap border shrink-0 ${
+                      filter === status
+                        ? 'bg-rojo text-white border-rojo shadow-md shadow-rojo/10' 
+                        : 'bg-white text-gris border-borde hover:border-rojo/30'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+                {isCash && (
+                  <button
+                    onClick={() => setShowRegistrationMode(true)}
+                    className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.05em] bg-green-600 text-white shadow-lg shadow-green-100 border border-green-600 shrink-0 ml-1"
+                  >
+                    Reportar Pago
+                  </button>
+                )}
               </div>
            </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-10 mt-12">
+        <div className="flex flex-col lg:flex-row gap-10">
           {/* Main List Area */}
           <div className="flex-1 min-w-0">
-            {/* Control Bar */}
-            <div className="bg-white rounded-[28px] border border-borde p-4 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm overflow-hidden">
-               <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
-                  <ModuleTabs 
-                    tabs={[
-                      { id: 'lista', label: 'Lista' },
-                      { id: 'vencimiento', label: 'Vencimiento' },
-                      { id: 'sede', label: 'Sede' }
-                    ]}
-                    activeTab={viewBy}
-                    onChange={(id) => setViewBy(id as any)}
-                    variant="dashboard"
-                    className="w-full md:w-auto"
-                  />
-                  <div className="relative flex-1 md:w-80">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gris" size={18} />
-                    <input 
-                      type="text" 
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar por factura o sede..."
-                      className="w-full h-10 bg-gray-50 border border-transparent rounded-xl pl-11 pr-6 text-sm font-bold outline-none focus:border-rojo focus:bg-white transition-all"
-                    />
-                  </div>
-               </div>
-
-               <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto scrollbar-hide">
-                  {(['todos', 'pendiente', 'vencida', 'pagada'] as const).map(status => (
-                    <button
-                      key={status}
-                      onClick={() => setFilter(status)}
-                      className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] transition-all whitespace-nowrap border ${
-                        filter === status
-                          ? 'bg-rojo text-white border-rojo shadow-lg shadow-rojo/20' 
-                          : 'bg-white text-gris border-borde hover:border-rojo/30'
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                  {isCash && (
-                    <button
-                      onClick={() => setShowRegistrationMode(true)}
-                      className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] bg-green-600 text-white shadow-lg shadow-green-200 border border-green-600 ml-2"
-                    >
-                      Reportar Pago
-                    </button>
-                  )}
-               </div>
-            </div>
 
             {/* Invoices Rendering Logic */}
             {showRegistrationMode ? (
@@ -707,6 +744,7 @@ export function PaymentsPage({
                             selected={selectedInvoices.includes(inv.id)}
                             onToggle={() => handleToggleInvoice(inv.id)}
                             onShowDetail={() => setDetailInvoice(inv)}
+                            onReportDispute={handleReportDispute}
                             isHighlighted={highlightedInvoiceId === inv.number}
                           />
                         ))}
@@ -738,6 +776,7 @@ export function PaymentsPage({
                                          selected={selectedInvoices.includes(inv.id)}
                                          onToggle={() => handleToggleInvoice(inv.id)}
                                          onShowDetail={() => setDetailInvoice(inv)}
+                                         onReportDispute={handleReportDispute}
                                       />
                                    ))}
                                 </div>
@@ -775,6 +814,7 @@ export function PaymentsPage({
                                          selected={selectedInvoices.includes(inv.id)}
                                          onToggle={() => handleToggleInvoice(inv.id)}
                                          onShowDetail={() => setDetailInvoice(inv)}
+                                         onReportDispute={handleReportDispute}
                                       />
                                    ))}
                                 </div>
@@ -787,8 +827,8 @@ export function PaymentsPage({
             )}
           </div>
 
-          <div id="payment-sidebar" className="lg:w-[420px] shrink-0">
-            <div className="sticky top-8 bg-white rounded-[32px] border border-borde shadow-xl overflow-hidden">
+          <div id="payment-sidebar" className="lg:w-[420px] shrink-0 pt-0 lg:pt-6">
+            <div className="sticky top-6 bg-white rounded-[32px] border border-borde shadow-xl overflow-hidden">
                <div className="bg-texto text-white p-8 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
                   <h2 className="text-2xl font-black tracking-tighter mb-2 relative z-10 font-sans">Resumen de liquidación</h2>
@@ -915,6 +955,68 @@ export function PaymentsPage({
       </PageContainer>
 
       <AnimatePresence>
+        {showDisputeModal && disputeInvoice && (
+          <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDisputeModal(false)}
+              className="absolute inset-0 bg-texto/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[40px] overflow-hidden shadow-2xl"
+            >
+              <div className="p-10 border-b border-borde flex justify-between items-center bg-amber-50/30">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shadow-lg shadow-amber-100/50">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-texto tracking-tighter">Reportar Disputa</h3>
+                    <p className="text-xs font-bold text-gris uppercase tracking-widest">{disputeInvoice.number} · {disputeInvoice.orderNumber}</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowDisputeModal(false)} className="text-gris hover:text-rojo transition-colors cursor-pointer">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-10 space-y-6">
+                <div className="bg-gray-50 rounded-2xl p-5 border border-borde">
+                  <div className="text-[10px] font-black text-gris uppercase tracking-[0.15em] mb-3">Motivos de la disputa</div>
+                  <textarea 
+                    value={disputeReason}
+                    onChange={(e) => setDisputeReason(e.target.value)}
+                    placeholder="Describe detalladamente por qué disputas esta factura (ej: productos dañados, valor incorrecto, pedido no entregado...)"
+                    className="w-full h-40 bg-white border border-borde rounded-xl p-4 font-semibold text-sm outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 transition-all resize-none shadow-inner"
+                    autoFocus
+                  />
+                  <div className="flex items-start gap-2 mt-4 text-amber-700">
+                    <Info size={14} className="shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-bold leading-normal">
+                      Tu mensaje será enviado a tu asesor de cuenta para iniciar una revisión inmediata del caso.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button 
+                    onClick={submitDispute}
+                    className="w-full h-16 rounded-2xl bg-amber-500 hover:bg-amber-600 shadow-xl shadow-amber-500/20 text-md font-black uppercase tracking-tight"
+                    leftIcon={MessageSquareText}
+                  >
+                    Enviar al asesor
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {detailInvoice && (
           <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
             <motion.div 
@@ -1097,94 +1199,107 @@ interface InvoiceRowProps {
   onToggle: () => void;
   statusColor: string;
   onShowDetail: () => void;
+  onReportDispute: (inv: Invoice) => void;
   isHighlighted?: boolean;
 }
 
-function InvoiceRow({ invoice, selected, onToggle, onShowDetail, isHighlighted }: Omit<InvoiceRowProps, 'statusColor'>) {
+function InvoiceRow({ invoice, selected, onToggle, onShowDetail, onReportDispute, isHighlighted }: Omit<InvoiceRowProps, 'statusColor'>) {
   const isSelectable = invoice.balance > 0;
 
   return (
-    <div className={`relative group transition-all px-8 py-6 flex flex-col md:flex-row items-start md:items-center gap-8 ${isHighlighted ? 'bg-rojo-suave/50 animate-pulse' : selected ? 'bg-rojo/5 shadow-inner' : 'bg-white hover:bg-gray-50/50'}`}>
-      <div className="flex items-center gap-6 w-full md:w-auto">
+    <div className={`relative transition-all px-6 py-5 flex items-center gap-6 ${isHighlighted ? 'bg-rojo-suave/50 animate-pulse' : selected ? 'bg-rojo/5 shadow-inner' : 'bg-white hover:bg-gray-50/50'}`}>
+      {/* Col 1: Action (Selection) */}
+      <div className="shrink-0">
         <button 
           disabled={!isSelectable}
           onClick={onToggle}
-          className={`w-10 h-10 rounded-2xl border-2 transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
+          className={`w-9 h-9 rounded-xl border-2 transition-all flex items-center justify-center cursor-pointer disabled:cursor-not-allowed ${
             selected 
-              ? 'bg-rojo border-rojo text-white shadow-lg shadow-rojo/20' 
+              ? 'bg-rojo border-rojo text-white shadow-md shadow-rojo/20' 
               : 'border-borde bg-white hover:border-rojo/50'
           } ${!isSelectable ? 'opacity-20 bg-gray-50' : ''}`}
         >
-          {selected ? <Check size={20} strokeWidth={4} /> : <div className="w-2 h-2 rounded-full bg-gray-200" />}
+          {selected ? <Check size={18} strokeWidth={4} /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
         </button>
-        
-        <div className="flex-1 md:w-40 shrink-0">
-          <div className="flex items-center gap-2 mb-1">
-             <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none font-sans">Documento</div>
-             {invoice.hasDispute && (
-                <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded uppercase flex items-center gap-1">
-                   <AlertCircle size={8} /> Disputa
-                </div>
-             )}
-          </div>
-          <div className="text-base font-black text-texto tracking-tight flex items-center gap-2">
-            {invoice.number}
-            <button onClick={onShowDetail} className="text-gris/50 hover:text-rojo transition-colors cursor-pointer">
-               <Info size={14} />
-            </button>
-          </div>
-          <div className="flex items-center gap-1.5 mt-1">
-             <span className="text-[10px] font-bold text-gris-oscuro whitespace-nowrap">{invoice.site}</span>
-             <span className="w-1 h-1 rounded-full bg-gray-300" />
-             <span className="text-[10px] font-bold text-gris italic whitespace-nowrap">{invoice.city}</span>
-          </div>
+      </div>
+      
+      {/* Col 2: Basic Info (Number/Site) */}
+      <div className="w-44 shrink-0">
+        <div className="flex items-center gap-2 mb-1">
+           <div className="text-[9px] font-black uppercase text-gris tracking-tight leading-none">Documento</div>
+           {invoice.hasDispute ? (
+              <div className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[8px] font-black rounded uppercase flex items-center gap-1">
+                 <AlertCircle size={8} /> Disputa
+              </div>
+           ) : (
+             <button 
+               onClick={(e) => { e.stopPropagation(); onReportDispute(invoice); }}
+               className="px-1.5 py-0.5 bg-gray-50 text-gris/60 text-[8px] font-black rounded uppercase flex items-center gap-1 hover:bg-amber-50 hover:text-amber-700 transition-colors border border-transparent hover:border-amber-200"
+             >
+                <HelpCircle size={10} /> Reportar Disputa
+             </button>
+           )}
+        </div>
+        <div className="text-sm font-black text-texto tracking-tight flex items-center gap-1.5">
+          {invoice.number}
+          <button onClick={onShowDetail} className="text-gris/40 hover:text-rojo transition-colors cursor-pointer">
+             <Info size={12} />
+          </button>
+        </div>
+        <div className="text-[9px] font-bold text-gris truncate mt-0.5">
+          {invoice.site} <span className="opacity-30 mx-1">/</span> {invoice.city}
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 grid grid-cols-2 lg:grid-cols-4 gap-8 w-full md:w-auto">
-        <div>
-          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Vencimiento</div>
-          <div className="text-sm font-black text-texto mb-1">{invoice.dueDate}</div>
+      {/* Col 3: Grid Data (Fixed width columns for alignment) */}
+      <div className="flex-1 grid grid-cols-3 xl:grid-cols-4 gap-4 items-center">
+        {/* Vencimiento */}
+        <div className="min-w-0">
+          <div className="text-[9px] font-black uppercase text-gris tracking-tight mb-1">Vencimiento</div>
+          <div className="text-xs font-black text-texto truncate">{invoice.dueDate}</div>
           {invoice.status === 'vencida' ? (
-             <div className="text-[10px] font-black text-rojo uppercase flex items-center gap-1">
-                <AlertCircle size={10} /> {invoice.daysOverdue} días de mora
-             </div>
-          ) : invoice.status === 'por_vencer' ? (
-             <div className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-1">
-                <Clock size={10} /> Vence en {invoice.daysUntilDue} días
-             </div>
-          ) : invoice.status === 'pagada' ? (
-             <div className="text-[10px] font-black text-green-600 uppercase flex items-center gap-1">
-                <CheckCircle2 size={10} /> Conciliado
+             <div className="text-[9px] font-black text-rojo truncate uppercase flex items-center gap-1">
+                <AlertCircle size={8} /> {invoice.daysOverdue} días de mora
              </div>
           ) : (
-             <div className="text-[10px] font-black text-gris uppercase">Pendiente</div>
+             <div className={`text-[9px] font-bold uppercase truncate ${invoice.status === 'por_vencer' ? 'text-amber-600' : 'text-gris/60'}`}>
+                {invoice.status === 'por_vencer' ? `Vence en ${invoice.daysUntilDue} días` : invoice.status === 'pagada' ? 'Conciliado' : 'Pendiente'}
+             </div>
           )}
         </div>
-        <div className="hidden lg:block">
-          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Pedido</div>
-          <div className="text-sm font-black text-texto flex items-center gap-1">
+
+        {/* Pedido */}
+        <div className="hidden xl:block min-w-0">
+          <div className="text-[9px] font-black uppercase text-gris tracking-tight mb-1">Pedido</div>
+          <div className="text-xs font-black text-texto flex items-center gap-1 truncate">
              {invoice.orderNumber}
-             <ExternalLink size={12} className="text-gris/30" />
+             <ExternalLink size={10} className="text-gris/20 shrink-0" />
           </div>
         </div>
-        <div>
-          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Estado Documento</div>
-          <InvoiceStatusBadge status={invoice.status} />
+
+        {/* Estado Badge */}
+        <div className="min-w-0">
+           <InvoiceStatusBadge status={invoice.status} />
         </div>
-        <div className="text-right lg:text-left">
-          <div className="text-[10px] font-black uppercase text-gris tracking-widest leading-none mb-1.5 font-sans">Saldo Pendiente</div>
-          <div className={`text-base font-black ${invoice.balance > 0 ? 'text-rojo' : 'text-green-600'} tracking-tight`}>{formatCOP(invoice.balance)}</div>
-          <div className="text-[10px] font-bold text-gris opacity-50">Total: {formatCOP(invoice.value)}</div>
+
+        {/* Saldo Pendiente */}
+        <div className="min-w-0 text-right xl:text-left">
+          <div className="text-[9px] font-black uppercase text-gris tracking-tight mb-1">Saldo</div>
+          <div className={`text-sm font-black ${invoice.balance > 0 ? 'text-rojo' : 'text-green-600'} tracking-tight`}>
+            {formatCOP(invoice.balance)}
+          </div>
+          <div className="text-[8px] font-bold text-gris opacity-40 uppercase">Total: {formatCOP(invoice.value)}</div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 w-full md:w-auto justify-end border-t md:border-t-0 pt-6 md:pt-0">
-        <div className="flex gap-2">
-           {invoice.allowsPartialPayment && invoice.balance > 0 && (
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center cursor-help group/tip relative">
-                 <DollarSign size={20} />
-                 <div className="absolute bottom-full mb-3 right-0 bg-texto text-white text-[10px] p-3 rounded-xl shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity w-48 font-bold pointer-events-none z-20">
+      {/* Col 4: Secondary Actions */}
+      <div className="shrink-0 flex items-center gap-3">
+        {/* We use a fixed width container for the partial payment icon to keep alignment even if hidden */}
+        <div className="w-10 flex justify-center">
+           {invoice.allowsPartialPayment && invoice.balance > 0 ? (
+              <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center cursor-help group/tip relative">
+                 <DollarSign size={18} />
+                 <div className="absolute bottom-full mb-3 right-0 bg-texto text-white text-[9px] p-3 rounded-xl shadow-xl opacity-0 group-hover/tip:opacity-100 transition-opacity w-48 font-bold pointer-events-none z-20">
                     <div className="flex items-center gap-2 mb-1">
                       <Zap size={10} className="text-blue-400" fill="currentColor" />
                       <span>Pago Parcial Habilitado</span>
@@ -1193,14 +1308,14 @@ function InvoiceRow({ invoice, selected, onToggle, onShowDetail, isHighlighted }
                     <div className="absolute top-full right-4 transform translate-y-[-50%] rotate-45 w-2 h-2 bg-texto" />
                  </div>
               </div>
-           )}
-           <button 
-             onClick={onShowDetail} 
-             className="w-10 h-10 bg-gray-50 text-gris hover:bg-texto hover:text-white rounded-full flex items-center justify-center transition-all cursor-pointer border border-transparent shadow-sm"
-           >
-              <ChevronRight size={20} />
-           </button>
+           ) : null}
         </div>
+        <button 
+          onClick={onShowDetail} 
+          className="w-9 h-9 bg-gray-50 text-gris/60 hover:bg-texto hover:text-white rounded-full flex items-center justify-center transition-all cursor-pointer border border-transparent shadow-sm"
+        >
+           <ChevronRight size={18} />
+        </button>
       </div>
     </div>
   );

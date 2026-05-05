@@ -5,6 +5,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
+  fullWidth?: boolean;
   leftIcon?: LucideIcon;
   rightIcon?: LucideIcon;
 }
@@ -15,6 +16,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     variant = 'primary', 
     size = 'md', 
     isLoading = false, 
+    fullWidth = false,
     leftIcon: LeftIcon, 
     rightIcon: RightIcon, 
     children, 
@@ -23,6 +25,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }, ref) => {
     
     const baseStyles = "inline-flex items-center justify-center font-black uppercase tracking-widest transition-all duration-200 rounded-xl cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]";
+    
+    const widthStyles = fullWidth ? "w-full" : "";
     
     const variants = {
       primary: "bg-rojo text-white hover:bg-rojo-oscuro shadow-sm",
@@ -51,7 +55,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || isLoading}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`${baseStyles} ${widthStyles} ${variants[variant]} ${sizes[size]} ${className}`}
         {...props}
       >
         {isLoading ? (

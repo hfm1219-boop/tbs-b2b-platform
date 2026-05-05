@@ -1,5 +1,22 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
+import {
+  ShieldCheck,
+  Wallet,
+  CreditCard,
+  Package,
+  Tag,
+  BarChart3,
+  ShoppingCart,
+  Star,
+  Zap,
+  Headset,
+  MapPin,
+  User,
+  LogOut,
+  ChevronRight,
+  TrendingUp
+} from 'lucide-react';
 import { 
   Button,
   MetricCard,
@@ -330,7 +347,7 @@ export function AccountDashboardPage({
             <MetricCard 
               label={isCash ? 'Condición Comercial' : 'Cupo de Crédito'}
               value={isCash ? 'CONTADO' : `$ ${user.availableCredit?.toLocaleString('es-CO')}`}
-              icon={<Wallet className="text-white" size={24} />}
+              icon={Wallet}
               color={isCash ? 'gray' : 'red'}
               size="lg"
               trend={isCash ? undefined : { value: 'Operativo', isPositive: true }}

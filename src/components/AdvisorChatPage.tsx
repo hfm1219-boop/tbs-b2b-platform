@@ -33,7 +33,7 @@ interface AdvisorChatPageProps {
   onGoCatalog: () => void;
   onGoUrgentOrder: () => void;
   initialTopic?: ConversationTopic;
-  initialContext?: { label: string; type: ChatMessage['attachmentType'] };
+  initialContext?: { label: string; type: ChatMessage['attachmentType'] } | string;
   initialConversationId?: string | null;
   onClearInitialStates?: () => void;
   onCreateNotification?: (notification: any) => void;
@@ -222,11 +222,61 @@ export default function AdvisorChatPage({
     }
 
     if (initialTopic) {
+      const topicLabel = topicLabels[initialTopic] || 'General';
+      
+      // Auto-send if context is a string (direct message)
+      if (typeof initialContext === 'string') {
+        const newId = `conv-${Date.now()}`;
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+        
+        const newConv: Conversation = {
+          id: newId,
+          topic: initialTopic as ConversationTopic,
+          title: `Reporte: ${topicLabel}`,
+          status: 'abierta',
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          messages: [
+            {
+              id: `msg-init-${Date.now()}`,
+              sender: 'cliente',
+              text: initialContext,
+              createdAt: timeStr
+            }
+          ]
+        };
+
+        setConversations(prev => [newConv, ...prev]);
+        setActiveConvId(newId);
+        
+        analytics.track('chat_conversation_auto_started', 'chat', {
+          conversationId: newId,
+          topic: initialTopic
+        });
+
+        // Initial advisor response
+        setTimeout(() => {
+          const response: ChatMessage = {
+            id: `msg-resp-init-${Date.now()}`,
+            sender: 'asesor',
+            text: "Recibido. Estoy revisando la información de tu disputa y te daré respuesta por este chat.",
+            createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase()
+          };
+          updateConversationMessages(newId, response);
+        }, 2000);
+
+        if (onClearInitialStates) {
+          onClearInitialStates();
+        }
+        return;
+      }
+
       setIsNewConvModalOpen(true);
       setNewConvTopic(initialTopic);
       
       // Pre-fill subject based on topic or context
-      if (initialContext && initialContext.label) {
+      if (initialContext && typeof initialContext !== 'string' && initialContext.label) {
         setNewConvSubject(`Consulta sobre ${initialContext.label}`);
         setNewConvMessage(`Hola ${advisorData.name.split(' ')[0]}, tengo una duda respecto a ${initialContext.label.toLowerCase()}...`);
         
@@ -235,7 +285,6 @@ export default function AdvisorChatPage({
           setNewConvContext(ctxIdx);
         }
       } else {
-        const topicLabel = initialTopic ? (topicLabels[initialTopic] || 'General') : 'General';
         const topicValue = initialTopic && topicLabels[initialTopic] ? initialTopic : 'otro';
         
         setNewConvTopic(topicValue as ConversationTopic);
@@ -336,7 +385,7 @@ export default function AdvisorChatPage({
         attachmentLabel: ctx.label,
         attachmentType: ctx.type
       });
-    } else if (initialContext) {
+    } else if (initialContext && typeof initialContext !== 'string') {
       messages.push({
         id: `msg-ctx-${Date.now()}`,
         sender: 'sistema',

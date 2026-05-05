@@ -560,25 +560,25 @@ export function OrdersTrackingPage({
               <MetricCard 
                 label="Pedidos activos" 
                 value={stats.active.toString()} 
-                icon={<Package size={20} />} 
+                icon={Package} 
                 color="red"
               />
               <MetricCard 
                 label="En tránsito" 
                 value={stats.inTransit.toString()} 
-                icon={<Truck size={20} />} 
+                icon={Truck} 
                 trend={{ value: 'Operando', isPositive: true }}
               />
               <MetricCard 
                 label="Con novedad" 
                 value={stats.withIssue.toString()} 
-                icon={<AlertCircle size={20} />} 
+                icon={AlertCircle} 
                 color={stats.withIssue > 0 ? "amber" : "gray"}
               />
               <MetricCard 
                 label="Entregados" 
                 value={stats.delivered.toString()} 
-                icon={<CheckCircle2 size={20} />} 
+                icon={CheckCircle2} 
                 color="green"
               />
             </div>

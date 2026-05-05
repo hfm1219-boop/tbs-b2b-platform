@@ -839,7 +839,7 @@ export interface BlogArticle {
   primaryCtaTarget?: 'accessRequest' | 'catalog' | 'faq' | 'providers' | 'clients' | 'services' | 'advisorChat';
 }
 
-export type ActivePage = 'home' | 'category' | 'about' | 'clients' | 'providers' | 'services' | 'request-access' | 'checkout' | 'account' | 'payments' | 'ordersTracking' | 'reorder' | 'urgentOrder' | 'advisorChat' | 'notifications' | 'shoppingLists' | 'promotions' | 'intelligence' | 'providerDashboard' | 'providerProducts' | 'providerCampaigns' | 'providerSettlements' | 'providerReports' | 'b2bAccountAdmin' | 'orderApprovals' | 'faq' | 'blogIndex' | 'blogArticle' | 'contact' | 'legalIndex' | 'legalPage' | 'publicLanding' | 'trust' | 'creditRequest' | 'campaignPage' | 'hospitalityPartnerDashboard' | 'hospitalityPartners' | 'advertising';
+export type ActivePage = 'home' | 'catalog' | 'category' | 'about' | 'clients' | 'providers' | 'services' | 'request-access' | 'checkout' | 'account' | 'payments' | 'ordersTracking' | 'reorder' | 'urgentOrder' | 'advisorChat' | 'notifications' | 'shoppingLists' | 'promotions' | 'intelligence' | 'providerDashboard' | 'providerProducts' | 'providerCampaigns' | 'providerSettlements' | 'providerReports' | 'b2bAccountAdmin' | 'orderApprovals' | 'faq' | 'blogIndex' | 'blogArticle' | 'contact' | 'legalIndex' | 'legalPage' | 'publicLanding' | 'trust' | 'creditRequest' | 'campaignPage' | 'hospitalityPartnerDashboard' | 'hospitalityPartners' | 'advertising';
 
 export type FAQAudience =
   | 'publico'

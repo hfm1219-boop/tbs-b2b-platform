@@ -225,6 +225,11 @@ export default function App() {
   const isHospitalityPartner = currentUser?.role === 'hospitality_partner';
 
   // Track page views
+  // Scroll to top on page change
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [activePage]);
+
   React.useEffect(() => {
     analytics.trackPageView(activePage, activePage === 'blogArticle' ? activeArticleSlug || '' : activePage, {
       userRole: getAnalyticsUserRole(currentUser)
@@ -1024,26 +1029,40 @@ export default function App() {
   };
 
   const handleGoPromotions = () => {
+    console.log("Navegando a Promociones...");
     if (!currentUser) {
+      console.log("No hay usuario, abriendo login...");
       setLoginModalOpen(true);
       return;
     }
-    if (!hasPermission('ver_promociones')) {
+    const hasPerm = hasPermission('ver_promociones');
+    console.log("Permiso ver_promociones:", hasPerm);
+    if (!hasPerm) {
       handlePermissionRestricted('ver_promociones');
       return;
     }
+    setActiveMenu(null);
+    setIsCheckoutOpen(false);
+    window.scrollTo(0, 0);
     setActivePage('promotions');
   };
 
   const handleGoIntelligence = () => {
+    console.log("Navegando a Inteligencia...");
     if (!currentUser) {
+      console.log("No hay usuario, abriendo login...");
       setLoginModalOpen(true);
       return;
     }
-    if (!hasPermission('ver_inteligencia')) {
+    const hasPerm = hasPermission('ver_inteligencia');
+    console.log("Permiso ver_inteligencia:", hasPerm);
+    if (!hasPerm) {
       handlePermissionRestricted('ver_inteligencia');
       return;
     }
+    setActiveMenu(null);
+    setIsCheckoutOpen(false);
+    window.scrollTo(0, 0);
     setActivePage('intelligence');
   };
 
@@ -1356,8 +1375,8 @@ export default function App() {
 
   const hasPermission = (permissionKey: PermissionKey) => {
     if (!currentUser) return false;
-    if (currentUser.role === 'admin') return true;
-    if (currentUser.accountRole === 'master') return true;
+    // Administradores de sistema y roles Master/Administrador de cuenta B2B tienen acceso total
+    if (currentUser.role === 'admin' || currentUser.accountRole === 'master' || currentUser.accountRole === 'administrador') return true;
     return currentUser.permissions?.includes(permissionKey) || false;
   };
 
