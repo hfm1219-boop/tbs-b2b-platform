@@ -133,7 +133,7 @@ export function AuthModal({ isOpen, onClose, type: initialType, initialRole = 'c
                     onClick={() => setUserRole('provider')}
                     className={`flex-1 px-6 py-4 text-[11px] font-black uppercase tracking-[0.15em] rounded-xl transition-all cursor-pointer ${userRole === 'provider' ? 'bg-white shadow-md text-rojo' : 'text-gris hover:text-texto'}`}
                   >
-                    Proveedor / Marca
+                    Marca
                   </button>
                 </div>
 
@@ -184,6 +184,9 @@ export function AuthModal({ isOpen, onClose, type: initialType, initialRole = 'c
                               <option>Licorera / Tienda</option>
                               <option>Supermercado</option>
                               <option>Organizador de Eventos</option>
+                              <option>Wedding / Event Planner</option>
+                              <option>Administrador de Finca / Villa</option>
+                              <option>Concierge / Hospitality</option>
                               <option>Otro</option>
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gris/40 pointer-events-none" size={18} />
@@ -256,7 +259,7 @@ export function AuthModal({ isOpen, onClose, type: initialType, initialRole = 'c
                   </button>
                   
                   <p className="text-center text-[11px] text-gris font-medium mt-10 px-14 leading-relaxed">
-                    Al proceder, confirmas que estás solicitando acceso para una entidad comercial de tipo <span className="font-bold text-texto">{userRole === 'client' ? 'Cliente' : 'Proveedor / Marca'}</span> de licores y destilados.
+                    Al proceder, confirmas que estás solicitando acceso para una entidad comercial de tipo <span className="font-bold text-texto">{userRole === 'client' ? 'Cliente' : 'Marca'}</span> de licores y destilados.
                   </p>
                 </form>
               </div>

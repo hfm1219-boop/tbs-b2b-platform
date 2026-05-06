@@ -288,15 +288,15 @@ export function AccountDashboardPage({
         
         {/* Sidebar - Profile Card */}
         <aside className="lg:w-[320px] shrink-0">
-          <div className="bg-white rounded-3xl border border-borde p-8 tbs-shadow text-center">
+          <div className="bg-white rounded-[32px] border border-borde p-8 tbs-shadow text-center">
             <div className="flex lg:flex-col items-center gap-4 lg:gap-6 lg:text-center text-left">
-              <div className="w-20 h-20 lg:w-28 lg:h-28 bg-rojo-suave rounded-3xl flex items-center justify-center text-rojo shrink-0 shadow-xl shadow-rojo/5 group overflow-hidden relative">
-                <div className="absolute inset-0 bg-rojo opacity-0 group-hover:opacity-10 transition-opacity" />
-                <User className="w-10 h-10 lg:w-14 lg:h-14" strokeWidth={2.5} />
+              <div className="w-20 h-20 lg:w-24 lg:h-24 bg-gray-50 rounded-3xl flex items-center justify-center text-texto shrink-0 shadow-sm group overflow-hidden relative border border-borde">
+                <div className="absolute inset-0 bg-rojo opacity-0 group-hover:opacity-5 transition-opacity" />
+                <User className="w-10 h-10 lg:w-12 lg:h-12" strokeWidth={2} />
               </div>
-              <div className="flex-1">
-                <h1 className="text-xl lg:text-3xl font-black text-texto tracking-tight mb-1">{user.name}</h1>
-                <p className="text-rojo font-black text-[10px] lg:text-xs uppercase tracking-widest mb-4">{user.businessName}</p>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl lg:text-2xl font-black text-texto tracking-tight mb-1 truncate">{user.name}</h1>
+                <p className="text-gris font-bold text-[10px] lg:text-[11px] uppercase tracking-widest mb-4 truncate">{user.businessName}</p>
                 {isCash && (
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 rounded-full border border-amber-200 text-[10px] font-black text-amber-600 uppercase tracking-wider">
                     <Zap size={12} strokeWidth={3} /> Cliente Contado
@@ -305,13 +305,13 @@ export function AccountDashboardPage({
               </div>
             </div>
             
-            <div className="mt-8 space-y-3">
-              <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-borde">
-                <span className="text-[11px] font-black text-gris uppercase tracking-tight">Ciudad</span>
+            <div className="mt-8 space-y-2">
+              <div className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-2xl border border-[#E9EDF2]">
+                <span className="text-[10px] font-black text-gris uppercase tracking-widest">Ciudad</span>
                 <span className="text-sm font-black text-texto">{user.city}</span>
               </div>
-              <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-borde">
-                <span className="text-[11px] font-black text-gris uppercase tracking-tight">
+              <div className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-2xl border border-[#E9EDF2]">
+                <span className="text-[10px] font-black text-gris uppercase tracking-widest">
                   {isProvider ? 'Tipo Proveedor' : 'Tipo Negocio'}
                 </span>
                 <span className="text-sm font-black text-texto">
@@ -321,16 +321,16 @@ export function AccountDashboardPage({
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="mt-6">
             <Button
               variant="ghost"
               fullWidth
               size="lg"
-              className="text-rojo hover:bg-rojo-suave"
+              className="text-gris hover:text-rojo hover:bg-rojo-suave/50"
               icon={<LogOut size={20} />}
               onClick={onLogout}
             >
-              Cerrar sesión segura
+              Cerrar sesión
             </Button>
           </div>
         </aside>
@@ -343,39 +343,52 @@ export function AccountDashboardPage({
             className="mb-8"
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <MetricCard 
-              label={isCash ? 'Condición Comercial' : 'Cupo de Crédito'}
-              value={isCash ? 'CONTADO' : `$ ${user.availableCredit?.toLocaleString('es-CO')}`}
-              icon={Wallet}
-              color={isCash ? 'gray' : 'red'}
-              size="lg"
-              trend={isCash ? undefined : { value: 'Operativo', isPositive: true }}
-              onClick={onGoPayments}
-              className={isCash ? 'bg-gradient-to-br from-gray-700 to-black text-white border-0' : 'bg-gradient-to-br from-rojo to-rojo-oscuro text-white border-0'}
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+            <div className="lg:col-span-2">
+              <MetricCard 
+                label={isCash ? 'Condición Comercial' : 'Cupo de Crédito'}
+                value={isCash ? 'CONTADO' : `$ ${(user.availableCredit || 0).toLocaleString('es-CO')}`}
+                icon={Wallet}
+                color={isCash ? 'gray' : 'red'}
+                trend={isCash ? undefined : { value: 'Operativo', isPositive: true }}
+                onClick={onGoPayments}
+                className={isCash ? 'bg-gradient-to-br from-gray-800 to-black text-white border-0 shadow-xl' : 'bg-[#1a1a1a] text-white border-0 shadow-2xl relative overflow-hidden'}
+                progress={!isCash && user.creditLimit ? {
+                  current: (user.creditLimit - (user.availableCredit || 0)),
+                  total: user.creditLimit,
+                  label: 'Cupo Utilizado',
+                  color: 'bg-rojo'
+                } : undefined}
+                subtitle={!isCash ? `Cupo Total: $ ${user.creditLimit?.toLocaleString('es-CO')}` : 'Acceso prioritario a beneficios TBS'}
+              />
+            </div>
 
-            <div className="bg-white rounded-3xl border border-borde p-6 lg:p-8 tbs-shadow flex flex-col justify-between group hover:border-rojo/30 transition-all overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Package size={80} />
+            <div className="bg-white rounded-[32px] border border-borde p-7 tbs-shadow flex flex-col justify-between group hover:border-rojo/30 transition-all overflow-hidden relative shadow-lg min-h-[160px]">
+              <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-all group-hover:scale-110">
+                <Package size={100} />
               </div>
-              <div>
-                <SectionHeader 
-                  eyebrow="Último pedido" 
-                  title="TBS-2024-8542" 
-                  className="mb-2"
-                />
-                <p className="text-sm font-medium text-gris">Entregado el 15 Abr, 2024</p>
+              <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-widest mb-4 opacity-70 text-gris">Último pedido</p>
+                <div className="mb-2">
+                  <h3 className="text-xl lg:text-2xl font-black text-texto tracking-tighter mb-2 group-hover:text-rojo transition-colors">
+                    TBS-2024-8542
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-green-100">
+                      <ShieldCheck size={12} strokeWidth={3} /> Entregado
+                    </div>
+                    <span className="text-[10px] font-bold text-gris uppercase tracking-widest">15 Abr 2024</span>
+                  </div>
+                </div>
               </div>
-              <div className="mt-8">
-                <Button 
-                  variant="secondary"
-                  fullWidth
-                  icon={<ShoppingCart size={18} />}
+              <div className="mt-auto pt-6 relative z-10">
+                <button 
                   onClick={onGoReorder}
+                  className="w-full py-4 bg-gray-50 hover:bg-rojo hover:text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 group/btn"
                 >
-                  Repetir pedido
-                </Button>
+                  <ShoppingCart size={18} className="group-hover/btn:scale-110 transition-transform" />
+                  Repetir pedido anterior
+                </button>
               </div>
             </div>
           </div>

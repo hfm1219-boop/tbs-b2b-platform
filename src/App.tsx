@@ -33,7 +33,8 @@ import {
   Tag,
   BarChart3,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1231,11 +1232,7 @@ export default function App() {
       setLoginModalOpen(true);
       return;
     }
-    if (currentUser.role === 'marca' || currentUser.role === 'proveedor') {
-      setActivePage('providerDashboard');
-    } else {
-      setActivePage('account');
-    }
+    setActivePage('account');
   };
 
   const handleClearAdvisorChatStates = useCallback(() => {
@@ -1490,7 +1487,7 @@ export default function App() {
     setSearchInput('');
     const user = userOverride !== undefined ? userOverride : currentUser;
     if (user?.role === 'cliente_b2b') {
-      setActivePage('account');
+      setActivePage('home');
     } else if (user?.role === 'proveedor' || user?.role === 'marca') {
       setActivePage('providerDashboard');
     } else if (user?.role === 'hospitality_partner') {
@@ -1871,7 +1868,7 @@ export default function App() {
                             >
                               <UserIcon size={18} className="text-gris" />
                               <span className="text-sm font-bold text-texto">
-                                {currentUser.role === 'marca' || currentUser.role === 'proveedor' ? 'Dashboard de Marca' : 'Mi Perfil'}
+                                Mi Perfil
                               </span>
                             </button>
 
@@ -1916,6 +1913,26 @@ export default function App() {
                             {/* Providers specific menu */}
                             {(currentUser.role === 'marca' || currentUser.role === 'proveedor') && (
                               <>
+                                <button 
+                                  onClick={() => {
+                                    handleGoAccount();
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors border-b border-gray-100 mb-1"
+                                >
+                                  <UserIcon size={18} className="text-rojo" />
+                                  <span className="text-sm font-black text-rojo">Mi Perfil de Marca</span>
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setActivePage('providerDashboard');
+                                    setActiveMenu(null);
+                                  }}
+                                  className="w-full text-left px-4 py-3 rounded-lg hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                >
+                                  <LayoutDashboard size={18} className="text-gris" />
+                                  <span className="text-sm font-bold text-texto">Dashboard Operativo</span>
+                                </button>
                                 <button 
                                   onClick={() => {
                                     setActivePage('providerProducts');
@@ -2487,7 +2504,7 @@ export default function App() {
                   <>
                     <button 
                       onClick={resetToHome} 
-                      className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'account' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
+                      className={`text-[11px] font-black uppercase tracking-widest whitespace-nowrap cursor-pointer transition-colors ${activePage === 'home' ? 'text-rojo' : 'text-[#303844] hover:text-rojo'}`}
                     >
                       Dashboard
                     </button>

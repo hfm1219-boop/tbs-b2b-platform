@@ -215,7 +215,7 @@ export const HospitalityPartnersPage: React.FC<HospitalityPartnersPageProps> = (
                        onClick={() => onGoAccessRequest('client')}
                        className="px-12 py-7 bg-rojo text-white rounded-2xl font-black text-xl hover:scale-105 transition-all shadow-2xl shadow-rojo/20 flex items-center gap-4 cursor-pointer"
                      >
-                       Solicitar acceso como partner <ArrowRight size={24} />
+                       Solicitar acceso como Partner <ArrowRight size={24} />
                      </button>
                    )}
                    <button 

@@ -21,10 +21,13 @@ interface MetricCardProps {
   progress?: {
     current: number;
     total: number;
+    label?: string;
     color?: string;
   };
   color?: 'red' | 'green' | 'amber' | 'blue' | 'gray';
+  featured?: boolean;
   className?: string;
+  onClick?: () => void;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -39,7 +42,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   cta,
   progress,
   color,
-  className = ''
+  featured,
+  className = '',
+  onClick
 }) => {
   const displayTitle = title || label;
 
@@ -48,7 +53,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     if (React.isValidElement(Icon)) return Icon;
     
     const IconComp = Icon as any;
-    return <IconComp size={24} />;
+    return <IconComp size={featured ? 32 : 24} />;
   };
 
   const trendData = typeof trend === 'object' ? trend : 
@@ -70,33 +75,59 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white p-6 rounded-[24px] border border-borde hover:border-rojo/20 transition-all duration-300 panel-shadow ${className}`}
+      onClick={onClick}
+      className={`relative overflow-hidden group transition-all duration-300 ${
+        featured 
+          ? 'p-6 lg:p-7 rounded-[32px] min-h-[160px]' 
+          : 'p-6 rounded-[24px]'
+      } border border-borde panel-shadow ${onClick ? 'cursor-pointer' : ''} ${className}`}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <p className="text-[11px] font-black text-gris uppercase tracking-widest mb-1">{displayTitle}</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-black text-texto tracking-tighter">{value}</h3>
+      {/* Decorative patterns for featured cards */}
+      {featured && (
+        <>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+        </>
+      )}
+
+      <div className={`flex items-start justify-between ${featured ? 'mb-4' : 'mb-3'}`}>
+        <div className="relative z-10 flex-1 min-w-0">
+          <p className={`font-black uppercase tracking-widest mb-1 opacity-70 truncate ${featured ? 'text-[11px]' : 'text-[11px]'}`}>
+            {displayTitle}
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className={`font-black tracking-tighter truncate ${featured ? 'text-3xl lg:text-4xl' : 'text-2xl'}`}>
+              {value}
+            </h3>
             {trendData && (
-              <span className={`flex items-center text-[10px] font-bold ${trendData.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                {trendData.isPositive ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
-                {trendData.value && `${trendData.value}%`}
+              <span className={`flex items-center font-bold shrink-0 relative z-10 ${
+                featured || className.includes('text-white') 
+                  ? 'bg-white/20 backdrop-blur-md text-white px-2.5 py-0.5 rounded-full text-[10px]' 
+                  : `text-[10px] ${trendData.isPositive ? 'text-green-600' : 'text-red-600'}`
+              }`}>
+                {trendData.isPositive ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
+                {trendData.value && (typeof trendData.value === 'number' ? `${trendData.value}%` : trendData.value)}
               </span>
             )}
           </div>
         </div>
+        
         {Icon && (
-          <div className={`p-3 rounded-2xl ${iconColorClass}`}>
+          <div className={`relative z-10 transition-transform group-hover:scale-110 shrink-0 ${
+            featured 
+              ? 'p-4 rounded-2xl bg-white/20 backdrop-blur-md text-white shadow-xl ring-1 ring-white/30' 
+              : `p-3 rounded-2xl ${className.includes('text-white') ? 'bg-white text-rojo shadow-lg' : iconColorClass}`
+          }`}>
             {renderIcon()}
           </div>
         )}
       </div>
 
       {(subtitle || badge) && (
-        <div className="flex items-center justify-between mb-4">
-          {subtitle && <p className="text-xs text-texto-sec">{subtitle}</p>}
+        <div className="flex items-center justify-between mb-4 relative z-10 gap-4">
+          {subtitle && <p className={`${featured ? 'text-xs' : 'text-xs'} font-medium opacity-80 uppercase tracking-wide truncate`}>{subtitle}</p>}
           {badge && (
-            <span className="px-2 py-0.5 bg-rojo-suave text-rojo text-[10px] font-black uppercase rounded-lg">
+            <span className="px-2 py-0.5 bg-rojo-suave text-rojo text-[10px] font-black uppercase rounded-lg shrink-0">
               {badge}
             </span>
           )}
@@ -104,27 +135,34 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       )}
 
       {progress && (
-        <div className="mb-4">
-          <div className="flex justify-between text-[10px] font-bold text-gris uppercase mb-1.5">
-            <span>Progreso</span>
+        <div className="mt-auto relative z-10 pt-2 font-sans">
+          <div className={`flex justify-between font-bold uppercase mb-1.5 ${featured ? 'text-[10px]' : 'text-[10px]'} opacity-70`}>
+            <span>{progress.label || 'Progreso'}</span>
             <span>{Math.round((progress.current / progress.total) * 100)}%</span>
           </div>
-          <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-            <div 
-              className={`h-full ${progress.color || 'bg-rojo'} transition-all duration-500`}
-              style={{ width: `${(progress.current / progress.total) * 100}%` }}
+          <div className={`${featured ? 'h-1.5' : 'h-1.5'} w-full bg-black/10 rounded-full overflow-hidden backdrop-blur-sm`}>
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, (progress.current / progress.total) * 100)}%` }}
+              className={`h-full ${progress.color || 'bg-white'} transition-all duration-500`}
             />
           </div>
         </div>
       )}
 
       {cta && (
-        <button 
-          onClick={cta.onClick}
-          className="w-full mt-2 py-2.5 text-[10px] font-black text-texto uppercase tracking-widest bg-gray-50 hover:bg-rojo hover:text-white rounded-xl transition-all duration-200"
-        >
-          {cta.label}
-        </button>
+        <div className="mt-6 relative z-10">
+          <button 
+            disabled // Placeholder for now, handled by onClick on card or specific logic
+            className={`w-full py-3 font-black uppercase tracking-widest rounded-xl transition-all duration-200 ${
+              featured 
+                ? 'bg-white text-rojo hover:bg-gray-100 text-[11px]' 
+                : 'bg-gray-50 text-texto hover:bg-rojo hover:text-white text-[10px]'
+            }`}
+          >
+            {cta.label}
+          </button>
+        </div>
       )}
     </motion.div>
   );

@@ -40,7 +40,7 @@ export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole 
   const handleRoleChange = (newRole: RequestRole) => {
     setRole(newRole);
     if (newRole === 'provider') {
-      setFormData(prev => ({ ...prev, businessType: 'Proveedor / marca' }));
+      setFormData(prev => ({ ...prev, businessType: 'Marca' }));
     } else {
       setFormData(prev => ({ ...prev, businessType: '' }));
     }
@@ -65,7 +65,8 @@ export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole 
 
   const businessTypes = [
     'Bar', 'Restaurante', 'Hotel', 'Club', 'Licorera', 'Supermercado', 
-    'Discoteca', 'Evento', 'Distribuidor', 'Proveedor / marca', 'Otro'
+    'Discoteca', 'Evento', 'Distribuidor', 'Marca', 
+    'Wedding Planner', 'Administrador de Finca / Villa', 'Concierge', 'Otro'
   ];
 
   const isFormValid = 
@@ -124,7 +125,7 @@ export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole 
             <div className="flex justify-between items-center border-b border-gray-200/50 pb-3">
               <span className="text-gris text-xs font-bold uppercase tracking-wider">Tipo</span>
               <span className="font-black text-texto">
-                {role === 'client' ? `Cliente B2B (${personType === 'natural' ? 'Persona Natural' : 'Persona Jurídica'})` : 'Proveedor / Marca'}
+                {role === 'client' ? `Cliente B2B (${personType === 'natural' ? 'Persona Natural' : 'Persona Jurídica'})` : 'Marca'}
               </span>
             </div>
             <div className="flex justify-between items-center border-b border-gray-200/50 pb-3">
@@ -252,7 +253,7 @@ export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole 
                 }`}>
                   <Briefcase size={32} />
                 </div>
-                <h4 className="text-xl font-black mb-2">Proveedor o marca</h4>
+                <h4 className="text-xl font-black mb-2">Marca</h4>
                 <p className="text-sm font-semibold text-texto-sec leading-relaxed">Quiero vender mis productos y usar la red logística de TBS.</p>
               </button>
             </div>
@@ -360,9 +361,12 @@ export function AccessRequestPage({ onBack, onGoFAQ, onGoLegalPage, initialRole 
                       className="w-full bg-[#F9FAFB] border-2 border-[#F1F3F5] focus:border-rojo focus:bg-white rounded-2xl pl-12 pr-6 py-5 font-semibold transition-all outline-none appearance-none cursor-pointer"
                     >
                       <option value="">Selecciona...</option>
-                      {businessTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
+                      {businessTypes
+                        .filter(type => role === 'provider' ? true : type !== 'Marca')
+                        .map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))
+                      }
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-gris/40 pointer-events-none" size={18} />
                   </div>

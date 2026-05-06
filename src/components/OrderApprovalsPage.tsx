@@ -302,18 +302,32 @@ const OrderApprovalsPage: React.FC<OrderApprovalsPageProps> = ({
             { label: 'APROBADOS', val: stats.aprobados, color: 'bg-green-50 text-green-600', icon: CheckCircle2 },
             { label: 'RECHAZADOS', val: stats.rechazados, color: 'bg-red-50 text-red-600', icon: XCircle },
             { label: 'DEVUELTOS', val: stats.devueltos, color: 'bg-blue-50 text-blue-600', icon: Undo2 },
-            { label: 'TOTAL EN ESPERA', val: formatCurrency(stats.totalPendiente).replace('$', '$ '), color: 'bg-white/5 text-white', icon: Target, isDark: true },
+            { label: 'TOTAL EN ESPERA', val: stats.totalPendiente, color: 'bg-white/5 text-white', icon: Target, isDark: true, isCurrency: true },
           ].map((item, i) => (
-            <div key={i} className={`p-6 lg:p-8 rounded-[32px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[160px] lg:h-[180px] shrink-0 w-[240px] lg:w-auto relative border ${item.isDark ? 'bg-[#0f172a] border-transparent' : 'bg-white border-[#f1f3f6]'}`}>
-              <div className="flex items-start justify-between">
-                <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-2xl flex items-center justify-center shrink-0 ${item.color}`}>
-                  <item.icon size={20} className="lg:w-[22px]" strokeWidth={2} />
+            <div key={i} className={`p-6 lg:p-7 rounded-[32px] shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-[160px] lg:h-[180px] shrink-0 w-[240px] lg:w-auto relative border overflow-hidden ${item.isDark ? 'bg-[#0f172a] border-transparent' : 'bg-white border-[#f1f3f6]'}`}>
+              {item.isDark && (
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 -mr-16 -mt-16 rounded-full blur-2xl" />
+              )}
+              <div className="flex items-start justify-between relative z-10">
+                <div className={`w-10 h-10 lg:w-11 lg:h-11 rounded-2xl flex items-center justify-center shrink-0 ${item.color}`}>
+                  <item.icon size={20} className="lg:w-[22px]" strokeWidth={2.5} />
                 </div>
-                <div className={`text-[8px] font-black uppercase tracking-[0.2em] opacity-30 mt-1 ${item.isDark ? 'text-white' : 'text-texto'}`}>MÓDULO</div>
+                <div className={`text-[8px] font-black uppercase tracking-[0.2em] opacity-40 ${item.isDark ? 'text-white' : 'text-texto'}`}>MÓDULO</div>
               </div>
-              <div className="mt-4">
-                <div className={`text-[24px] lg:text-[32px] font-black tracking-[-0.04em] mb-0.5 leading-none ${item.isDark ? 'text-white' : 'text-texto'}`}>{item.val}</div>
-                <div className={`text-[9px] lg:text-[10px] font-black uppercase tracking-[0.2em] ${item.isDark ? 'text-white/40' : 'text-gris'}`}>{item.label}</div>
+              <div className="mt-4 relative z-10">
+                {item.isCurrency ? (
+                  <div className={`flex items-baseline gap-1 ${item.isDark ? 'text-white' : 'text-texto'}`}>
+                    <span className="text-xl lg:text-2xl font-black opacity-60">$</span>
+                    <span className="text-[24px] lg:text-[30px] font-black tracking-tighter leading-none">
+                      {typeof item.val === 'number' ? item.val.toLocaleString('es-CO') : item.val}
+                    </span>
+                  </div>
+                ) : (
+                  <div className={`text-[28px] lg:text-[36px] font-black tracking-[-0.04em] mb-0.5 leading-none ${item.isDark ? 'text-white' : 'text-texto'}`}>
+                    {item.val}
+                  </div>
+                )}
+                <div className={`text-[9px] lg:text-[10px] font-black uppercase tracking-[0.15em] mt-1.5 ${item.isDark ? 'text-white/50' : 'text-gris'}`}>{item.label}</div>
               </div>
             </div>
           ))}
